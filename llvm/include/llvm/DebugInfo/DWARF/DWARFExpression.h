@@ -170,6 +170,11 @@ private:
   Optional<dwarf::DwarfFormat> Format;
 };
 
+bool prettyPrintRegisterOp(DWARFUnit *U, raw_ostream &OS,
+                           DIDumpOptions DumpOpts, uint8_t Opcode,
+                           const uint64_t Operands[2], const MCRegisterInfo *MRI,
+                           bool isEH);
+
 inline bool operator==(const DWARFExpression::iterator &LHS,
                        const DWARFExpression::iterator &RHS) {
   return LHS.Expr == RHS.Expr && LHS.Offset == RHS.Offset;

@@ -1417,6 +1417,22 @@ bool DWARFDebugLine::LineTable::getFileLineInfoForAddress(
   return true;
 }
 
+bool DWARFDebugLine::LineTable::getDirectoryForEntry(
+    const FileNameEntry &Entry, std::string &Directory) const {
+  if (Prologue.getVersion() >= 5) {
+    if (Entry.DirIdx < Prologue.IncludeDirectories.size())
+      Directory =
+          dwarf::toString(Prologue.IncludeDirectories[Entry.DirIdx], "");
+    return true;
+  } else {
+    if (0 < Entry.DirIdx && Entry.DirIdx <= Prologue.IncludeDirectories.size())
+      Directory =
+          dwarf::toString(Prologue.IncludeDirectories[Entry.DirIdx - 1], "");
+    return true;
+  }
+  return false;
+}
+
 // We want to supply the Unit associated with a .debug_line[.dwo] table when
 // we dump it, if possible, but still dump the table even if there isn't a Unit.
 // Therefore, collect up handles on all the Units that point into the
