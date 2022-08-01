@@ -35,6 +35,7 @@ end program
 ! ALL-NEXT:   MemoryAllocationOpt
 
 ! ALL-NEXT: Inliner
+! ALL-NEXT: SimplifyRegionLite
 ! ALL-NEXT: CSE
 ! ALL-NEXT:   (S) 0 num-cse'd - Number of operations CSE'd
 ! ALL-NEXT:   (S) 0 num-dce'd - Number of operations DCE'd
@@ -51,7 +52,7 @@ end program
 ! ALL-NEXT: BoxedProcedurePass
 
 ! ALL-NEXT: 'func.func' Pipeline
-! ALL-NEXT:   AbstractResultOpt
+! ALL-NEXT:   AbstractResultOnFuncOpt
 
 ! ALL-NEXT: CodeGenRewrite
 ! ALL-NEXT:   (S) 0 num-dce'd - Number of operations eliminated

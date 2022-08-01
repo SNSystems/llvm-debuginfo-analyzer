@@ -10,16 +10,12 @@
 #define LLVM_LIBC_SRC_SUPPORT_INTEGER_TO_STRING_H
 
 #include "src/__support/CPP/StringView.h"
-#include "src/__support/CPP/TypeTraits.h"
+#include "src/__support/CPP/type_traits.h"
 
 namespace __llvm_libc {
 
 template <typename T> class IntegerToString {
-  static_assert(cpp::IsIntegral<T>::Value,
-                "IntegerToString can only be used with integral types.");
-
-  using UnsignedType = cpp::MakeUnsignedType<T>;
-
+public:
   // We size the string buffer using an approximation algorithm:
   //
   //   size = ceil(sizeof(T) * 5 / 2)
@@ -39,7 +35,14 @@ template <typename T> class IntegerToString {
   // add an additional byte to accommodate the '-' sign in case of signed
   // integers.
   static constexpr size_t BUFSIZE =
-      (sizeof(T) * 5 + 1) / 2 + (cpp::IsSigned<T>() ? 1 : 0);
+      (sizeof(T) * 5 + 1) / 2 + (cpp::is_signed<T>() ? 1 : 0);
+
+private:
+  static_assert(cpp::is_integral_v<T>,
+                "IntegerToString can only be used with integral types.");
+
+  using UnsignedType = cpp::make_unsigned_t<T>;
+
   char strbuf[BUFSIZE] = {'\0'};
   size_t len = 0;
 

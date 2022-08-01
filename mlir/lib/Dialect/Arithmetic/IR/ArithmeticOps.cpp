@@ -10,7 +10,6 @@
 
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/CommonFolders.h"
-#include "mlir/Dialect/Utils/StaticValueUtils.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/OpImplementation.h"
@@ -129,7 +128,8 @@ LogicalResult arith::ConstantOp::verify() {
 
 bool arith::ConstantOp::isBuildableWith(Attribute value, Type type) {
   // The value's type must be the same as the provided type.
-  if (value.getType() != type)
+  auto typedAttr = value.dyn_cast<TypedAttr>();
+  if (!typedAttr || typedAttr.getType() != type)
     return false;
   // Integer values must be signless.
   if (type.isa<IntegerType>() && !type.cast<IntegerType>().isSignless())
@@ -2039,35 +2039,6 @@ Value mlir::arith::getReductionOp(AtomicRMWKind op, OpBuilder &builder,
     break;
   }
   return nullptr;
-}
-
-//===----------------------------------------------------------------------===//
-// DelinearizeIndexOp
-//===----------------------------------------------------------------------===//
-
-void arith::DelinearizeIndexOp::build(OpBuilder &builder,
-                                      OperationState &result,
-                                      Value linear_index,
-                                      ArrayRef<OpFoldResult> basis) {
-  result.addTypes(SmallVector<Type>(basis.size(), builder.getIndexType()));
-  result.addOperands(linear_index);
-  SmallVector<Value> basisValues =
-      llvm::to_vector(llvm::map_range(basis, [&](OpFoldResult ofr) -> Value {
-        Optional<int64_t> staticDim = getConstantIntValue(ofr);
-        if (staticDim.has_value())
-          return builder.create<arith::ConstantIndexOp>(result.location,
-                                                        *staticDim);
-        return ofr.dyn_cast<Value>();
-      }));
-  result.addOperands(basisValues);
-}
-
-LogicalResult arith::DelinearizeIndexOp::verify() {
-  if (getBasis().empty())
-    return emitOpError("basis should not be empty");
-  if (getNumResults() != getBasis().size())
-    return emitOpError("should return an index for each basis element");
-  return success();
 }
 
 //===----------------------------------------------------------------------===//

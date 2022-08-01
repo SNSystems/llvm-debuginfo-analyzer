@@ -54,13 +54,10 @@ void ArrayAttr::walkImmediateSubElements(
     walkAttrsFn(attr);
 }
 
-SubElementAttrInterface ArrayAttr::replaceImmediateSubAttribute(
-    ArrayRef<std::pair<size_t, Attribute>> replacements) const {
-  std::vector<Attribute> vector = getValue().vec();
-  for (auto &it : replacements) {
-    vector[it.first] = it.second;
-  }
-  return get(getContext(), vector);
+Attribute
+ArrayAttr::replaceImmediateSubElements(ArrayRef<Attribute> replAttrs,
+                                       ArrayRef<Type> replTypes) const {
+  return get(getContext(), replAttrs);
 }
 
 //===----------------------------------------------------------------------===//
@@ -227,11 +224,12 @@ void DictionaryAttr::walkImmediateSubElements(
     walkAttrsFn(attr.getValue());
 }
 
-SubElementAttrInterface DictionaryAttr::replaceImmediateSubAttribute(
-    ArrayRef<std::pair<size_t, Attribute>> replacements) const {
+Attribute
+DictionaryAttr::replaceImmediateSubElements(ArrayRef<Attribute> replAttrs,
+                                            ArrayRef<Type> replTypes) const {
   std::vector<NamedAttribute> vec = getValue().vec();
-  for (auto &it : replacements)
-    vec[it.first].setValue(it.second);
+  for (auto &it : llvm::enumerate(replAttrs))
+    vec[it.index()].setValue(it.value());
 
   // The above only modifies the mapped value, but not the key, and therefore
   // not the order of the elements. It remains sorted
@@ -262,6 +260,8 @@ StringAttr StringAttr::get(const Twine &twine, Type type) {
 }
 
 StringRef StringAttr::getValue() const { return getImpl()->value; }
+
+Type StringAttr::getType() const { return getImpl()->type; }
 
 Dialect *StringAttr::getReferencedDialect() const {
   return getImpl()->referencedDialect;
@@ -324,6 +324,24 @@ FlatSymbolRefAttr SymbolRefAttr::get(Operation *symbol) {
 StringAttr SymbolRefAttr::getLeafReference() const {
   ArrayRef<FlatSymbolRefAttr> nestedRefs = getNestedReferences();
   return nestedRefs.empty() ? getRootReference() : nestedRefs.back().getAttr();
+}
+
+void SymbolRefAttr::walkImmediateSubElements(
+    function_ref<void(Attribute)> walkAttrsFn,
+    function_ref<void(Type)> walkTypesFn) const {
+  walkAttrsFn(getRootReference());
+  for (FlatSymbolRefAttr ref : getNestedReferences())
+    walkAttrsFn(ref);
+}
+
+Attribute
+SymbolRefAttr::replaceImmediateSubElements(ArrayRef<Attribute> replAttrs,
+                                           ArrayRef<Type> replTypes) const {
+  ArrayRef<Attribute> rawNestedRefs = replAttrs.drop_front();
+  ArrayRef<FlatSymbolRefAttr> nestedRefs(
+      static_cast<const FlatSymbolRefAttr *>(rawNestedRefs.data()),
+      rawNestedRefs.size());
+  return get(replAttrs[0].cast<StringAttr>(), nestedRefs);
 }
 
 //===----------------------------------------------------------------------===//
@@ -672,29 +690,28 @@ DenseElementsAttr::ComplexIntElementIterator::operator*() const {
 /// Custom storage to ensure proper memory alignment for the allocation of
 /// DenseArray of any element type.
 struct mlir::detail::DenseArrayBaseAttrStorage : public AttributeStorage {
-  using KeyTy = std::tuple<ShapedType, DenseArrayBaseAttr::EltType,
-                           ::llvm::ArrayRef<char>>;
+  using KeyTy =
+      std::tuple<ShapedType, DenseArrayBaseAttr::EltType, ArrayRef<char>>;
   DenseArrayBaseAttrStorage(ShapedType type,
                             DenseArrayBaseAttr::EltType eltType,
-                            ::llvm::ArrayRef<char> elements)
-      : AttributeStorage(type), eltType(eltType), elements(elements) {}
+                            ArrayRef<char> elements)
+      : type(type), eltType(eltType), elements(elements) {}
 
-  bool operator==(const KeyTy &tblgenKey) const {
-    return (getType() == std::get<0>(tblgenKey)) &&
-           (eltType == std::get<1>(tblgenKey)) &&
-           (elements == std::get<2>(tblgenKey));
+  bool operator==(const KeyTy &key) const {
+    return (type == std::get<0>(key)) && (eltType == std::get<1>(key)) &&
+           (elements == std::get<2>(key));
   }
 
-  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
-    return ::llvm::hash_combine(std::get<0>(tblgenKey), std::get<1>(tblgenKey),
-                                std::get<2>(tblgenKey));
+  static llvm::hash_code hashKey(const KeyTy &key) {
+    return llvm::hash_combine(std::get<0>(key), std::get<1>(key),
+                              std::get<2>(key));
   }
 
   static DenseArrayBaseAttrStorage *
-  construct(AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
-    auto type = std::get<0>(tblgenKey);
-    auto eltType = std::get<1>(tblgenKey);
-    auto elements = std::get<2>(tblgenKey);
+  construct(AttributeStorageAllocator &allocator, const KeyTy &key) {
+    auto type = std::get<0>(key);
+    auto eltType = std::get<1>(key);
+    auto elements = std::get<2>(key);
     if (!elements.empty()) {
       char *alloc = static_cast<char *>(
           allocator.allocate(elements.size(), alignof(uint64_t)));
@@ -705,13 +722,16 @@ struct mlir::detail::DenseArrayBaseAttrStorage : public AttributeStorage {
         DenseArrayBaseAttrStorage(type, eltType, elements);
   }
 
+  ShapedType type;
   DenseArrayBaseAttr::EltType eltType;
-  ::llvm::ArrayRef<char> elements;
+  ArrayRef<char> elements;
 };
 
 DenseArrayBaseAttr::EltType DenseArrayBaseAttr::getElementType() const {
   return getImpl()->eltType;
 }
+
+ShapedType DenseArrayBaseAttr::getType() const { return getImpl()->type; }
 
 const int8_t *
 DenseArrayBaseAttr::value_begin_impl(OverloadToken<int8_t>) const {
@@ -958,8 +978,8 @@ DenseElementsAttr DenseElementsAttr::get(ShapedType type,
 
   // If the element type is not based on int/float/index, assume it is a string
   // type.
-  auto eltType = type.getElementType();
-  if (!type.getElementType().isIntOrIndexOrFloat()) {
+  Type eltType = type.getElementType();
+  if (!eltType.isIntOrIndexOrFloat()) {
     SmallVector<StringRef, 8> stringValues;
     stringValues.reserve(values.size());
     for (Attribute attr : values) {
@@ -979,14 +999,16 @@ DenseElementsAttr DenseElementsAttr::get(ShapedType type,
       llvm::divideCeil(storageBitWidth * values.size(), CHAR_BIT));
   APInt intVal;
   for (unsigned i = 0, e = values.size(); i < e; ++i) {
-    assert(eltType == values[i].getType() &&
-           "expected attribute value to have element type");
-    if (eltType.isa<FloatType>())
-      intVal = values[i].cast<FloatAttr>().getValue().bitcastToAPInt();
-    else if (eltType.isa<IntegerType, IndexType>())
-      intVal = values[i].cast<IntegerAttr>().getValue();
-    else
-      llvm_unreachable("unexpected element type");
+    if (auto floatAttr = values[i].dyn_cast<FloatAttr>()) {
+      assert(floatAttr.getType() == eltType &&
+             "expected float attribute type to equal element type");
+      intVal = floatAttr.getValue().bitcastToAPInt();
+    } else {
+      auto intAttr = values[i].cast<IntegerAttr>();
+      assert(intAttr.getType() == eltType &&
+             "expected integer attribute type to equal element type");
+      intVal = intAttr.getValue();
+    }
 
     assert(intVal.getBitWidth() == bitWidth &&
            "expected value to have same bitwidth as element type");
@@ -994,7 +1016,7 @@ DenseElementsAttr DenseElementsAttr::get(ShapedType type,
   }
 
   // Handle the special encoding of splat of bool.
-  if (values.size() == 1 && values[0].getType().isInteger(1))
+  if (values.size() == 1 && eltType.isInteger(1))
     data[0] = data[0] ? -1 : 0;
 
   return DenseIntOrFPElementsAttr::getRaw(type, data);
@@ -1310,7 +1332,7 @@ DenseElementsAttr DenseElementsAttr::mapValues(
 }
 
 ShapedType DenseElementsAttr::getType() const {
-  return Attribute::getType().cast<ShapedType>();
+  return static_cast<const DenseElementsAttributeStorage *>(impl)->type;
 }
 
 Type DenseElementsAttr::getElementType() const {
@@ -1530,8 +1552,9 @@ DenseElementsAttr DenseFPElementsAttr::mapValues(
 
 /// Method for supporting type inquiry through isa, cast and dyn_cast.
 bool DenseFPElementsAttr::classof(Attribute attr) {
-  return attr.isa<DenseElementsAttr>() &&
-         attr.getType().cast<ShapedType>().getElementType().isa<FloatType>();
+  if (auto denseAttr = attr.dyn_cast<DenseElementsAttr>())
+    return denseAttr.getType().getElementType().isa<FloatType>();
+  return false;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1548,8 +1571,9 @@ DenseElementsAttr DenseIntElementsAttr::mapValues(
 
 /// Method for supporting type inquiry through isa, cast and dyn_cast.
 bool DenseIntElementsAttr::classof(Attribute attr) {
-  return attr.isa<DenseElementsAttr>() &&
-         attr.getType().cast<ShapedType>().getElementType().isIntOrIndex();
+  if (auto denseAttr = attr.dyn_cast<DenseElementsAttr>())
+    return denseAttr.getType().getElementType().isIntOrIndex();
+  return false;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1710,4 +1734,10 @@ void TypeAttr::walkImmediateSubElements(
     function_ref<void(Attribute)> walkAttrsFn,
     function_ref<void(Type)> walkTypesFn) const {
   walkTypesFn(getValue());
+}
+
+Attribute
+TypeAttr::replaceImmediateSubElements(ArrayRef<Attribute> replAttrs,
+                                      ArrayRef<Type> replTypes) const {
+  return get(replTypes[0]);
 }

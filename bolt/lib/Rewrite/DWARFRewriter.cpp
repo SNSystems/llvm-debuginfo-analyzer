@@ -51,7 +51,7 @@ static void printDie(const DWARFDie &DIE) {
   DumpOpts.ShowForm = true;
   DumpOpts.Verbose = true;
   DumpOpts.ChildRecurseDepth = 0;
-  DumpOpts.ShowChildren = 0;
+  DumpOpts.ShowChildren = false;
   DIE.dump(dbgs(), 0, DumpOpts);
 }
 
@@ -235,7 +235,7 @@ void DWARFRewriter::updateDebugInfo() {
     (void)AttrInfoVal;
     assert(AttrInfoVal && "Skeleton CU doesn't have dwo_name.");
 
-    std::string ObjectName = "";
+    std::string ObjectName;
 
     {
       std::lock_guard<std::mutex> Lock(AccessMutex);
@@ -516,8 +516,8 @@ void DWARFRewriter::updateUnitDebugInfo(
         if (Value.isFormClass(DWARFFormValue::FC_Constant) ||
             Value.isFormClass(DWARFFormValue::FC_SectionOffset)) {
           uint64_t Offset = Value.isFormClass(DWARFFormValue::FC_Constant)
-                                ? Value.getAsUnsignedConstant().getValue()
-                                : Value.getAsSectionOffset().getValue();
+                                ? Value.getAsUnsignedConstant().value()
+                                : Value.getAsSectionOffset().value();
           DebugLocationsVector InputLL;
 
           Optional<object::SectionedAddress> SectionAddress =
@@ -673,8 +673,8 @@ void DWARFRewriter::updateUnitDebugInfo(
         AttrOffset = AttrVal->Offset;
         Value = AttrVal->V;
         const Optional<uint64_t> Result = Value.getAsAddress();
-        if (Result.hasValue()) {
-          const uint64_t Address = Result.getValue();
+        if (Result) {
+          const uint64_t Address = *Result;
           uint64_t NewAddress = 0;
           if (const BinaryFunction *Function =
                   BC.getBinaryFunctionContainingAddress(Address)) {
@@ -1436,7 +1436,7 @@ void DWARFRewriter::writeDWP(
     TUContributionVector TUContributionsToCU;
     for (const SectionRef &Section : DWOFile->sections()) {
       std::string DWOTUSection;
-      std::string Storage = "";
+      std::string Storage;
       std::unique_ptr<DebugBufferVector> OutputData;
       StringRef SectionName = getSectionName(Section);
       Expected<StringRef> ContentsExp = Section.getContents();
@@ -1593,7 +1593,7 @@ void DWARFRewriter::writeDWOFiles(
       // Handling .debug_rnglists.dwo seperatly. The original .o/.dwo might not
       // have .debug_rnglists so won't be part of the loop below.
       if (!RangeListssWriter->empty()) {
-        std::string Storage = "";
+        std::string Storage;
         std::unique_ptr<DebugBufferVector> OutputData;
         if (Optional<StringRef> OutData = updateDebugData(
                 (*DWOCU)->getContext(), Storage, "debug_rnglists.dwo", "",
@@ -1605,7 +1605,7 @@ void DWARFRewriter::writeDWOFiles(
 
     TUContributionVector TUContributionsToCU;
     for (const SectionRef &Section : File->sections()) {
-      std::string Storage = "";
+      std::string Storage;
       std::string DWOTUSection;
       std::unique_ptr<DebugBufferVector> OutputData;
       StringRef SectionName = getSectionName(Section);

@@ -200,6 +200,58 @@ Environment::Environment(DataflowAnalysisContext &DACtx,
   }
 }
 
+Environment Environment::pushCall(const CallExpr *Call) const {
+  Environment Env(*this);
+
+  const auto *FuncDecl = Call->getDirectCallee();
+  assert(FuncDecl != nullptr);
+  assert(FuncDecl->getBody() != nullptr);
+  // FIXME: In order to allow the callee to reference globals, we probably need
+  // to call `initGlobalVars` here in some way.
+
+  auto ParamIt = FuncDecl->param_begin();
+  auto ArgIt = Call->arg_begin();
+  auto ArgEnd = Call->arg_end();
+
+  // FIXME: Parameters don't always map to arguments 1:1; examples include
+  // overloaded operators implemented as member functions, and parameter packs.
+  for (; ArgIt != ArgEnd; ++ParamIt, ++ArgIt) {
+    assert(ParamIt != FuncDecl->param_end());
+
+    const Expr *Arg = *ArgIt;
+    auto *ArgLoc = Env.getStorageLocation(*Arg, SkipPast::Reference);
+    assert(ArgLoc != nullptr);
+
+    const VarDecl *Param = *ParamIt;
+    auto &Loc = Env.createStorageLocation(*Param);
+    Env.setStorageLocation(*Param, Loc);
+
+    QualType ParamType = Param->getType();
+    if (ParamType->isReferenceType()) {
+      auto &Val = Env.takeOwnership(std::make_unique<ReferenceValue>(*ArgLoc));
+      Env.setValue(Loc, Val);
+    } else if (auto *ArgVal = Env.getValue(*ArgLoc)) {
+      Env.setValue(Loc, *ArgVal);
+    } else if (Value *Val = Env.createValue(ParamType)) {
+      Env.setValue(Loc, *Val);
+    }
+  }
+
+  return Env;
+}
+
+void Environment::popCall(const Environment &CalleeEnv) {
+  // We ignore `DACtx` because it's already the same in both. We don't bring
+  // back `DeclToLoc` and `ExprToLoc` because we want to be able to later
+  // analyze the same callee in a different context, and `setStorageLocation`
+  // requires there to not already be a storage location assigned. Conceptually,
+  // these maps capture information from the local scope, so when popping that
+  // scope, we do not propagate the maps.
+  this->LocToVal = std::move(CalleeEnv.LocToVal);
+  this->MemberLocToStruct = std::move(CalleeEnv.MemberLocToStruct);
+  this->FlowConditionToken = std::move(CalleeEnv.FlowConditionToken);
+}
+
 bool Environment::equivalentTo(const Environment &Other,
                                Environment::ValueModel &Model) const {
   assert(DACtx == Other.DACtx);
@@ -352,16 +404,16 @@ void Environment::setValue(const StorageLocation &Loc, Value &Val) {
     }
   }
 
-  auto IT = MemberLocToStruct.find(&Loc);
-  if (IT != MemberLocToStruct.end()) {
+  auto It = MemberLocToStruct.find(&Loc);
+  if (It != MemberLocToStruct.end()) {
     // `Loc` is the location of a struct member so we need to also update the
     // value of the member in the corresponding `StructValue`.
 
-    assert(IT->second.first != nullptr);
-    StructValue &StructVal = *IT->second.first;
+    assert(It->second.first != nullptr);
+    StructValue &StructVal = *It->second.first;
 
-    assert(IT->second.second != nullptr);
-    const ValueDecl &Member = *IT->second.second;
+    assert(It->second.second != nullptr);
+    const ValueDecl &Member = *It->second.second;
 
     StructVal.setChild(Member, Val);
   }

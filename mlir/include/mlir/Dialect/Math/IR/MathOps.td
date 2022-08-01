@@ -363,6 +363,7 @@ def Math_ExpOp : Math_FloatUnaryOp<"exp"> {
     %a = math.exp %b : f64
     ```
   }];
+  let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -390,6 +391,7 @@ def Math_Exp2Op : Math_FloatUnaryOp<"exp2"> {
     %a = math.exp2 %b : f64
     ```
   }];
+  let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -418,6 +420,7 @@ def Math_ExpM1Op : Math_FloatUnaryOp<"expm1"> {
     %a = math.expm1 %b : f64
     ```
   }];
+  let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//
