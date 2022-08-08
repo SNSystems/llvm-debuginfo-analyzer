@@ -54,6 +54,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/IR/ProfDataUtils.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Use.h"
 #include "llvm/IR/Value.h"
@@ -216,7 +217,7 @@ static void updatePredecessorProfileMetadata(PHINode *PN, BasicBlock *BB) {
     return;
 
   uint64_t TrueWeight, FalseWeight;
-  if (!CondBr->extractProfMetadata(TrueWeight, FalseWeight))
+  if (!extractBranchWeights(*CondBr, TrueWeight, FalseWeight))
     return;
 
   if (TrueWeight + FalseWeight == 0)
@@ -279,7 +280,7 @@ static void updatePredecessorProfileMetadata(PHINode *PN, BasicBlock *BB) {
     // With PGO, this can be used to refine even existing profile data with
     // context information. This needs to be done after more performance
     // testing.
-    if (PredBr->extractProfMetadata(PredTrueWeight, PredFalseWeight))
+    if (extractBranchWeights(*PredBr, PredTrueWeight, PredFalseWeight))
       continue;
 
     // We can not infer anything useful when BP >= 50%, because BP is the
@@ -2437,7 +2438,7 @@ BasicBlock *JumpThreadingPass::splitBlockPreds(BasicBlock *BB,
   // update the edge weight of the result of splitting predecessors.
   DenseMap<BasicBlock *, BlockFrequency> FreqMap;
   if (HasProfileData)
-    for (auto Pred : Preds)
+    for (auto *Pred : Preds)
       FreqMap.insert(std::make_pair(
           Pred, BFI->getBlockFreq(Pred) * BPI->getEdgeProbability(Pred, BB)));
 
@@ -2452,7 +2453,7 @@ BasicBlock *JumpThreadingPass::splitBlockPreds(BasicBlock *BB,
 
   std::vector<DominatorTree::UpdateType> Updates;
   Updates.reserve((2 * Preds.size()) + NewBBs.size());
-  for (auto NewBB : NewBBs) {
+  for (auto *NewBB : NewBBs) {
     BlockFrequency NewBBFreq(0);
     Updates.push_back({DominatorTree::Insert, NewBB, BB});
     for (auto Pred : predecessors(NewBB)) {

@@ -82,7 +82,7 @@ uint64_t llvm::codeview::getSizeInBytesForTypeIndex(TypeIndex TI) {
   case SimpleTypeKind::Byte:
     return 1;
 
-  // Signed/unsigned integer
+  // Signed/unsigned integer.
   case SimpleTypeKind::Int16Short:
   case SimpleTypeKind::UInt16Short:
   case SimpleTypeKind::Int16:
@@ -104,7 +104,7 @@ uint64_t llvm::codeview::getSizeInBytesForTypeIndex(TypeIndex TI) {
   case SimpleTypeKind::UInt128:
     return 16;
 
-  // Signed/Unsigned character
+  // Signed/Unsigned character.
   case SimpleTypeKind::Character8:
   case SimpleTypeKind::SignedCharacter:
   case SimpleTypeKind::UnsignedCharacter:
@@ -116,7 +116,7 @@ uint64_t llvm::codeview::getSizeInBytesForTypeIndex(TypeIndex TI) {
   case SimpleTypeKind::Character32:
     return 4;
 
-  // Float
+  // Float.
   case SimpleTypeKind::Float16:
     return 2;
   case SimpleTypeKind::Float32:
@@ -130,7 +130,7 @@ uint64_t llvm::codeview::getSizeInBytesForTypeIndex(TypeIndex TI) {
   case SimpleTypeKind::Float128:
     return 16;
 
-  // Boolean
+  // Boolean.
   case SimpleTypeKind::Boolean8:
     return 1;
   case SimpleTypeKind::Boolean16:
@@ -142,7 +142,7 @@ uint64_t llvm::codeview::getSizeInBytesForTypeIndex(TypeIndex TI) {
   case SimpleTypeKind::Boolean128:
     return 16;
 
-  // Complex float
+  // Complex float.
   case SimpleTypeKind::Complex16:
     return 2;
   case SimpleTypeKind::Complex32:
