@@ -51,7 +51,7 @@ TypeIndex llvm::codeview::getModifiedType(const CVType &CVT) {
   return Refs.front();
 }
 
-uint64_t llvm::codeview::getSizeInBytes(TypeIndex TI) {
+uint64_t llvm::codeview::getSizeInBytesForTypeIndex(TypeIndex TI) {
   if (!TI.isSimple())
     return 0;
   if (TI.getSimpleMode() != SimpleTypeMode::Direct) {
@@ -168,7 +168,7 @@ template <typename RecordT> static uint64_t getUdtSize(CVType CVT) {
   return Record.getSize();
 }
 
-uint64_t llvm::codeview::getSizeInBytes(CVType CVT) {
+uint64_t llvm::codeview::getSizeInBytesForTypeRecord(CVType CVT) {
   switch (CVT.kind()) {
   case LF_STRUCTURE:
   case LF_CLASS:

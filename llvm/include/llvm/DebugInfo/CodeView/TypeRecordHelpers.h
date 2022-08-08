@@ -56,11 +56,11 @@ inline bool isAggregate(CVType CVT) {
 }
 
 /// Given an arbitrary codeview type index, determine its size.
-uint64_t getSizeInBytes(TypeIndex TI);
+uint64_t getSizeInBytesForTypeIndex(TypeIndex TI);
 
 /// Given an arbitrary codeview type, return the type's size in the case
 /// of aggregate (LF_STRUCTURE, LF_CLASS, LF_INTERFACE, LF_UNION).
-uint64_t getSizeInBytes(CVType CVT);
+uint64_t getSizeInBytesForTypeRecord(CVType CVT);
 
 } // namespace codeview
 } // namespace llvm

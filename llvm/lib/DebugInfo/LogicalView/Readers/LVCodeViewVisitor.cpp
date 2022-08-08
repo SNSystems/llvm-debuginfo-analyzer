@@ -1893,9 +1893,10 @@ Error LVLogicalVisitor::visitKnownRecord(CVType &Record, ArrayRecord &AT,
     // In the case of an aggregate type (class, struct, union, interface),
     // get the aggregate size. As the original record is pointing to its
     // reference, we have to update it.
-    if (uint64_t Size = isAggregate(CVEntry)
-                            ? getSizeInBytes(Types.getType(TIArrayType))
-                            : getSizeInBytes(TIElementType))
+    if (uint64_t Size =
+            isAggregate(CVEntry)
+                ? getSizeInBytesForTypeRecord(Types.getType(TIArrayType))
+                : getSizeInBytesForTypeIndex(TIElementType))
       PrevSubrange->setCount(PrevSubrange->getCount() / Size);
 
   return Error::success();
