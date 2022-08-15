@@ -159,9 +159,6 @@ class LVCodeViewReader final : public LVBinaryReader {
                       uint64_t Offset, llvm::object::SymbolRef &Sym);
   Error resolveSymbolName(const llvm::object::coff_section *CoffSection,
                           uint64_t Offset, StringRef &Name);
-  Error resolveSymbolName(const llvm::object::coff_section *CoffSection,
-                          StringRef SectionContents, const void *RelocPtr,
-                          StringRef &Name);
   Error traverseTypeSection(StringRef SectionName,
                             const llvm::object::SectionRef &Section);
   Error traverseSymbolSection(StringRef SectionName,

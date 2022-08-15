@@ -219,20 +219,6 @@ Error LVCodeViewReader::resolveSymbolName(const coff_section *CoffSection,
   return ErrorSuccess();
 }
 
-// Helper for when you have a pointer to real data and you want to know about
-// relocations against it.
-Error LVCodeViewReader::resolveSymbolName(const coff_section *CoffSection,
-                                          StringRef SectionContents,
-                                          const void *RelocPtr,
-                                          StringRef &Name) {
-  assert(SectionContents.data() < RelocPtr &&
-         RelocPtr < SectionContents.data() + SectionContents.size() &&
-         "pointer to relocated object is not in section");
-  uint64_t Offset = ptrdiff_t(reinterpret_cast<const char *>(RelocPtr) -
-                              SectionContents.data());
-  return resolveSymbolName(CoffSection, Offset, Name);
-}
-
 // CodeView and DWARF can have references to compiler generated elements,
 // used for initialization. The MSVC includes in the PDBs, internal compile
 // units, associated with the MS runtime support. We mark them as 'system'
