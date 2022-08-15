@@ -389,7 +389,7 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
       // marks functions that have been removed, by setting the value for the
       // low_pc to the max address.
       if (Optional<uint64_t> Value = FormValue.getAsAddress()) {
-        CurrentLowPC = Value.getValue();
+        CurrentLowPC = Value.value();
       } else {
         uint64_t UValue = FormValue.getRawUValue();
         if (U->getAddrOffsetSectionItem(UValue)) {
@@ -623,7 +623,7 @@ LVScope *LVELFReader::processOneDie(const DWARFDie &InputDIE, LVScope *Parent,
         // Get the linkage name in order to search for a possible comdat.
         Optional<DWARFFormValue> LinkageDIE =
             DIE.findRecursively(dwarf::DW_AT_linkage_name);
-        if (LinkageDIE.hasValue()) {
+        if (LinkageDIE.has_value()) {
           StringRef Name(dwarf::toStringRef(LinkageDIE));
           if (!Name.empty())
             CurrentScope->setLinkageName(Name);
@@ -812,7 +812,7 @@ Error LVELFReader::createScopes() {
           CU->getVersion() >= 5
               ? dwarf::toString(UnitDie.find(dwarf::DW_AT_dwo_name))
               : dwarf::toString(UnitDie.find(dwarf::DW_AT_GNU_dwo_name));
-      StringRef From(DWOFileName.hasValue() ? DWOFileName.getValue() : "");
+      StringRef From(DWOFileName.has_value() ? DWOFileName.value() : "");
       DWOAlternativeLocation = createAlternativePath(InputFilename, From);
     }
 
