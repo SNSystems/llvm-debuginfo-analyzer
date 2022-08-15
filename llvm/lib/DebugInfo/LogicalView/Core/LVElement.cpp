@@ -478,8 +478,12 @@ bool LVElement::equals(const LVElement *Element) const {
   // The minimum factors that must be the same for an equality are:
   // line number, level, name, qualified name and filename.
   LLVM_DEBUG({
-    dbgs() << "\n[Element::equals]\n"
-           << "Reference: "
+    dbgs() << "\n[Element::equals]\n";
+    if (options().getAttributeOffset()) {
+      dbgs() << "Reference: " << hexSquareString(getOffset()) << "\n";
+      dbgs() << "Target   : " << hexSquareString(Element->getOffset()) << "\n";
+    }
+    dbgs() << "Reference: "
            << "Kind = " << formattedKind(kind()) << ", "
            << "Name = " << formattedName(getName()) << ", "
            << "Qualified = " << formattedName(getQualifiedName()) << "\n"
