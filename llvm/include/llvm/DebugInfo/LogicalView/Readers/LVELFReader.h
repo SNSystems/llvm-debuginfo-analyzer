@@ -89,7 +89,7 @@ class LVELFReader final : public LVBinaryReader {
   LVScope *processOneDie(const DWARFDie &InputDIE, LVScope *Parent,
                          DWARFDie &SkeletonDie);
   void processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
-                           AttributeSpec AttrSpec);
+                           const AttributeSpec &AttrSpec);
   void createLineAndFileRecords(const DWARFDebugLine::LineTable *Lines);
   void processLocationGaps();
 
@@ -109,12 +109,12 @@ class LVELFReader final : public LVBinaryReader {
   }
 
   // Get the location information for DW_AT_data_member_location.
-  void getLocationMember(dwarf::Attribute Attr, DWARFFormValue &FormValue,
+  void getLocationMember(dwarf::Attribute Attr, const DWARFFormValue &FormValue,
                          const DWARFDie &Die, uint64_t OffsetOnEntry);
-  void getLocationList(dwarf::Attribute Attr, DWARFFormValue &FormValue,
+  void getLocationList(dwarf::Attribute Attr, const DWARFFormValue &FormValue,
                        const DWARFDie &Die, uint64_t OffsetOnEntry,
                        bool CallSiteLocation = false);
-  void updateReference(dwarf::Attribute Attr, DWARFFormValue &FormValue);
+  void updateReference(dwarf::Attribute Attr, const DWARFFormValue &FormValue);
 
   // Get an element given the DIE offset.
   LVElement *getElementForOffset(LVOffset offset, LVElement *Element);

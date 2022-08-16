@@ -241,17 +241,17 @@ LVElement *LVELFReader::createElement(dwarf::Tag Tag) {
 }
 
 void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
-                                      AttributeSpec AttrSpec) {
+                                      const AttributeSpec &AttrSpec) {
   uint64_t OffsetOnEntry = *OffsetPtr;
   DWARFUnit *U = Die.getDwarfUnit();
-  DWARFFormValue FormValue =
+  const DWARFFormValue &FormValue =
       DWARFFormValue::createFromUnit(AttrSpec.Form, U, OffsetPtr);
 
-  auto GetFlag = [](DWARFFormValue &FormValue) -> bool {
+  auto GetFlag = [](const DWARFFormValue &FormValue) -> bool {
     return FormValue.isFormClass(DWARFFormValue::FC_Flag);
   };
 
-  auto GetBoundValue = [](DWARFFormValue &FormValue) -> int64_t {
+  auto GetBoundValue = [](const DWARFFormValue &FormValue) -> int64_t {
     switch (FormValue.getForm()) {
     case dwarf::DW_FORM_ref_addr:
     case dwarf::DW_FORM_ref1:
@@ -430,7 +430,7 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
 
   case dwarf::DW_AT_ranges:
     if (RangesDataAvailable && options().getGeneralCollectRanges()) {
-      auto GetRanges = [&](DWARFFormValue &FormValue,
+      auto GetRanges = [&](const DWARFFormValue &FormValue,
                            DWARFUnit *U) -> Expected<DWARFAddressRangesVector> {
         if (FormValue.getForm() == dwarf::DW_FORM_rnglistx)
           return U->findRnglistFromIndex(*FormValue.getAsSectionOffset());
@@ -865,7 +865,7 @@ Error LVELFReader::createScopes() {
 
 // Get the location information for the associated attribute.
 void LVELFReader::getLocationList(dwarf::Attribute Attr,
-                                  DWARFFormValue &FormValue,
+                                  const DWARFFormValue &FormValue,
                                   const DWARFDie &Die, uint64_t OffsetOnEntry,
                                   bool CallSiteLocation) {
 
@@ -956,7 +956,7 @@ void LVELFReader::getLocationList(dwarf::Attribute Attr,
 }
 
 void LVELFReader::getLocationMember(dwarf::Attribute Attr,
-                                    DWARFFormValue &FormValue,
+                                    const DWARFFormValue &FormValue,
                                     const DWARFDie &Die,
                                     uint64_t OffsetOnEntry) {
   // Check if the value is an integer constant.
@@ -971,7 +971,7 @@ void LVELFReader::getLocationMember(dwarf::Attribute Attr,
 
 // Update the current element with the reference.
 void LVELFReader::updateReference(dwarf::Attribute Attr,
-                                  DWARFFormValue &FormValue) {
+                                  const DWARFFormValue &FormValue) {
   // We are assuming that DW_AT_specification, DW_AT_abstract_origin,
   // DW_AT_type and DW_AT_extension do not appear at the same time
   // in the same DIE.
