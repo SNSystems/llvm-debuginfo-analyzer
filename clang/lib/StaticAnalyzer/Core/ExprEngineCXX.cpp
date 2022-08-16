@@ -263,7 +263,7 @@ SVal ExprEngine::computeObjectUnderConstruction(
       // a simple temporary.
       CallOpts = PreElideCallOpts;
       CallOpts.IsElidableCtorThatHasNotBeenElided = true;
-      LLVM_FALLTHROUGH;
+      [[fallthrough]];
     }
     case ConstructionContext::SimpleTemporaryObjectKind: {
       const auto *TCC = cast<TemporaryObjectConstructionContext>(CC);
@@ -455,7 +455,7 @@ ProgramStateRef ExprEngine::updateObjectsUnderConstruction(
       }
       // If we decided not to elide the constructor, proceed as if
       // it's a simple temporary.
-      LLVM_FALLTHROUGH;
+      [[fallthrough]];
     }
     case ConstructionContext::SimpleTemporaryObjectKind: {
       const auto *TCC = cast<TemporaryObjectConstructionContext>(CC);
@@ -620,7 +620,7 @@ void ExprEngine::handleConstructor(const Expr *E,
         ("This virtual base should have already been initialized by "
          "the most derived class!"));
     (void)OuterCtor;
-    LLVM_FALLTHROUGH;
+    [[fallthrough]];
   }
   case CXXConstructExpr::CK_NonVirtualBase:
     // In C++17, classes with non-virtual bases may be aggregates, so they would
@@ -640,7 +640,7 @@ void ExprEngine::handleConstructor(const Expr *E,
       CallOpts.IsCtorOrDtorWithImproperlyModeledTargetRegion = true;
       break;
     }
-    LLVM_FALLTHROUGH;
+    [[fallthrough]];
   case CXXConstructExpr::CK_Delegating: {
     const CXXMethodDecl *CurCtor = cast<CXXMethodDecl>(LCtx->getDecl());
     Loc ThisPtr = getSValBuilder().getCXXThis(CurCtor,
@@ -1143,7 +1143,9 @@ void ExprEngine::VisitLambdaExpr(const LambdaExpr *LE, ExplodedNode *Pred,
 
     SVal InitVal;
     if (!FieldForCapture->hasCapturedVLAType()) {
-      Expr *InitExpr = *i;
+      const Expr *InitExpr = *i;
+
+      assert(InitExpr && "Capture missing initialization expression");
 
       if (const auto AILE = dyn_cast<ArrayInitLoopExpr>(InitExpr)) {
         // If the AILE initializes a POD array, we need to keep it as the
@@ -1152,7 +1154,12 @@ void ExprEngine::VisitLambdaExpr(const LambdaExpr *LE, ExplodedNode *Pred,
           InitExpr = AILE->getSubExpr();
       }
 
-      assert(InitExpr && "Capture missing initialization expression");
+      // With C++17 copy elision this can happen.
+      if (const auto *FC = dyn_cast<CXXFunctionalCastExpr>(InitExpr))
+        InitExpr = FC->getSubExpr();
+
+      assert(InitExpr &&
+             "Extracted capture initialization expression is missing");
 
       if (dyn_cast<CXXConstructExpr>(InitExpr)) {
         InitVal = *getObjectUnderConstruction(State, {LE, Idx}, LocCtxt);

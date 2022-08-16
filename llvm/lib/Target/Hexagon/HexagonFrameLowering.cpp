@@ -2156,7 +2156,7 @@ void HexagonFrameLowering::determineCalleeSaves(MachineFunction &MF,
     for (unsigned VR : NewRegs)
       SpillRCs.insert(MRI.getRegClass(VR));
 
-    for (auto *RC : SpillRCs) {
+    for (const auto *RC : SpillRCs) {
       if (!needToReserveScavengingSpillSlots(MF, HRI, RC))
         continue;
       unsigned Num = 1;
@@ -2715,12 +2715,12 @@ bool HexagonFrameLowering::mayOverflowFrameOffset(MachineFunction &MF) const {
         case Hexagon::S4_storeirif_io:
         case Hexagon::S4_storeiri_io:
           ++LS;
-          LLVM_FALLTHROUGH;
+          [[fallthrough]];
         case Hexagon::S4_storeirht_io:
         case Hexagon::S4_storeirhf_io:
         case Hexagon::S4_storeirh_io:
           ++LS;
-          LLVM_FALLTHROUGH;
+          [[fallthrough]];
         case Hexagon::S4_storeirbt_io:
         case Hexagon::S4_storeirbf_io:
         case Hexagon::S4_storeirb_io:

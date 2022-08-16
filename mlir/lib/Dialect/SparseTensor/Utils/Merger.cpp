@@ -40,6 +40,7 @@ TensorExp::TensorExp(Kind k, unsigned x, unsigned y, Value v, Operation *o)
   // Unary operations.
   case kAbsF:
   case kAbsC:
+  case kAbsI:
   case kCeilF:
   case kFloorF:
   case kSqrtF:
@@ -121,12 +122,11 @@ TensorExp::TensorExp(Kind k, unsigned x, unsigned y, Value v, Operation *o)
 }
 
 LatPoint::LatPoint(unsigned n, unsigned e, unsigned b)
-    : bits(n, false), simple(), exp(e) {
+    : bits(n, false), exp(e) {
   bits.set(b);
 }
 
-LatPoint::LatPoint(const BitVector &b, unsigned e)
-    : bits(b), simple(), exp(e) {}
+LatPoint::LatPoint(const BitVector &b, unsigned e) : bits(b), exp(e) {}
 
 //===----------------------------------------------------------------------===//
 // Lattice methods.
@@ -310,6 +310,7 @@ bool Merger::isSingleCondition(unsigned t, unsigned e) const {
   // Unary operations.
   case kAbsF:
   case kAbsC:
+  case kAbsI:
   case kCeilF:
   case kFloorF:
   case kSqrtF:
@@ -398,6 +399,7 @@ static const char *kindToOpSymbol(Kind kind) {
   // Unary operations.
   case kAbsF:
   case kAbsC:
+  case kAbsI:
     return "abs";
   case kCeilF:
     return "ceil";
@@ -497,6 +499,7 @@ void Merger::dumpExp(unsigned e) const {
   // Unary operations.
   case kAbsF:
   case kAbsC:
+  case kAbsI:
   case kCeilF:
   case kFloorF:
   case kSqrtF:
@@ -630,6 +633,7 @@ unsigned Merger::buildLattices(unsigned e, unsigned i) {
   // Unary operations.
   case kAbsF:
   case kAbsC:
+  case kAbsI:
   case kCeilF:
   case kFloorF:
   case kSqrtF:
@@ -892,10 +896,12 @@ Optional<unsigned> Merger::buildTensorExp(linalg::GenericOp op, Value v) {
     auto x = buildTensorExp(op, def->getOperand(0));
     if (x.has_value()) {
       unsigned e = x.value();
-      if (isa<math::AbsOp>(def))
+      if (isa<math::AbsFOp>(def))
         return addExp(kAbsF, e);
       if (isa<complex::AbsOp>(def))
         return addExp(kAbsC, e);
+      if (isa<math::AbsIOp>(def))
+        return addExp(kAbsI, e);
       if (isa<math::CeilOp>(def))
         return addExp(kCeilF, e);
       if (isa<math::FloorOp>(def))
@@ -1073,12 +1079,14 @@ Value Merger::buildExp(RewriterBase &rewriter, Location loc, unsigned e,
     llvm_unreachable("unexpected non-op");
   // Unary operations.
   case kAbsF:
-    return rewriter.create<math::AbsOp>(loc, v0);
+    return rewriter.create<math::AbsFOp>(loc, v0);
   case kAbsC: {
     auto type = v0.getType().cast<ComplexType>();
     auto eltType = type.getElementType().cast<FloatType>();
     return rewriter.create<complex::AbsOp>(loc, eltType, v0);
   }
+  case kAbsI:
+    return rewriter.create<math::AbsIOp>(loc, v0);
   case kCeilF:
     return rewriter.create<math::CeilOp>(loc, v0);
   case kFloorF:
