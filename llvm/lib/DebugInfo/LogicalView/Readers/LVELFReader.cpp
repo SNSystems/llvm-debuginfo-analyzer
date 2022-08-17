@@ -247,6 +247,13 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
   const DWARFFormValue &FormValue =
       DWARFFormValue::createFromUnit(AttrSpec.Form, U, OffsetPtr);
 
+  // We are processing .debug_info section, implicit_const attribute
+  // values are not really stored here, but in .debug_abbrev section.
+  auto GetAsUnsignedConstant = [&]() -> int64_t {
+    return AttrSpec.isImplicitConst() ? AttrSpec.getImplicitConstValue()
+                                      : *FormValue.getAsUnsignedConstant();
+  };
+
   auto GetFlag = [](const DWARFFormValue &FormValue) -> bool {
     return FormValue.isFormClass(DWARFFormValue::FC_Flag);
   };
@@ -293,12 +300,12 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
     CurrentElement->setBitSize(*FormValue.getAsUnsignedConstant());
     break;
   case dwarf::DW_AT_call_file:
-    CurrentElement->setCallFilenameIndex(*FormValue.getAsUnsignedConstant());
+    CurrentElement->setCallFilenameIndex(GetAsUnsignedConstant());
     break;
   case dwarf::DW_AT_call_line:
-    CurrentElement->setCallLineNumber(
-        IncrementFileIndex ? *FormValue.getAsUnsignedConstant() + 1
-                           : *FormValue.getAsUnsignedConstant());
+    CurrentElement->setCallLineNumber(IncrementFileIndex
+                                          ? GetAsUnsignedConstant() + 1
+                                          : GetAsUnsignedConstant());
     break;
   case dwarf::DW_AT_comp_dir:
     CompileUnit->setCompilationDirectory(dwarf::toStringRef(FormValue));
@@ -331,12 +338,12 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
     CurrentElement->setCount(*FormValue.getAsUnsignedConstant());
     break;
   case dwarf::DW_AT_decl_line:
-    CurrentElement->setLineNumber(*FormValue.getAsUnsignedConstant());
+    CurrentElement->setLineNumber(GetAsUnsignedConstant());
     break;
   case dwarf::DW_AT_decl_file:
-    CurrentElement->setFilenameIndex(
-        IncrementFileIndex ? *FormValue.getAsUnsignedConstant() + 1
-                           : *FormValue.getAsUnsignedConstant());
+    CurrentElement->setFilenameIndex(IncrementFileIndex
+                                         ? GetAsUnsignedConstant() + 1
+                                         : GetAsUnsignedConstant());
     break;
   case dwarf::DW_AT_enum_class:
     if (GetFlag(FormValue))
@@ -573,12 +580,9 @@ LVScope *LVELFReader::processOneDie(const DWARFDie &InputDIE, LVScope *Parent,
       if (abbrCode) {
         if (const DWARFAbbreviationDeclaration *AbbrevDecl =
                 TheDIE.getAbbreviationDeclarationPtr())
-          for (const DWARFAbbreviationDeclaration::AttributeSpec &AttrSpec :
-               AbbrevDecl->attributes())
-            if (AttrSpec.Form != dwarf::DW_FORM_implicit_const)
-              // We are processing .debug_info section, implicit_const
-              // attribute values are not really stored here, but in
-              // .debug_abbrev section. So we just skip such attrs.
+          if (AbbrevDecl)
+            for (const DWARFAbbreviationDeclaration::AttributeSpec &AttrSpec :
+                 AbbrevDecl->attributes())
               processOneAttribute(TheDIE, &CurrentEndOffset, AttrSpec);
       }
     };
