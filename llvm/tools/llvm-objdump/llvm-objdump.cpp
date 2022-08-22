@@ -891,7 +891,7 @@ addMissingWasmCodeSymbols(const WasmObjectFile &Obj,
 static void addPltEntries(const ObjectFile &Obj,
                           std::map<SectionRef, SectionSymbolsTy> &AllSymbols,
                           StringSaver &Saver) {
-  Optional<SectionRef> Plt = None;
+  Optional<SectionRef> Plt;
   for (const SectionRef &Section : Obj.sections()) {
     Expected<StringRef> SecNameOrErr = Section.getName();
     if (!SecNameOrErr) {
@@ -2788,6 +2788,7 @@ static void parseOtoolOptions(const llvm::opt::InputArgList &InputArgs) {
   LeadingAddr = LeadingHeaders = !InputArgs.hasArg(OTOOL_X);
 
   ChainedFixups = InputArgs.hasArg(OTOOL_chained_fixups);
+  DyldInfo = InputArgs.hasArg(OTOOL_dyld_info);
 
   InputFilenames = InputArgs.getAllArgValues(OTOOL_INPUT);
   if (InputFilenames.empty())

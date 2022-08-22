@@ -27038,7 +27038,7 @@ SDValue X86TargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
 
       // Avoid false dependency.
       if (PassThru.isUndef())
-        PassThru = DAG.getConstant(0, dl, VT);
+        PassThru = getZeroVector(VT, Subtarget, DAG, dl);
 
       return DAG.getNode(IntrData->Opc0, dl, VT, DataToCompress, PassThru,
                          Mask);
@@ -35640,7 +35640,7 @@ X86TargetLowering::emitEHSjLjSetJmp(MachineInstr &MI,
   MF->insert(I, mainMBB);
   MF->insert(I, sinkMBB);
   MF->push_back(restoreMBB);
-  restoreMBB->setHasAddressTaken();
+  restoreMBB->setMachineBlockAddressTaken();
 
   MachineInstrBuilder MIB;
 
@@ -41705,7 +41705,7 @@ bool X86TargetLowering::SimplifyDemandedBitsForTargetNode(
   case X86ISD::PMULDQ:
   case X86ISD::PMULUDQ: {
     // PMULDQ/PMULUDQ only uses lower 32 bits from each vector element.
-    KnownBits KnownOp;
+    KnownBits KnownLHS, KnownRHS;
     SDValue LHS = Op.getOperand(0);
     SDValue RHS = Op.getOperand(1);
 
@@ -41722,11 +41722,20 @@ bool X86TargetLowering::SimplifyDemandedBitsForTargetNode(
       DemandedMaskRHS = DemandedMask;
 
     if (SimplifyDemandedBits(LHS, DemandedMaskLHS, OriginalDemandedElts,
-                             KnownOp, TLO, Depth + 1))
+                             KnownLHS, TLO, Depth + 1))
       return true;
     if (SimplifyDemandedBits(RHS, DemandedMaskRHS, OriginalDemandedElts,
-                             KnownOp, TLO, Depth + 1))
+                             KnownRHS, TLO, Depth + 1))
       return true;
+
+    // PMULUDQ(X,1) -> AND(X,(1<<32)-1) 'getZeroExtendInReg'.
+    KnownRHS = KnownRHS.trunc(32);
+    if (Opc == X86ISD::PMULUDQ && KnownRHS.isConstant() &&
+        KnownRHS.getConstant().isOne()) {
+      SDLoc DL(Op);
+      SDValue Mask = TLO.DAG.getConstant(DemandedMask, DL, VT);
+      return TLO.CombineTo(Op, TLO.DAG.getNode(ISD::AND, DL, VT, LHS, Mask));
+    }
 
     // Aggressively peek through ops to get at the demanded low bits.
     SDValue DemandedLHS = SimplifyMultipleUseDemandedBits(
@@ -55995,9 +56004,9 @@ void X86TargetLowering::LowerAsmOperandForConstraint(SDValue Op,
 
     // In any sort of PIC mode addresses need to be computed at runtime by
     // adding in a register or some sort of table lookup.  These can't
-    // be used as immediates. BlockAddresses are fine though.
+    // be used as immediates. BlockAddresses and BasicBlocks are fine though.
     if ((Subtarget.isPICStyleGOT() || Subtarget.isPICStyleStubPIC()) &&
-        !isa<BlockAddressSDNode>(Op))
+        !(isa<BlockAddressSDNode>(Op) || isa<BasicBlockSDNode>(Op)))
       return;
 
     // If we are in non-pic codegen mode, we allow the address of a global (with
@@ -56476,35 +56485,6 @@ X86TargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
   }
 
   return Res;
-}
-
-InstructionCost X86TargetLowering::getScalingFactorCost(const DataLayout &DL,
-                                                        const AddrMode &AM,
-                                                        Type *Ty,
-                                                        unsigned AS) const {
-  // Scaling factors are not free at all.
-  // An indexed folded instruction, i.e., inst (reg1, reg2, scale),
-  // will take 2 allocations in the out of order engine instead of 1
-  // for plain addressing mode, i.e. inst (reg1).
-  // E.g.,
-  // vaddps (%rsi,%rdx), %ymm0, %ymm1
-  // Requires two allocations (one for the load, one for the computation)
-  // whereas:
-  // vaddps (%rsi), %ymm0, %ymm1
-  // Requires just 1 allocation, i.e., freeing allocations for other operations
-  // and having less micro operations to execute.
-  //
-  // For some X86 architectures, this is even worse because for instance for
-  // stores, the complex addressing mode forces the instruction to use the
-  // "load" ports instead of the dedicated "store" port.
-  // E.g., on Haswell:
-  // vmovaps %ymm1, (%r8, %rdi) can use port 2 or 3.
-  // vmovaps %ymm1, (%r8) can use port 2, 3, or 7.
-  if (isLegalAddressingMode(DL, AM, Ty, AS))
-    // Scale represents reg2 * scale, thus account for 1
-    // as soon as we use a second register.
-    return AM.Scale != 0;
-  return -1;
 }
 
 bool X86TargetLowering::isIntDivCheap(EVT VT, AttributeList Attr) const {

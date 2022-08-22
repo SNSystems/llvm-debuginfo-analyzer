@@ -385,11 +385,6 @@ public:
     assert(rank == 0 && "not a zero-ranked memRef");
     return data[offset];
   }
-
-private:
-  DynamicMemRefType(const DynamicMemRefType<T> &other)
-      : rank(other.rank), basePtr(other.basePtr), data(other.data),
-        offset(other.offset), strides(other.strides) {}
 };
 
 /// Iterate over all elements in a dynamic memref.

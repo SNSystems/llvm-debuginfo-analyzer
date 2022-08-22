@@ -17,6 +17,7 @@
 #include "LoongArchRegisterInfo.h"
 #include "LoongArchSubtarget.h"
 #include "LoongArchTargetMachine.h"
+#include "MCTargetDesc/LoongArchBaseInfo.h"
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -56,6 +57,10 @@ LoongArchTargetLowering::LoongArchTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::CTPOP, GRLenVT, Expand);
 
   setOperationAction({ISD::GlobalAddress, ISD::ConstantPool}, GRLenVT, Custom);
+
+  setOperationAction(ISD::EH_DWARF_CFA, MVT::i32, Custom);
+  if (Subtarget.is64Bit())
+    setOperationAction(ISD::EH_DWARF_CFA, MVT::i64, Custom);
 
   setOperationAction(ISD::DYNAMIC_STACKALLOC, GRLenVT, Expand);
   setOperationAction(ISD::VASTART, MVT::Other, Custom);
@@ -147,6 +152,8 @@ bool LoongArchTargetLowering::isOffsetFoldingLegal(
 SDValue LoongArchTargetLowering::LowerOperation(SDValue Op,
                                                 SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::EH_DWARF_CFA:
+    return lowerEH_DWARF_CFA(Op, DAG);
   case ISD::GlobalAddress:
     return lowerGlobalAddress(Op, DAG);
   case ISD::SHL_PARTS:
@@ -167,6 +174,14 @@ SDValue LoongArchTargetLowering::LowerOperation(SDValue Op,
     return lowerVASTART(Op, DAG);
   }
   return SDValue();
+}
+
+SDValue LoongArchTargetLowering::lowerEH_DWARF_CFA(SDValue Op,
+                                                   SelectionDAG &DAG) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  auto Size = Subtarget.getGRLen() / 8;
+  auto FI = MF.getFrameInfo().CreateFixedObject(Size, 0, false);
+  return DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
 }
 
 SDValue LoongArchTargetLowering::lowerVASTART(SDValue Op,
@@ -264,10 +279,13 @@ SDValue LoongArchTargetLowering::lowerGlobalAddress(SDValue Op,
 
   // TODO: Support dso_preemptable and target flags.
   if (GV->isDSOLocal()) {
-    SDValue GA = DAG.getTargetGlobalAddress(GV, DL, Ty);
-    SDValue AddrHi(DAG.getMachineNode(LoongArch::PCALAU12I, DL, Ty, GA), 0);
-    SDValue Addr(DAG.getMachineNode(ADDIOp, DL, Ty, AddrHi, GA), 0);
-    return Addr;
+    SDValue GAHi =
+        DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LoongArchII::MO_PCREL_HI);
+    SDValue GALo =
+        DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LoongArchII::MO_PCREL_LO);
+    SDValue AddrHi(DAG.getMachineNode(LoongArch::PCALAU12I, DL, Ty, GAHi), 0);
+
+    return SDValue(DAG.getMachineNode(ADDIOp, DL, Ty, AddrHi, GALo), 0);
   }
   report_fatal_error("Unable to lowerGlobalAddress");
 }
@@ -1587,11 +1605,20 @@ LoongArchTargetLowering::LowerCall(CallLoweringInfo &CLI,
   // If the callee is a GlobalAddress/ExternalSymbol node, turn it into a
   // TargetGlobalAddress/TargetExternalSymbol node so that legalize won't
   // split it and then direct call can be matched by PseudoCALL.
-  // FIXME: Add target flags for relocation.
-  if (GlobalAddressSDNode *S = dyn_cast<GlobalAddressSDNode>(Callee))
-    Callee = DAG.getTargetGlobalAddress(S->getGlobal(), DL, PtrVT);
-  else if (ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee))
-    Callee = DAG.getTargetExternalSymbol(S->getSymbol(), PtrVT);
+  if (GlobalAddressSDNode *S = dyn_cast<GlobalAddressSDNode>(Callee)) {
+    const GlobalValue *GV = S->getGlobal();
+    unsigned OpFlags =
+        getTargetMachine().shouldAssumeDSOLocal(*GV->getParent(), GV)
+            ? LoongArchII::MO_CALL
+            : LoongArchII::MO_CALL_PLT;
+    Callee = DAG.getTargetGlobalAddress(S->getGlobal(), DL, PtrVT, 0, OpFlags);
+  } else if (ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+    unsigned OpFlags = getTargetMachine().shouldAssumeDSOLocal(
+                           *MF.getFunction().getParent(), nullptr)
+                           ? LoongArchII::MO_CALL
+                           : LoongArchII::MO_CALL_PLT;
+    Callee = DAG.getTargetExternalSymbol(S->getSymbol(), PtrVT, OpFlags);
+  }
 
   // The first call operand is the chain and the second is the target address.
   SmallVector<SDValue> Ops;

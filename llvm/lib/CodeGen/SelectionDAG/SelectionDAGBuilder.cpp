@@ -3007,7 +3007,8 @@ void SelectionDAGBuilder::visitCallBr(const CallBrInst &I) {
     BasicBlock *Dest = I.getIndirectDest(i);
     MachineBasicBlock *Target = FuncInfo.MBBMap[Dest];
     Target->setIsInlineAsmBrIndirectTarget();
-    Target->setHasAddressTaken();
+    Target->setMachineBlockAddressTaken();
+    Target->setLabelMustBeEmitted();
     // Don't add duplicate machine successors.
     if (Dests.insert(Dest).second)
       addSuccessorWithProb(CallBrMBB, Target, BranchProbability::getZero());
@@ -10488,7 +10489,7 @@ void SelectionDAGISel::LowerArguments(const Function &F) {
                     ValueVTs);
     MVT VT = ValueVTs[0].getSimpleVT();
     MVT RegVT = TLI->getRegisterType(*CurDAG->getContext(), VT);
-    Optional<ISD::NodeType> AssertOp = None;
+    Optional<ISD::NodeType> AssertOp;
     SDValue ArgValue = getCopyFromParts(DAG, dl, &InVals[0], 1, RegVT, VT,
                                         nullptr, F.getCallingConv(), AssertOp);
 

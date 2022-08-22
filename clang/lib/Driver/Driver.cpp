@@ -180,7 +180,7 @@ std::string Driver::GetResourcesPath(StringRef BinaryPath,
     // path of the embedding binary, which for LLVM binaries will be in bin/.
     // ../lib gets us to lib/ in both cases.
     P = llvm::sys::path::parent_path(Dir);
-    llvm::sys::path::append(P, Twine("lib") + CLANG_LIBDIR_SUFFIX, "clang",
+    llvm::sys::path::append(P, CLANG_INSTALL_LIBDIR_BASENAME, "clang",
                             CLANG_VERSION_STRING);
   }
 
@@ -970,23 +970,19 @@ bool Driver::loadConfigFile() {
       SmallString<128> CfgDir;
       CfgDir.append(
           CLOptions->getLastArgValue(options::OPT_config_system_dir_EQ));
-      if (!CfgDir.empty()) {
-        if (llvm::sys::fs::make_absolute(CfgDir).value() != 0)
-          SystemConfigDir.clear();
-        else
-          SystemConfigDir = static_cast<std::string>(CfgDir);
-      }
+      if (CfgDir.empty() || llvm::sys::fs::make_absolute(CfgDir))
+        SystemConfigDir.clear();
+      else
+        SystemConfigDir = static_cast<std::string>(CfgDir);
     }
     if (CLOptions->hasArg(options::OPT_config_user_dir_EQ)) {
       SmallString<128> CfgDir;
       CfgDir.append(
           CLOptions->getLastArgValue(options::OPT_config_user_dir_EQ));
-      if (!CfgDir.empty()) {
-        if (llvm::sys::fs::make_absolute(CfgDir).value() != 0)
-          UserConfigDir.clear();
-        else
-          UserConfigDir = static_cast<std::string>(CfgDir);
-      }
+      if (CfgDir.empty() || llvm::sys::fs::make_absolute(CfgDir))
+        UserConfigDir.clear();
+      else
+        UserConfigDir = static_cast<std::string>(CfgDir);
     }
   }
 
@@ -1635,7 +1631,11 @@ void Driver::generateCompilationDiagnostics(
     const char *TmpName = CreateTempFile(C, "linker-crash", "tar");
     Command NewLLDInvocation = Cmd;
     llvm::opt::ArgStringList ArgList = NewLLDInvocation.getArguments();
-    ArgList.push_back(Saver.save(Twine{"--reproduce="} + TmpName).data());
+    StringRef ReproduceOption =
+        C.getDefaultToolChain().getTriple().isWindowsMSVCEnvironment()
+            ? "/reproduce:"
+            : "--reproduce=";
+    ArgList.push_back(Saver.save(Twine(ReproduceOption) + TmpName).data());
     NewLLDInvocation.replaceArguments(std::move(ArgList));
 
     // Redirect stdout/stderr to /dev/null.

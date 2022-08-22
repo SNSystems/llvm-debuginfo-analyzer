@@ -4954,6 +4954,25 @@ TEST_F(FormatTest, IndentsPPDirectiveWithPPIndentWidth) {
                "    int y = 0;\n"
                "}\n",
                style);
+  verifyFormat("#if 1\n"
+               " // some comments\n"
+               " // another\n"
+               " #define foo 1\n"
+               "// not a define comment\n"
+               "void bar() {\n"
+               "    // comment\n"
+               "    int y = 0;\n"
+               "}",
+               "#if 1\n"
+               "// some comments\n"
+               "// another\n"
+               "#define foo 1\n"
+               "// not a define comment\n"
+               "void bar() {\n"
+               "  // comment\n"
+               "  int y = 0;\n"
+               "}",
+               style);
 }
 
 TEST_F(FormatTest, IndentsPPDirectiveInReducedSpace) {
@@ -24799,6 +24818,11 @@ TEST_F(FormatTest, IndentAccessModifiers) {
                "    int i;\n"
                "};\n",
                Style);
+  verifyFormat("class C {\n"
+               "  public /* comment */:\n"
+               "    int i;\n"
+               "};",
+               Style);
   verifyFormat("struct S {\n"
                "  private:\n"
                "    class C {\n"
@@ -24826,6 +24850,11 @@ TEST_F(FormatTest, IndentAccessModifiers) {
                "   public:\n"
                "      int i;\n"
                "};\n",
+               Style);
+  verifyFormat("class C {\n"
+               "   public /**/:\n"
+               "      int i;\n"
+               "};",
                Style);
 }
 
@@ -24877,7 +24906,7 @@ TEST_F(FormatTest, FormatDecayCopy) {
                                 // the user's own fault
   verifyFormat("integral auto(x) = y;"); // actually a declaration, but this is
                                          // clearly the user's own fault
-  verifyFormat("auto(*p)() = f;");       // actually a declaration; TODO FIXME
+  verifyFormat("auto (*p)() = f;");
 }
 
 TEST_F(FormatTest, Cpp20ModulesSupport) {

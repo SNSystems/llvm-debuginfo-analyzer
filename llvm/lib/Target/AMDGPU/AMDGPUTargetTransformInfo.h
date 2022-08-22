@@ -94,6 +94,8 @@ class GCNTTIImpl final : public BasicTTIImplBase<GCNTTIImpl> {
   // quarter. This also applies to some integer operations.
   int get64BitInstrCost(TTI::TargetCostKind CostKind) const;
 
+  std::pair<InstructionCost, MVT> getTypeLegalizationCost(Type *Ty) const;
+
 public:
   explicit GCNTTIImpl(const AMDGPUTargetMachine *TM, const Function &F);
 
@@ -197,7 +199,8 @@ public:
   InstructionCost getVectorSplitCost() { return 0; }
 
   InstructionCost getShuffleCost(TTI::ShuffleKind Kind, VectorType *Tp,
-                                 ArrayRef<int> Mask, int Index,
+                                 ArrayRef<int> Mask,
+                                 TTI::TargetCostKind CostKind, int Index,
                                  VectorType *SubTp,
                                  ArrayRef<const Value *> Args = None);
 
