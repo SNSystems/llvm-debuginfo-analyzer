@@ -52,7 +52,7 @@ class LVELFReader final : public LVBinaryReader {
   LVOffset CurrentOffset = 0;
   LVOffset CurrentEndOffset = 0;
 
-  // In Dwarf v4, the files are 1-indexed.
+  // In DWARF v4, the files are 1-indexed.
   // In DWARF v5, the files are 0-indexed.
   // The ELF reader expects the indexes as 1-indexed.
   bool IncrementFileIndex = false;

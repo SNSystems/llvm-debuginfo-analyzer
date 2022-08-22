@@ -807,8 +807,95 @@ Error LVELFReader::createScopes() {
       DwarfContext->getNumCompileUnits() ? DwarfContext->compile_units()
                                          : DwarfContext->dwo_compile_units();
   for (const std::unique_ptr<DWARFUnit> &CU : CompileUnits) {
-    // Record DWARF version for current Compile Unit.
-    IncrementFileIndex = CU->getVersion() >= 5;
+
+    // Deduction of index used for the line records.
+    //
+    // For the following test case: test.cpp
+    //  void foo(void ParamPtr) { }
+
+    // Both GCC and Clang generate DWARF-5 .debug_line layout.
+
+    // * GCC (GNU C++17 11.3.0) - All DW_AT_decl_file use index 1.
+    //
+    //   .debug_info:
+    //     format = DWARF32, version = 0x0005
+    //     DW_TAG_compile_unit
+    //       DW_AT_name	("test.cpp")
+    //       DW_TAG_subprogram ("foo")
+    //         DW_AT_decl_file (1)
+    //         DW_TAG_formal_parameter ("ParamPtr")
+    //           DW_AT_decl_file (1)
+    //   .debug_line:
+    //     Line table prologue: format (DWARF32), version (5)
+    //     include_directories[0] = "..."
+    //     file_names[0]: name ("test.cpp"), dir_index (0)
+    //     file_names[1]: name ("test.cpp"), dir_index (0)
+
+    // * Clang (14.0.6) - All DW_AT_decl_file use index 0.
+    //
+    //   .debug_info:
+    //     format = DWARF32, version = 0x0005
+    //     DW_AT_producer	("clang version 14.0.6")
+    //     DW_AT_name	("test.cpp")
+    //
+    //     DW_TAG_subprogram ("foo")
+    //       DW_AT_decl_file (0)
+    //       DW_TAG_formal_parameter ("ParamPtr")
+    //         DW_AT_decl_file (0)
+    //   .debug_line:
+    //     Line table prologue: format (DWARF32), version (5)
+    //     include_directories[0] = "..."
+    //     file_names[0]: name ("test.cpp"), dir_index (0)
+
+    // From DWARFDebugLine::getFileNameByIndex documentation:
+    //   In Dwarf 4, the files are 1-indexed.
+    //   In Dwarf 5, the files are 0-indexed.
+    // Additional discussions here:
+    // https://www.mail-archive.com/dwarf-discuss@lists.dwarfstd.org/msg00883.html
+
+    // The ELF Reader is expecting the files are 1-indexed, so using
+    // the .debug_line header information decide if the indexed require
+    // an internal adjustment.
+
+    // For the case of GCC (DWARF5), if the entries[0] and [1] are the
+    // same, do not perform any adjustment.
+    auto DeductIncrementFileIndex = [&]() -> bool {
+      if (CU->getVersion() < 5)
+        // DWARF-4 or earlier -> Don't increment index.
+        return false;
+
+      if (const DWARFDebugLine::LineTable *LT =
+              CU->getContext().getLineTableForUnit(CU.get())) {
+        // Check if there are at least 2 entries and if they are the same.
+        if (LT->hasFileAtIndex(0) && LT->hasFileAtIndex(1)) {
+          const DWARFDebugLine::FileNameEntry &EntryZero =
+              LT->Prologue.getFileNameEntry(0);
+          const DWARFDebugLine::FileNameEntry &EntryOne =
+              LT->Prologue.getFileNameEntry(1);
+          // Check directory indexes.
+          if (EntryZero.DirIdx != EntryOne.DirIdx)
+            // DWARF-5 -> Increment index.
+            return true;
+          // Check filename.
+          std::string FileZero;
+          std::string FileOne;
+          StringRef None;
+          LT->getFileNameByIndex(
+              0, None, DILineInfoSpecifier::FileLineInfoKind::RawValue,
+              FileZero);
+          LT->getFileNameByIndex(
+              1, None, DILineInfoSpecifier::FileLineInfoKind::RawValue,
+              FileOne);
+          return FileZero.compare(FileOne);
+        }
+      }
+
+      // DWARF-5 -> Increment index.
+      return true;
+    };
+    // The ELF reader expects the indexes as 1-indexed.
+    IncrementFileIndex = DeductIncrementFileIndex();
+
     DWARFDie UnitDie = CU->getUnitDIE();
     SmallString<16> DWOAlternativeLocation;
     if (UnitDie) {
