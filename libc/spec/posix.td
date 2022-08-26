@@ -264,6 +264,16 @@ def POSIX : StandardSpec<"POSIX"> {
     [], // Enumerations
     [
         FunctionSpec<
+          "chdir",
+          RetValSpec<IntType>,
+          [ArgSpec<ConstCharPtr>]
+        >,
+        FunctionSpec<
+          "fchdir",
+          RetValSpec<IntType>,
+          [ArgSpec<IntType>]
+        >,
+        FunctionSpec<
           "close",
           RetValSpec<IntType>,
           [ArgSpec<IntType>]
@@ -272,6 +282,16 @@ def POSIX : StandardSpec<"POSIX"> {
           "fsync",
           RetValSpec<IntType>,
           [ArgSpec<IntType>]
+        >,
+        FunctionSpec<
+          "link",
+          RetValSpec<IntType>,
+          [ArgSpec<ConstCharPtr>, ArgSpec<ConstCharPtr>]
+        >,
+        FunctionSpec<
+          "linkat",
+          RetValSpec<IntType>,
+          [ArgSpec<IntType>, ArgSpec<ConstCharPtr>, ArgSpec<IntType>, ArgSpec<ConstCharPtr>, ArgSpec<IntType>]
         >,
         FunctionSpec<
           "lseek",
@@ -284,9 +304,29 @@ def POSIX : StandardSpec<"POSIX"> {
           [ArgSpec<IntType>, ArgSpec<VoidPtr>, ArgSpec<SizeTType>]
         >,
         FunctionSpec<
+          "readlink",
+          RetValSpec<SSizeTType>,
+          [ArgSpec<ConstCharRestrictedPtr>, ArgSpec<CharRestrictedPtr>, ArgSpec<SizeTType>]
+        >,
+        FunctionSpec<
+          "readlinkat",
+          RetValSpec<SSizeTType>,
+          [ArgSpec<ConstCharRestrictedPtr>, ArgSpec<CharRestrictedPtr>, ArgSpec<SizeTType>]
+        >,
+        FunctionSpec<
           "rmdir",
           RetValSpec<IntType>,
           [ArgSpec<ConstCharPtr>]
+        >,
+        FunctionSpec<
+          "symlink",
+          RetValSpec<IntType>,
+          [ArgSpec<ConstCharPtr>, ArgSpec<ConstCharPtr>]
+        >,
+        FunctionSpec<
+          "symlinkat",
+          RetValSpec<IntType>,
+          [ArgSpec<IntType>, ArgSpec<ConstCharPtr>, ArgSpec<IntType>, ArgSpec<ConstCharPtr>]
         >,
         FunctionSpec<
           "unlink",
@@ -393,6 +433,21 @@ def POSIX : StandardSpec<"POSIX"> {
     [ModeTType], // Types
     [], // Enumerations
     [
+        FunctionSpec<
+          "chmod",
+          RetValSpec<IntType>,
+          [ArgSpec<ConstCharPtr>, ArgSpec<ModeTType>]
+        >,
+        FunctionSpec<
+          "fchmod",
+          RetValSpec<IntType>,
+          [ArgSpec<IntType>, ArgSpec<ModeTType>]
+        >,
+        FunctionSpec<
+          "fchmodat",
+          RetValSpec<IntType>,
+          [ArgSpec<IntType>, ArgSpec<ConstCharPtr>, ArgSpec<ModeTType>, ArgSpec<IntType>]
+        >,
         FunctionSpec<
             "mkdir",
             RetValSpec<IntType>,

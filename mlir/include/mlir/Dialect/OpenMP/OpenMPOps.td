@@ -421,6 +421,10 @@ def SimdLoopOp : OpenMP_Op<"simdloop", [AttrSizedOperandSegments,
 
     When a simdlen clause is present, the preferred number of iterations to be
     executed concurrently is the value provided to the simdlen clause.
+
+    The safelen clause specifies that no two concurrent iterations within a
+    SIMD chunk can have a distance in the logical iteration space that is
+    greater than or equal to the value given in the clause.
     ```
     omp.simdloop <clauses>
     for (%i1, %i2) : index = (%c0, %c0) to (%c10, %c10) step (%c1, %c1) {
@@ -436,6 +440,7 @@ def SimdLoopOp : OpenMP_Op<"simdloop", [AttrSizedOperandSegments,
              Variadic<IntLikeType>:$step,
              Optional<I1>:$if_expr,
              ConfinedAttr<OptionalAttr<I64Attr>, [IntPositive]>:$simdlen,
+             ConfinedAttr<OptionalAttr<I64Attr>, [IntPositive]>:$safelen,
              UnitAttr:$inclusive
      );
 
@@ -443,6 +448,7 @@ def SimdLoopOp : OpenMP_Op<"simdloop", [AttrSizedOperandSegments,
   let assemblyFormat = [{
     oilist(`if` `(` $if_expr `)`
           |`simdlen` `(` $simdlen  `)`
+          |`safelen` `(` $safelen  `)`
     ) `for` custom<LoopControl>($region, $lowerBound, $upperBound, $step,
                                   type($step), $inclusive) attr-dict
   }];
@@ -1046,7 +1052,7 @@ def AtomicReadOp : OpenMP_Op<"atomic.read", [AllTypesMatch<["x", "v"]>]> {
 
   let arguments = (ins OpenMP_PointerLikeType:$x,
                        OpenMP_PointerLikeType:$v,
-                       DefaultValuedAttr<I64Attr, "0">:$hint_val,
+                       DefaultValuedOptionalAttr<I64Attr, "0">:$hint_val,
                        OptionalAttr<MemoryOrderKindAttr>:$memory_order_val);
   let assemblyFormat = [{
     $v `=` $x
@@ -1093,7 +1099,7 @@ def AtomicWriteOp : OpenMP_Op<"atomic.write"> {
 
   let arguments = (ins OpenMP_PointerLikeType:$address,
                        AnyType:$value,
-                       DefaultValuedAttr<I64Attr, "0">:$hint_val,
+                       DefaultValuedOptionalAttr<I64Attr, "0">:$hint_val,
                        OptionalAttr<MemoryOrderKindAttr>:$memory_order_val);
   let assemblyFormat = [{
     $address `=` $value
@@ -1157,7 +1163,7 @@ def AtomicUpdateOp : OpenMP_Op<"atomic.update",
   let arguments = (ins Arg<OpenMP_PointerLikeType,
                            "Address of variable to be updated",
                            [MemRead, MemWrite]>:$x,
-                       DefaultValuedAttr<I64Attr, "0">:$hint_val,
+                       DefaultValuedOptionalAttr<I64Attr, "0">:$hint_val,
                        OptionalAttr<MemoryOrderKindAttr>:$memory_order_val);
   let regions = (region SizedRegion<1>:$region);
   let assemblyFormat = [{
@@ -1219,7 +1225,7 @@ def AtomicCaptureOp : OpenMP_Op<"atomic.capture",
 
   }];
 
-  let arguments = (ins DefaultValuedAttr<I64Attr, "0">:$hint_val,
+  let arguments = (ins DefaultValuedOptionalAttr<I64Attr, "0">:$hint_val,
                        OptionalAttr<MemoryOrderKindAttr>:$memory_order_val);
   let regions = (region SizedRegion<1>:$region);
   let assemblyFormat = [{

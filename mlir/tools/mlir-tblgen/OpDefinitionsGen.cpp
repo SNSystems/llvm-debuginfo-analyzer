@@ -952,7 +952,7 @@ static void emitAttrGetterWithReturnType(FmtContext &fctx,
   ERROR_IF_PRUNED(method, name, op);
   auto &body = method->body();
   body << "  auto attr = " << name << "Attr();\n";
-  if (attr.hasDefaultValue()) {
+  if (attr.hasDefaultValue() && attr.isOptional()) {
     // Returns the default value if not set.
     // TODO: this is inefficient, we are recreating the attribute for every
     // call. This should be set instead.
@@ -1514,6 +1514,34 @@ void OpEmitter::genSeparateArgParamBuilder() {
         body << "  " << builderOpState << ".addTypes(" << resultNames[i]
              << ");\n";
       }
+
+      // Automatically create the 'result_segment_sizes' attribute using
+      // the length of the type ranges.
+      if (op.getTrait("::mlir::OpTrait::AttrSizedResultSegments")) {
+        std::string getterName = op.getGetterName(resultSegmentAttrName);
+        body << " " << builderOpState << ".addAttribute(" << getterName
+             << "AttrName(" << builderOpState << ".name), "
+             << "odsBuilder.getDenseI32ArrayAttr({";
+
+        interleaveComma(
+            llvm::seq<int>(0, op.getNumResults()), body, [&](int i) {
+              const NamedTypeConstraint &result = op.getResult(i);
+              if (!result.isVariableLength()) {
+                body << "1";
+              } else if (result.isOptional()) {
+                body << "(" << resultNames[i] << " ? 1 : 0)";
+              } else {
+                // VariadicOfVariadic of results are currently unsupported in
+                // MLIR, hence it can only be a simple variadic.
+                // TODO: Add implementation for VariadicOfVariadic results here
+                //       once supported.
+                assert(result.isVariadic());
+                body << "static_cast<int32_t>(" << resultNames[i] << ".size())";
+              }
+            });
+        body << "}));\n";
+      }
+
       return;
     case TypeParamKind::Collective: {
       int numResults = op.getNumResults();
@@ -1611,7 +1639,7 @@ void OpEmitter::genPopulateDefaultAttributes() {
   }
   for (const NamedAttribute &namedAttr : op.getAttributes()) {
     auto &attr = namedAttr.attr;
-    if (!attr.hasDefaultValue())
+    if (!attr.hasDefaultValue() || attr.isOptional())
       continue;
     auto index = attrIndex[namedAttr.name];
     body << "if (!attributes.get(attrNames[" << index << "])) {\n";
@@ -2912,7 +2940,7 @@ OpOperandAdaptorEmitter::OpOperandAdaptorEmitter(
                         : "cast",
                     attr.getStorageType());
 
-    if (attr.hasDefaultValue()) {
+    if (attr.hasDefaultValue() && attr.isOptional()) {
       // Use the default value if attribute is not set.
       // TODO: this is inefficient, we are recreating the attribute for every
       // call. This should be set instead.

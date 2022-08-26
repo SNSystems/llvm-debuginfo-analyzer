@@ -20,6 +20,7 @@
 #include "SPIRVTargetMachine.h"
 #include "SPIRVUtils.h"
 #include "TargetInfo/SPIRVTargetInfo.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 
@@ -77,10 +78,9 @@ getSymbolicOperandRequirements(SPIRV::OperandCategory::OperandCategory Category,
   // If there are no capabilities, or we can't satisfy the version or
   // capability requirements, use the list of extensions (if the subtarget
   // can handle them all).
-  if (std::all_of(ReqExts.begin(), ReqExts.end(),
-                  [&ST](const SPIRV::Extension::Extension &Ext) {
-                    return ST.canUseExtension(Ext);
-                  })) {
+  if (llvm::all_of(ReqExts, [&ST](const SPIRV::Extension::Extension &Ext) {
+        return ST.canUseExtension(Ext);
+      })) {
     return {true, {}, ReqExts, 0, 0}; // TODO: add versions to extensions.
   }
   return {false, {}, {}, 0, 0};
@@ -465,8 +465,8 @@ void SPIRV::RequirementHandler::addRequirements(
   if (!Req.IsSatisfiable)
     report_fatal_error("Adding SPIR-V requirements this target can't satisfy.");
 
-  if (Req.Cap.hasValue())
-    addCapabilities({Req.Cap.getValue()});
+  if (Req.Cap.has_value())
+    addCapabilities({Req.Cap.value()});
 
   addExtensions(Req.Exts);
 

@@ -171,13 +171,14 @@ SVal ExprEngine::computeObjectUnderConstruction(
         if (const SubRegion *MR =
                 dyn_cast_or_null<SubRegion>(V.getAsRegion())) {
           if (NE->isArray()) {
-            // TODO: In fact, we need to call the constructor for every
-            // allocated element, not just the first one!
             CallOpts.IsArrayCtorOrDtor = true;
 
-            auto R = MRMgr.getElementRegion(NE->getType()->getPointeeType(),
-                                            svalBuilder.makeArrayIndex(Idx), MR,
-                                            SVB.getContext());
+            auto Ty = NE->getType()->getPointeeType();
+            while (const auto *AT = getContext().getAsArrayType(Ty))
+              Ty = AT->getElementType();
+
+            auto R = MRMgr.getElementRegion(Ty, svalBuilder.makeArrayIndex(Idx),
+                                            MR, SVB.getContext());
 
             return loc::MemRegionVal(R);
           }
@@ -524,16 +525,32 @@ bindRequiredArrayElementToEnvironment(ProgramStateRef State,
   //       |     `-DeclRefExpr
   //       `-ArrayInitIndexExpr
   //
+  // The resulting expression for a multidimensional array.
+  // ArrayInitLoopExpr                  <-- we're here
+  // |-OpaqueValueExpr
+  // | `-DeclRefExpr                    <-- match this
+  // `-ArrayInitLoopExpr
+  //   |-OpaqueValueExpr
+  //   | `-ArraySubscriptExpr
+  //   |   |-ImplicitCastExpr
+  //   |   | `-OpaqueValueExpr
+  //   |   |   `-DeclRefExpr
+  //   |   `-ArrayInitIndexExpr
+  //   `-CXXConstructExpr             <-- extract this
+  //     ` ...
+
+  const auto *OVESrc = AILE->getCommonExpr()->getSourceExpr();
+
   // HACK: There is no way we can put the index of the array element into the
   // CFG unless we unroll the loop, so we manually select and bind the required
   // parameter to the environment.
-  const auto *CE = cast<CXXConstructExpr>(AILE->getSubExpr());
-  const auto *OVESrc = AILE->getCommonExpr()->getSourceExpr();
+  const auto *CE =
+      cast<CXXConstructExpr>(extractElementInitializerFromNestedAILE(AILE));
 
   SVal Base = UnknownVal();
   if (const auto *ME = dyn_cast<MemberExpr>(OVESrc))
     Base = State->getSVal(ME, LCtx);
-  else if (const auto *DRE = cast<DeclRefExpr>(OVESrc))
+  else if (const auto *DRE = dyn_cast<DeclRefExpr>(OVESrc))
     Base = State->getLValue(cast<VarDecl>(DRE->getDecl()), LCtx);
   else
     llvm_unreachable("ArrayInitLoopExpr contains unexpected source expression");
@@ -589,6 +606,27 @@ void ExprEngine::handleConstructor(const Expr *E,
 
     unsigned Idx = 0;
     if (CE->getType()->isArrayType() || AILE) {
+
+      auto isZeroSizeArray = [&] {
+        uint64_t Size = 1;
+
+        if (const auto *CAT = dyn_cast<ConstantArrayType>(CE->getType()))
+          Size = getContext().getConstantArrayElementCount(CAT);
+        else if (AILE)
+          Size = getContext().getArrayInitLoopExprElementCount(AILE);
+
+        return Size == 0;
+      };
+
+      // No element construction will happen in a 0 size array.
+      if (isZeroSizeArray()) {
+        StmtNodeBuilder Bldr(Pred, destNodes, *currBldrCtx);
+        static SimpleProgramPointTag T{"ExprEngine",
+                                       "Skipping 0 size array construction"};
+        Bldr.generateNode(CE, Pred, State, &T);
+        return;
+      }
+
       Idx = getIndexOfElementToConstruct(State, CE, LCtx).value_or(0u);
       State = setIndexOfElementToConstruct(State, CE, LCtx, Idx + 1);
     }
@@ -596,8 +634,9 @@ void ExprEngine::handleConstructor(const Expr *E,
     if (AILE) {
       // Only set this once even though we loop through it multiple times.
       if (!getPendingInitLoop(State, CE, LCtx))
-        State = setPendingInitLoop(State, CE, LCtx,
-                                   AILE->getArraySize().getLimitedValue());
+        State = setPendingInitLoop(
+            State, CE, LCtx,
+            getContext().getArrayInitLoopExprElementCount(AILE));
 
       State = bindRequiredArrayElementToEnvironment(
           State, AILE, LCtx, svalBuilder.makeArrayIndex(Idx));
@@ -1147,23 +1186,22 @@ void ExprEngine::VisitLambdaExpr(const LambdaExpr *LE, ExplodedNode *Pred,
 
       assert(InitExpr && "Capture missing initialization expression");
 
-      if (const auto AILE = dyn_cast<ArrayInitLoopExpr>(InitExpr)) {
-        // If the AILE initializes a POD array, we need to keep it as the
-        // InitExpr.
-        if (dyn_cast<CXXConstructExpr>(AILE->getSubExpr()))
-          InitExpr = AILE->getSubExpr();
-      }
+      // Capturing a 0 length array is a no-op, so we ignore it to get a more
+      // accurate analysis. If it's not ignored, it would set the default
+      // binding of the lambda to 'Unknown', which can lead to falsely detecting
+      // 'Uninitialized' values as 'Unknown' and not reporting a warning.
+      const auto FTy = FieldForCapture->getType();
+      if (FTy->isConstantArrayType() &&
+          getContext().getConstantArrayElementCount(
+              getContext().getAsConstantArrayType(FTy)) == 0)
+        continue;
 
-      // With C++17 copy elision this can happen.
-      if (const auto *FC = dyn_cast<CXXFunctionalCastExpr>(InitExpr))
-        InitExpr = FC->getSubExpr();
-
-      assert(InitExpr &&
-             "Extracted capture initialization expression is missing");
-
-      if (dyn_cast<CXXConstructExpr>(InitExpr)) {
-        InitVal = *getObjectUnderConstruction(State, {LE, Idx}, LocCtxt);
-        InitVal = State->getSVal(InitVal.getAsRegion());
+      // With C++17 copy elision the InitExpr can be anything, so instead of
+      // pattern matching all cases, we simple check if the current field is
+      // under construction or not, regardless what it's InitExpr is.
+      if (const auto OUC =
+              getObjectUnderConstruction(State, {LE, Idx}, LocCtxt)) {
+        InitVal = State->getSVal(OUC->getAsRegion());
 
         State = finishObjectConstruction(State, {LE, Idx}, LocCtxt);
       } else

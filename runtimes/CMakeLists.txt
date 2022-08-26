@@ -16,14 +16,14 @@ list(INSERT CMAKE_MODULE_PATH 0
 # We order libraries to mirror roughly how they are layered, except that compiler-rt can depend
 # on libc++, so we put it after.
 set(LLVM_DEFAULT_RUNTIMES "libc;libunwind;libcxxabi;pstl;libcxx;compiler-rt;openmp")
-set(LLVM_ALL_RUNTIMES "${LLVM_DEFAULT_RUNTIMES};llvm-libgcc")
+set(LLVM_SUPPORTED_RUNTIMES "${LLVM_DEFAULT_RUNTIMES};llvm-libgcc")
 set(LLVM_ENABLE_RUNTIMES "" CACHE STRING
-  "Semicolon-separated list of runtimes to build (${LLVM_ALL_RUNTIMES}), or \"all\".")
+  "Semicolon-separated list of runtimes to build, or \"all\" (${LLVM_DEFAULT_RUNTIMES}). Supported runtimes are ${LLVM_SUPPORTED_RUNTIMES}.")
 if(LLVM_ENABLE_RUNTIMES STREQUAL "all" )
   set(LLVM_ENABLE_RUNTIMES ${LLVM_DEFAULT_RUNTIMES})
 endif()
 include(SortSubset)
-sort_subset("${LLVM_ALL_RUNTIMES}" "${LLVM_ENABLE_RUNTIMES}" LLVM_ENABLE_RUNTIMES)
+sort_subset("${LLVM_SUPPORTED_RUNTIMES}" "${LLVM_ENABLE_RUNTIMES}" LLVM_ENABLE_RUNTIMES)
 
 foreach(proj ${LLVM_ENABLE_RUNTIMES})
   set(proj_dir "${CMAKE_CURRENT_SOURCE_DIR}/../${proj}")
@@ -244,14 +244,12 @@ if(LLVM_INCLUDE_TESTS)
                      ${CMAKE_CURRENT_BINARY_DIR}/llvm-lit)
   endif()
 
+  get_property(LLVM_RUNTIMES_LIT_TESTSUITES GLOBAL PROPERTY LLVM_RUNTIMES_LIT_TESTSUITES)
+  string(REPLACE ";" "\n" LLVM_RUNTIMES_LIT_TESTSUITES "${LLVM_RUNTIMES_LIT_TESTSUITES}")
   if(LLVM_RUNTIMES_TARGET)
-    configure_file(
-      ${CMAKE_CURRENT_SOURCE_DIR}/Tests.cmake.in
-      ${LLVM_BINARY_DIR}/runtimes/${LLVM_RUNTIMES_TARGET}/Tests.cmake)
+    file(WRITE ${LLVM_BINARY_DIR}/runtimes/${LLVM_RUNTIMES_TARGET}/Tests.rsp ${LLVM_RUNTIMES_LIT_TESTSUITES})
   else()
-    configure_file(
-      ${CMAKE_CURRENT_SOURCE_DIR}/Tests.cmake.in
-      ${LLVM_BINARY_DIR}/runtimes/Tests.cmake)
+    file(WRITE ${LLVM_BINARY_DIR}/runtimes/Tests.rsp ${LLVM_RUNTIMES_LIT_TESTSUITES})
   endif()
 endif()
 

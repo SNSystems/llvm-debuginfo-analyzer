@@ -969,15 +969,6 @@ Instruction *InstCombinerImpl::foldAddWithConstant(BinaryOperator &Add) {
     }
   }
 
-  // If all bits affected by the add are included in a high-bit-mask, do the
-  // add before the mask op:
-  // (X & 0xFF00) + xx00 --> (X + xx00) & 0xFF00
-  if (match(Op0, m_OneUse(m_And(m_Value(X), m_APInt(C2)))) &&
-      C2->isNegative() && C2->isShiftedMask() && *C == (*C & *C2)) {
-    Value *NewAdd = Builder.CreateAdd(X, ConstantInt::get(Ty, *C));
-    return BinaryOperator::CreateAnd(NewAdd, ConstantInt::get(Ty, *C2));
-  }
-
   return nullptr;
 }
 
@@ -1422,6 +1413,31 @@ Instruction *InstCombinerImpl::visitAdd(BinaryOperator &I) {
     replaceOperand(I, 0, A);
     replaceOperand(I, 1, B);
     return &I;
+  }
+
+  // Canonicalize ((A & -A) - 1) --> ((A - 1) & ~A)
+  // Forms all commutable operations, and simplifies ctpop -> cttz folds.
+  if (match(&I,
+            m_Add(m_OneUse(m_c_And(m_Value(A), m_OneUse(m_Neg(m_Deferred(A))))),
+                  m_AllOnes()))) {
+    Constant *AllOnes = ConstantInt::getAllOnesValue(RHS->getType());
+    Value *Dec = Builder.CreateAdd(A, AllOnes);
+    Value *Not = Builder.CreateXor(A, AllOnes);
+    return BinaryOperator::CreateAnd(Dec, Not);
+  }
+
+  // Disguised reassociation/factorization:
+  // ~(A * C1) + A
+  // ((A * -C1) - 1) + A
+  // ((A * -C1) + A) - 1
+  // (A * (1 - C1)) - 1
+  if (match(&I,
+            m_c_Add(m_OneUse(m_Not(m_OneUse(m_Mul(m_Value(A), m_APInt(C1))))),
+                    m_Deferred(A)))) {
+    Type *Ty = I.getType();
+    Constant *NewMulC = ConstantInt::get(Ty, 1 - *C1);
+    Value *NewMul = Builder.CreateMul(A, NewMulC);
+    return BinaryOperator::CreateAdd(NewMul, ConstantInt::getAllOnesValue(Ty));
   }
 
   // TODO(jingyue): Consider willNotOverflowSignedAdd and

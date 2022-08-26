@@ -56,6 +56,49 @@ TEST(LlvmLibcSpanTest, InitializeArray) {
   ASSERT_EQ(s[2], 3);
 }
 
+TEST(LlvmLibcSpanTest, InitializeViewFormMutableSingleton) {
+  int a = 42;
+  span<const int> s(&a, 1);
+  ASSERT_EQ(s.size(), size_t(1));
+  ASSERT_TRUE(s.data() == &a);
+}
+
+TEST(LlvmLibcSpanTest, InitializeViewFormMutableCArray) {
+  int a[] = {1, 2, 3};
+  span<const int> s(a);
+  ASSERT_EQ(s.size(), size_t(3));
+  ASSERT_EQ(s[0], 1);
+  ASSERT_EQ(s[1], 2);
+  ASSERT_EQ(s[2], 3);
+}
+
+TEST(LlvmLibcSpanTest, InitializeViewFormMutableArray) {
+  array<int, 3> a = {1, 2, 3};
+  span<const int> s(a);
+  ASSERT_EQ(s.size(), size_t(3));
+  ASSERT_EQ(s[0], 1);
+  ASSERT_EQ(s[1], 2);
+  ASSERT_EQ(s[2], 3);
+}
+
+TEST(LlvmLibcSpanTest, InitializeFromMutable) {
+  span<int> s;
+  span<const int> view(s);
+  (void)view;
+}
+
+TEST(LlvmLibcSpanTest, Assign) {
+  span<int> s;
+  span<int> other;
+  other = s;
+}
+
+TEST(LlvmLibcSpanTest, AssignFromMutable) {
+  span<int> s;
+  span<const int> view;
+  view = s;
+}
+
 TEST(LlvmLibcSpanTest, Modify) {
   int a[] = {1, 2, 3};
   span<int> s(a);

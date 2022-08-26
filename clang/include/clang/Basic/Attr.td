@@ -221,6 +221,7 @@ class DeclArgument<DeclNode kind, string name, bit opt = 0, bit fake = 0>
 //   OMPTraitProperty := {Kind}
 //
 class OMPTraitInfoArgument<string name> : Argument<name, 0>;
+class VariadicOMPInteropInfoArgument<string name> : Argument<name, 0>;
 
 class TypeArgument<string name, bit opt = 0> : Argument<name, opt>;
 class UnsignedArgument<string name, bit opt = 0> : Argument<name, opt>;
@@ -606,6 +607,9 @@ class DeclOrTypeAttr : InheritableAttr;
 
 /// A attribute is either a declaration attribute or a statement attribute.
 class DeclOrStmtAttr : InheritableAttr;
+
+/// An attribute class for HLSL Annotations.
+class HLSLAnnotationAttr : InheritableAttr;
 
 /// A target-specific attribute.  This class is meant to be used as a mixin
 /// with InheritableAttr or Attr depending on the attribute's needs.
@@ -3493,7 +3497,7 @@ def MSAllocator : InheritableAttr {
 def CFGuard : InheritableAttr {
   // Currently only the __declspec(guard(nocf)) modifier is supported. In future
   // we might also want to support __declspec(guard(suppress)).
-  let Spellings = [Declspec<"guard">];
+  let Spellings = [Declspec<"guard">, Clang<"guard">];
   let Subjects = SubjectList<[Function]>;
   let Args = [EnumArgument<"Guard", "GuardArg", ["nocf"], ["nocf"]>];
   let Documentation = [CFGuardDocs];
@@ -3827,14 +3831,19 @@ def OMPDeclareVariant : InheritableAttr {
     OMPTraitInfoArgument<"TraitInfos">,
     VariadicExprArgument<"AdjustArgsNothing">,
     VariadicExprArgument<"AdjustArgsNeedDevicePtr">,
-    VariadicEnumArgument<"AppendArgs", "InteropType",
-                     ["target", "targetsync", "target,targetsync"],
-                     ["Target", "TargetSync", "Target_TargetSync"]>
+    VariadicOMPInteropInfoArgument<"AppendArgs">,
   ];
   let AdditionalMembers = [{
     OMPTraitInfo &getTraitInfo() { return *traitInfos; }
     void printPrettyPragma(raw_ostream & OS, const PrintingPolicy &Policy)
         const;
+    static StringRef getInteropTypeString(const OMPInteropInfo *I) {
+      if (I->IsTarget && I->IsTargetSync)
+        return "target,targetsync";
+      if (I->IsTarget)
+        return "target";
+      return "targetsync";
+    }
   }];
 }
 
@@ -4005,7 +4014,7 @@ def HLSLNumThreads: InheritableAttr {
   let Documentation = [NumThreadsDocs];
 }
 
-def HLSLSV_GroupIndex: InheritableAttr {
+def HLSLSV_GroupIndex: HLSLAnnotationAttr {
   let Spellings = [HLSLSemantic<"SV_GroupIndex">];
   let Subjects = SubjectList<[ParmVar, GlobalVar]>;
   let LangOpts = [HLSL];

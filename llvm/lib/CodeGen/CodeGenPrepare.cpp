@@ -2045,13 +2045,13 @@ static bool despeculateCountZeros(IntrinsicInst *CountZeros,
     return false;
 
   // If it's cheap to speculate, there's nothing to do.
+  Type *Ty = CountZeros->getType();
   auto IntrinsicID = CountZeros->getIntrinsicID();
-  if ((IntrinsicID == Intrinsic::cttz && TLI->isCheapToSpeculateCttz()) ||
-      (IntrinsicID == Intrinsic::ctlz && TLI->isCheapToSpeculateCtlz()))
+  if ((IntrinsicID == Intrinsic::cttz && TLI->isCheapToSpeculateCttz(Ty)) ||
+      (IntrinsicID == Intrinsic::ctlz && TLI->isCheapToSpeculateCtlz(Ty)))
     return false;
 
   // Only handle legal scalar cases. Anything else requires too much work.
-  Type *Ty = CountZeros->getType();
   unsigned SizeInBits = Ty->getScalarSizeInBits();
   if (Ty->isVectorTy() || SizeInBits > DL->getLargestLegalIntTypeSizeInBits())
     return false;
@@ -7273,17 +7273,16 @@ class VectorPromoteHelper {
       Value *Arg0 = Inst->getOperand(0);
       bool IsArg0Constant = isa<UndefValue>(Arg0) || isa<ConstantInt>(Arg0) ||
                             isa<ConstantFP>(Arg0);
-      TargetTransformInfo::OperandValueKind Arg0OVK =
-          IsArg0Constant ? TargetTransformInfo::OK_UniformConstantValue
-                         : TargetTransformInfo::OK_AnyValue;
-      TargetTransformInfo::OperandValueKind Arg1OVK =
-          !IsArg0Constant ? TargetTransformInfo::OK_UniformConstantValue
-                          : TargetTransformInfo::OK_AnyValue;
+      TargetTransformInfo::OperandValueInfo Arg0Info, Arg1Info;
+      if (IsArg0Constant)
+        Arg0Info.Kind = TargetTransformInfo::OK_UniformConstantValue;
+      else
+        Arg1Info.Kind = TargetTransformInfo::OK_UniformConstantValue;
+
       ScalarCost += TTI.getArithmeticInstrCost(
-          Inst->getOpcode(), Inst->getType(), CostKind, Arg0OVK, Arg1OVK);
+          Inst->getOpcode(), Inst->getType(), CostKind, Arg0Info, Arg1Info);
       VectorCost += TTI.getArithmeticInstrCost(Inst->getOpcode(), PromotedType,
-                                               CostKind,
-                                               Arg0OVK, Arg1OVK);
+                                               CostKind, Arg0Info, Arg1Info);
     }
     LLVM_DEBUG(
         dbgs() << "Estimated cost of computation to be promoted:\nScalar: "

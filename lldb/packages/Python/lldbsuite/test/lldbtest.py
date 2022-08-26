@@ -286,14 +286,22 @@ class ValueCheck:
             test_base.assertEqual(self.expect_name, val.GetName(),
                                   this_error_msg)
         if self.expect_value:
-            test_base.assertEqual(self.expect_value, val.GetValue(),
-                                  this_error_msg)
+            if isinstance(self.expect_value, re.Pattern):
+                test_base.assertRegex(val.GetValue(), self.expect_value,
+                                      this_error_msg)
+            else:
+                test_base.assertEqual(self.expect_value, val.GetValue(),
+                                      this_error_msg)
         if self.expect_type:
             test_base.assertEqual(self.expect_type, val.GetDisplayTypeName(),
                                   this_error_msg)
         if self.expect_summary:
-            test_base.assertEqual(self.expect_summary, val.GetSummary(),
-                                  this_error_msg)
+            if isinstance(self.expect_summary, re.Pattern):
+                test_base.assertRegex(val.GetSummary(), self.expect_summary,
+                                      this_error_msg)
+            else:
+                test_base.assertEqual(self.expect_summary, val.GetSummary(),
+                                      this_error_msg)
         if self.children is not None:
             self.check_value_children(test_base, val, error_msg)
 
