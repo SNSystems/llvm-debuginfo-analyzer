@@ -78,8 +78,7 @@ class LVBinaryReader : public LVReader {
 
   // Instruction lines for a logical scope. These instructions are fetched
   // during its merge with the debug lines.
-  using LVInstructions = std::map<LVScope *, LVLines>;
-  LVInstructions ScopeInstructions;
+  LVDoubleMap<LVSectionIndex, LVScope *, LVLines *> ScopeInstructions;
 
   // Links the scope with its first assembler address line.
   LVDoubleMap<LVSectionIndex, LVAddress, LVScope *> AssemblerMappings;
@@ -146,7 +145,7 @@ protected:
   Error createInstructions();
   Error createInstructions(LVScope *Function, LVSectionIndex SectionIndex);
   Error createInstructions(LVScope *Function, LVSectionIndex SectionIndex,
-                           const LVNameInfo &Name);
+                           const LVNameInfo &NameInfo);
 
   void processLines(LVLines *DebugLines, LVSectionIndex SectionIndex);
   void processLines(LVLines *DebugLines, LVSectionIndex SectionIndex,
@@ -160,6 +159,10 @@ public:
   LVBinaryReader(const LVBinaryReader &) = delete;
   LVBinaryReader &operator=(const LVBinaryReader &) = delete;
   ~LVBinaryReader() {
+    // Delete the containers created by 'createInstructions'.
+    std::vector<LVLines *> AllInstructionLines = ScopeInstructions.find();
+    for (LVLines *Entry : AllInstructionLines)
+      delete Entry;
     for (LVSectionRanges::reference Entry : SectionRanges)
       delete Entry.second;
   }

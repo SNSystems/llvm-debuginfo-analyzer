@@ -181,9 +181,11 @@ template <typename MapType> void deleteList(MapType &Map) {
 // Double map data structure.
 template <typename FirstKeyType, typename SecondKeyType, typename ValueType>
 class LVDoubleMap {
-private:
+  static_assert(std::is_pointer<ValueType>::value,
+                "ValueType must be a pointer.");
   using LVSecondMapType = std::map<SecondKeyType, ValueType>;
   using LVFirstMapType = std::map<FirstKeyType, LVSecondMapType *>;
+  using LVValueTypes = std::vector<ValueType>;
   LVFirstMapType FirstMap;
 
 public:
@@ -226,6 +228,19 @@ public:
     typename LVSecondMapType::const_iterator SecondIter =
         SecondMap->find(SecondKey);
     return (SecondIter != SecondMap->end()) ? SecondIter->second : nullptr;
+  }
+
+  // Return a vector with all the 'ValueType' values.
+  LVValueTypes find() const {
+    LVValueTypes Values;
+    if (FirstMap.empty())
+      return Values;
+    for (typename LVFirstMapType::const_reference FirstEntry : FirstMap) {
+      LVSecondMapType *SecondMap = FirstEntry.second;
+      for (typename LVSecondMapType::const_reference SecondEntry : *SecondMap)
+        Values.push_back(SecondEntry.second);
+    }
+    return Values;
   }
 };
 

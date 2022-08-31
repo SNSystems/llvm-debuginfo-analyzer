@@ -370,16 +370,16 @@ LVRange *LVBinaryReader::getSectionRanges(LVSectionIndex SectionIndex) {
 
 Error LVBinaryReader::createInstructions(LVScope *Scope,
                                          LVSectionIndex SectionIndex,
-                                         const LVNameInfo &Name) {
+                                         const LVNameInfo &NameInfo) {
   assert(Scope && "Scope is null.");
 
   // Skip stripped functions.
   if (Scope->getIsDiscarded())
     return Error::success();
 
-  // Find associated scope for the given function entry point.
-  LVAddress Address = Name.first;
-  uint64_t Size = Name.second;
+  // Find associated address and size for the given function entry point.
+  LVAddress Address = NameInfo.first;
+  uint64_t Size = NameInfo.second;
 
   LLVM_DEBUG({
     dbgs() << "\nPublic Name instructions: '" << Scope->getName() << "' / '"
@@ -428,7 +428,7 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
 
   // Address for first instruction line.
   LVAddress FirstAddress = Address;
-  LVLines Instructions;
+  LVLines *Instructions = new LVLines();
 
   while (Begin < End) {
     MCInst Instruction;
@@ -471,7 +471,7 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
       LVLineAssembler *Line = new LVLineAssembler();
       Line->setAddress(Address);
       Line->setName(StringRef(Stream.str()).trim());
-      Instructions.push_back(Line);
+      Instructions->push_back(Line);
       break;
     }
     }
@@ -483,15 +483,15 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
     size_t Index = 0;
     dbgs() << "\nAddress: " << hexValue(FirstAddress)
            << format(" - Collected instructions lines: %d\n",
-                     Instructions.size());
-    for (const LVLine *Line : Instructions)
+                     Instructions->size());
+    for (const LVLine *Line : *Instructions)
       dbgs() << format_decimal(++Index, 5) << ": "
              << hexValue(Line->getOffset()) << ", (" << Line->getName()
              << ")\n";
   });
 
   // The scope in the assembler names is linked to its own instructions.
-  ScopeInstructions.emplace(Scope, std::move(Instructions));
+  ScopeInstructions.add(SectionIndex, Scope, Instructions);
   AssemblerMappings.add(SectionIndex, FirstAddress, Scope);
 
   return Error::success();
@@ -513,10 +513,30 @@ Error LVBinaryReader::createInstructions() {
   if (!options().getPrintInstructions())
     return Error::success();
 
+  LLVM_DEBUG({
+    dbgs() << "\nPublic Names (Scope):\n";
+    for (LVPublicNames::const_reference Name : CompileUnit->getPublicNames()) {
+      LVScope *Scope = Name.first;
+      const LVNameInfo &NameInfo = Name.second;
+      LVAddress Address = NameInfo.first;
+      uint64_t Size = NameInfo.second;
+      dbgs() << "DIE Offset: " << hexValue(Scope->getOffset()) << " Range: ["
+             << hexValue(Address) << ":" << hexValue(Address + Size) << "] "
+             << "Name: '" << Scope->getName() << "' / '"
+             << Scope->getLinkageName() << "'\n";
+    }
+  });
+
   // For each public name in the current compile unit, create the line
   // records that represent the executable instructions.
   for (LVPublicNames::const_reference Name : CompileUnit->getPublicNames()) {
     LVScope *Scope = Name.first;
+    // The symbol table extracted from the object file always contains a
+    // non-empty name (linkage name). However, the logical scope does not
+    // guarantee to have a name for the linkage name (main is one case).
+    // For those cases, set the linkage name the same as the name.
+    if (!Scope->getLinkageNameIndex())
+      Scope->setLinkageName(Scope->getName());
     LVSectionIndex SectionIndex = getSymbolTableIndex(Scope->getLinkageName());
     if (Error Err = createInstructions(Scope, SectionIndex, Name.second))
       return Err;
@@ -577,9 +597,9 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
 
     // Get the associated instructions for the found 'Scope'.
     LVLines InstructionLines;
-    LVInstructions::iterator IterLines = ScopeInstructions.find(Scope);
-    if (IterLines != ScopeInstructions.end())
-      InstructionLines = std::move(IterLines->second);
+    LVLines *Lines = ScopeInstructions.find(SectionIndex, Scope);
+    if (Lines)
+      InstructionLines.append(std::move(*Lines));
 
     LLVM_DEBUG({
       size_t Index = 0;
@@ -661,9 +681,9 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
   if (DebugLines->empty()) {
     if (const LVScopes *Scopes = CompileUnit->getScopes())
       for (LVScope *Scope : *Scopes) {
-        LVInstructions::iterator IterLines = ScopeInstructions.find(Scope);
-        if (IterLines != ScopeInstructions.end())
-          *DebugLines = std::move(IterLines->second);
+        LVLines *Lines = ScopeInstructions.find(SectionIndex, Scope);
+        if (Lines)
+          DebugLines->append(std::move(*Lines));
       }
   }
 
@@ -716,7 +736,7 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
 void LVBinaryReader::processLines(LVLines *DebugLines,
                                   LVSectionIndex SectionIndex) {
   assert(DebugLines && "DebugLines is null.");
-  if (DebugLines->empty() && ScopeInstructions.empty())
+  if (DebugLines->empty() && !ScopeInstructions.findMap(SectionIndex))
     return;
 
   // If the Compile Unit does not contain comdat functions, use the whole
@@ -772,7 +792,7 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
   }
 
   LLVM_DEBUG({
-    dbgs() << "Debug Lines buckets: " << Buckets.size() << "\n";
+    dbgs() << "\nDebug Lines buckets: " << Buckets.size() << "\n";
     for (LVBucket &Bucket : Buckets) {
       dbgs() << "Begin: " << format_decimal(std::get<0>(Bucket), 5) << ", "
              << "End: " << format_decimal(std::get<1>(Bucket), 5) << ", "
