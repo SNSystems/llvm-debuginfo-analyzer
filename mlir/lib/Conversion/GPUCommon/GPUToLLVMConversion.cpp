@@ -15,7 +15,6 @@
 
 #include "mlir/Conversion/GPUCommon/GPUCommonPass.h"
 
-#include "../PassDetail.h"
 #include "mlir/Conversion/ArithmeticToLLVM/ArithmeticToLLVM.h"
 #include "mlir/Conversion/AsyncToLLVM/AsyncToLLVM.h"
 #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
@@ -38,6 +37,11 @@
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FormatVariadic.h"
 
+namespace mlir {
+#define GEN_PASS_DEF_GPUTOLLVMCONVERSIONPASS
+#include "mlir/Conversion/Passes.h.inc"
+} // namespace mlir
+
 using namespace mlir;
 
 static constexpr const char *kGpuBinaryStorageSuffix = "_gpubin_cst";
@@ -45,7 +49,7 @@ static constexpr const char *kGpuBinaryStorageSuffix = "_gpubin_cst";
 namespace {
 
 class GpuToLLVMConversionPass
-    : public GpuToLLVMConversionPassBase<GpuToLLVMConversionPass> {
+    : public impl::GpuToLLVMConversionPassBase<GpuToLLVMConversionPass> {
 public:
   GpuToLLVMConversionPass() = default;
 
@@ -784,7 +788,7 @@ LogicalResult ConvertLaunchFuncOpToGpuRuntimeCallPattern::matchAndRewrite(
       launchOp.getKernelName().getValue(), loc, rewriter);
   auto function = moduleGetFunctionCallBuilder.create(
       loc, rewriter, {module.getResult(), kernelName});
-  auto zero = rewriter.create<LLVM::ConstantOp>(loc, llvmInt32Type, 0);
+  Value zero = rewriter.create<LLVM::ConstantOp>(loc, llvmInt32Type, 0);
   Value stream =
       adaptor.asyncDependencies().empty()
           ? streamCreateCallBuilder.create(loc, rewriter, {}).getResult()

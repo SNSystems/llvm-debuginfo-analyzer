@@ -238,8 +238,11 @@ namespace threadSafety {
 
 // FIXME: No way to easily map from TemplateTypeParmTypes to
 // TemplateTypeParmDecls, so we have this horrible PointerUnion.
-typedef std::pair<llvm::PointerUnion<const TemplateTypeParmType*, NamedDecl*>,
-                  SourceLocation> UnexpandedParameterPack;
+using UnexpandedParameterPack = std::pair<
+    llvm::PointerUnion<
+        const TemplateTypeParmType *, const SubstTemplateTypeParmPackType *,
+        const SubstNonTypeTemplateParmPackExpr *, const NamedDecl *>,
+    SourceLocation>;
 
 /// Describes whether we've seen any nullability information for the given
 /// file.
@@ -1351,6 +1354,15 @@ public:
     bool isImmediateFunctionContext() const {
       return Context == ExpressionEvaluationContext::ImmediateFunctionContext ||
              (Context == ExpressionEvaluationContext::DiscardedStatement &&
+              InImmediateFunctionContext) ||
+             // C++2b [expr.const]p14:
+             // An expression or conversion is in an immediate function
+             // context if it is potentially evaluated and either:
+             //   * its innermost enclosing non-block scope is a function
+             //     parameter scope of an immediate function, or
+             //   * its enclosing statement is enclosed by the compound-
+             //     statement of a consteval if statement.
+             (Context == ExpressionEvaluationContext::PotentiallyEvaluated &&
               InImmediateFunctionContext);
     }
 

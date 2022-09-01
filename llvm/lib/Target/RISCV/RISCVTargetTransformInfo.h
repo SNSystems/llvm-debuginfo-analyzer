@@ -83,6 +83,8 @@ public:
 
   unsigned getRegUsageForType(Type *Ty);
 
+  unsigned getMaximumVF(unsigned ElemWidth, unsigned Opcode) const;
+
   InstructionCost getMaskedMemoryOpCost(unsigned Opcode, Type *Src,
                                         Align Alignment, unsigned AddressSpace,
                                         TTI::TargetCostKind CostKind);
@@ -137,6 +139,11 @@ public:
                   unsigned AddressSpace, TTI::TargetCostKind CostKind,
                   TTI::OperandValueInfo OpdInfo = {TTI::OK_AnyValue, TTI::OP_None},
                   const Instruction *I = nullptr);
+
+  InstructionCost getCmpSelInstrCost(unsigned Opcode, Type *ValTy, Type *CondTy,
+                                     CmpInst::Predicate VecPred,
+                                     TTI::TargetCostKind CostKind,
+                                     const Instruction *I = nullptr);
 
   bool isElementTypeLegalForScalableVector(Type *Ty) const {
     return TLI->isLegalElementTypeForRVV(Ty);

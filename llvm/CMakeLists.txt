@@ -144,7 +144,10 @@ if ("flang" IN_LIST LLVM_ENABLE_PROJECTS)
 endif()
 
 # Select the runtimes to build
-set(LLVM_DEFAULT_RUNTIMES "compiler-rt;libc;libcxx;libcxxabi;libunwind;openmp")
+#
+# As we migrate runtimes to using the bootstrapping build, the set of default runtimes
+# should grow as we remove those runtimes from LLVM_ENABLE_PROJECTS above.
+set(LLVM_DEFAULT_RUNTIMES "libcxx;libcxxabi;libunwind")
 set(LLVM_SUPPORTED_RUNTIMES "libc;libunwind;libcxxabi;pstl;libcxx;compiler-rt;openmp;llvm-libgcc")
 set(LLVM_ENABLE_RUNTIMES "" CACHE STRING
   "Semicolon-separated list of runtimes to build, or \"all\" (${LLVM_DEFAULT_RUNTIMES}). Supported runtimes are ${LLVM_SUPPORTED_RUNTIMES}.")
@@ -994,6 +997,7 @@ if (NOT TENSORFLOW_AOT_PATH STREQUAL "")
   # This needs to happen to avoid clashing protobuf codegen when building both AOT and development mode.
   # We plan to replace protobuf with a simpler alternative, so this will go away.
   file(COPY ${TENSORFLOW_AOT_PATH}/include DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/tensorflow
+    NO_SOURCE_PERMISSIONS
     PATTERN "google/*" EXCLUDE
     PATTERN "*.pb.h" EXCLUDE) 
   include_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/tensorflow/include)

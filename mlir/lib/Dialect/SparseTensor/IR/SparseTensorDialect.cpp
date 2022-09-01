@@ -72,6 +72,20 @@ Attribute SparseTensorEncodingAttr::parse(AsmParser &parser, Type type) {
           dlt.push_back(SparseTensorEncodingAttr::DimLevelType::Dense);
         } else if (strVal == "compressed") {
           dlt.push_back(SparseTensorEncodingAttr::DimLevelType::Compressed);
+        } else if (strVal == "compressed-nu") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::CompressedNu);
+        } else if (strVal == "compressed-no") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::CompressedNo);
+        } else if (strVal == "compressed-nu-no") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::CompressedNuNo);
+        } else if (strVal == "singleton") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::Singleton);
+        } else if (strVal == "singleton-nu") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::SingletonNu);
+        } else if (strVal == "singleton-no") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::SingletonNo);
+        } else if (strVal == "singleton-nu-no") {
+          dlt.push_back(SparseTensorEncodingAttr::DimLevelType::SingletonNuNo);
         } else {
           parser.emitError(parser.getNameLoc(),
                            "unexpected dimension level type: ")
@@ -124,6 +138,27 @@ void SparseTensorEncodingAttr::print(AsmPrinter &printer) const {
       break;
     case DimLevelType::Compressed:
       printer << "\"compressed\"";
+      break;
+    case DimLevelType::CompressedNu:
+      printer << "\"compressed-nu\"";
+      break;
+    case DimLevelType::CompressedNo:
+      printer << "\"compressed-no\"";
+      break;
+    case DimLevelType::CompressedNuNo:
+      printer << "\"compressed-nu-no\"";
+      break;
+    case DimLevelType::Singleton:
+      printer << "\"singleton\"";
+      break;
+    case DimLevelType::SingletonNu:
+      printer << "\"singleton-nu\"";
+      break;
+    case DimLevelType::SingletonNo:
+      printer << "\"singleton-no\"";
+      break;
+    case DimLevelType::SingletonNuNo:
+      printer << "\"singleton-nu-no\"";
       break;
     }
     if (i != e - 1)
@@ -445,6 +480,48 @@ LogicalResult YieldOp::verify() {
 
   return emitOpError(
       "expected parent op to be sparse_tensor unary, binary, or reduce");
+}
+
+//===----------------------------------------------------------------------===//
+// Sparse Tensor Storage Operation.
+//===----------------------------------------------------------------------===//
+
+LogicalResult StorageGetOp::verify() {
+  uint64_t extractIdx = getIdx().getZExtValue();
+  auto innerTypeArray = getStorage().getType().getTypes();
+  if (extractIdx >= innerTypeArray.size())
+    return emitError(llvm::formatv(
+        "Out-of-bound access with index={0} on tuple with length={1}",
+        extractIdx, innerTypeArray.size()));
+
+  auto expectedTy = getStorage().getType().getType(extractIdx);
+  auto returnTy = getResult().getType();
+  if (expectedTy != returnTy)
+    return emitError(llvm::formatv(
+        "Type mismatch between the returning type (type={0}) and the "
+        "corresponding element type at index {1} (type={2})",
+        expectedTy, extractIdx, returnTy));
+  return success();
+}
+
+LogicalResult StorageSetOp::verify() {
+  uint64_t setIdx = getIdx().getZExtValue();
+  SmallVector<Type, 8> expectedElemTy(getStorage().getType().getTypes());
+  if (setIdx >= expectedElemTy.size())
+    return emitError(llvm::formatv(
+        "Out-of-bound access with index = {0} on tuple with length={1}", setIdx,
+        expectedElemTy.size()));
+
+  // Updates the element type after storage_set.
+  expectedElemTy[setIdx] = getValue().getType();
+  auto expectedTy = TupleType::get(getContext(), expectedElemTy);
+  auto returnTy = getResult().getType();
+  if (expectedTy != returnTy)
+    return emitError(
+        llvm::formatv("Type mismatch between the returning type "
+                      "(type={0}) and the expected type (type={1})",
+                      returnTy, expectedTy));
+  return success();
 }
 
 //===----------------------------------------------------------------------===//

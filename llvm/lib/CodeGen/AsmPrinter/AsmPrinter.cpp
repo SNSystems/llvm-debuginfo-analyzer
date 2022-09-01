@@ -1042,8 +1042,13 @@ void AsmPrinter::emitFunctionEntryLabel() {
 
   if (TM.getTargetTriple().isOSBinFormatELF()) {
     MCSymbol *Sym = getSymbolPreferLocal(MF->getFunction());
-    if (Sym != CurrentFnSym)
+    if (Sym != CurrentFnSym) {
+      cast<MCSymbolELF>(Sym)->setType(ELF::STT_FUNC);
+      CurrentFnBeginLocal = Sym;
       OutStreamer->emitLabel(Sym);
+      if (MAI->hasDotTypeDotSizeDirective())
+        OutStreamer->emitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
+    }
   }
 }
 
@@ -1693,8 +1698,11 @@ void AsmPrinter::emitFunctionBody() {
   // Emit target-specific gunk after the function body.
   emitFunctionBodyEnd();
 
-  if (needFuncLabelsForEHOrDebugInfo(*MF) ||
-      MAI->hasDotTypeDotSizeDirective()) {
+  // Even though wasm supports .type and .size in general, function symbols
+  // are automatically sized.
+  bool EmitFunctionSize = MAI->hasDotTypeDotSizeDirective() && !TT.isWasm();
+
+  if (needFuncLabelsForEHOrDebugInfo(*MF) || EmitFunctionSize) {
     // Create a symbol for the end of function.
     CurrentFnEnd = createTempSymbol("func_end");
     OutStreamer->emitLabel(CurrentFnEnd);
@@ -1702,13 +1710,15 @@ void AsmPrinter::emitFunctionBody() {
 
   // If the target wants a .size directive for the size of the function, emit
   // it.
-  if (MAI->hasDotTypeDotSizeDirective()) {
+  if (EmitFunctionSize) {
     // We can get the size as difference between the function label and the
     // temp label.
     const MCExpr *SizeExp = MCBinaryExpr::createSub(
         MCSymbolRefExpr::create(CurrentFnEnd, OutContext),
         MCSymbolRefExpr::create(CurrentFnSymForSize, OutContext), OutContext);
     OutStreamer->emitELFSize(CurrentFnSym, SizeExp);
+    if (CurrentFnBeginLocal)
+      OutStreamer->emitELFSize(CurrentFnBeginLocal, SizeExp);
   }
 
   for (const HandlerInfo &HI : Handlers) {
@@ -2240,6 +2250,7 @@ void AsmPrinter::SetupMachineFunction(MachineFunction &MF) {
 
   CurrentFnSymForSize = CurrentFnSym;
   CurrentFnBegin = nullptr;
+  CurrentFnBeginLocal = nullptr;
   CurrentSectionBeginSym = nullptr;
   MBBSectionRanges.clear();
   MBBSectionExceptionSyms.clear();
