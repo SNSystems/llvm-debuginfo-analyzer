@@ -5643,7 +5643,8 @@ bool Sema::CheckTemplateArgument(NamedDecl *Param,
     if (CheckTemplateTemplateArgument(TempParm, Params, Arg))
       return true;
 
-    Converted.push_back(Arg.getArgument());
+    Converted.push_back(
+        Context.getCanonicalTemplateArgument(Arg.getArgument()));
     break;
 
   case TemplateArgument::Expression:
@@ -5813,13 +5814,14 @@ bool Sema::CheckTemplateArgumentList(
         if (!ArgumentPack.empty()) {
           // If we were part way through filling in an expanded parameter pack,
           // fall back to just producing individual arguments.
-          Converted.insert(Converted.end(),
-                           ArgumentPack.begin(), ArgumentPack.end());
+          for (const TemplateArgument &I : ArgumentPack)
+            Converted.push_back(Context.getCanonicalTemplateArgument(I));
           ArgumentPack.clear();
         }
 
         while (ArgIdx < NumArgs) {
-          Converted.push_back(NewArgs[ArgIdx].getArgument());
+          Converted.push_back(Context.getCanonicalTemplateArgument(
+              NewArgs[ArgIdx].getArgument()));
           ++ArgIdx;
         }
 
@@ -5952,7 +5954,8 @@ bool Sema::CheckTemplateArgumentList(
   if (ArgIdx < NumArgs && CurrentInstantiationScope &&
       CurrentInstantiationScope->getPartiallySubstitutedPack()) {
     while (ArgIdx < NumArgs && NewArgs[ArgIdx].getArgument().isPackExpansion())
-      Converted.push_back(NewArgs[ArgIdx++].getArgument());
+      Converted.push_back(Context.getCanonicalTemplateArgument(
+          NewArgs[ArgIdx++].getArgument()));
   }
 
   // If we have any leftover arguments, then there were too many arguments.
@@ -6881,7 +6884,6 @@ ExprResult Sema::CheckTemplateArgument(NonTypeTemplateParmDecl *Param,
     // When checking a deduced template argument, deduce from its type even if
     // the type is dependent, in order to check the types of non-type template
     // arguments line up properly in partial ordering.
-    Optional<unsigned> Depth = Param->getDepth() + 1;
     Expr *DeductionArg = Arg;
     if (auto *PE = dyn_cast<PackExpansionExpr>(DeductionArg))
       DeductionArg = PE->getPattern();
@@ -6897,20 +6899,27 @@ ExprResult Sema::CheckTemplateArgument(NonTypeTemplateParmDecl *Param,
           DeduceTemplateSpecializationFromInitializer(TSI, Entity, Kind, Inits);
       if (ParamType.isNull())
         return ExprError();
-    } else if (DeduceAutoType(
-                   TSI, DeductionArg, ParamType, Depth,
-                   // We do not check constraints right now because the
-                   // immediately-declared constraint of the auto type is also
-                   // an associated constraint, and will be checked along with
-                   // the other associated constraints after checking the
-                   // template argument list.
-                   /*IgnoreConstraints=*/true) == DAR_Failed) {
-      Diag(Arg->getExprLoc(),
-           diag::err_non_type_template_parm_type_deduction_failure)
-        << Param->getDeclName() << Param->getType() << Arg->getType()
-        << Arg->getSourceRange();
-      Diag(Param->getLocation(), diag::note_template_param_here);
-      return ExprError();
+    } else {
+      TemplateDeductionInfo Info(DeductionArg->getExprLoc(),
+                                 Param->getDepth() + 1);
+      ParamType = QualType();
+      TemplateDeductionResult Result =
+          DeduceAutoType(TSI->getTypeLoc(), DeductionArg, ParamType, Info,
+                         /*DependentDeduction=*/true,
+                         // We do not check constraints right now because the
+                         // immediately-declared constraint of the auto type is
+                         // also an associated constraint, and will be checked
+                         // along with the other associated constraints after
+                         // checking the template argument list.
+                         /*IgnoreConstraints=*/true);
+      if (Result != TDK_Success && Result != TDK_AlreadyDiagnosed) {
+        Diag(Arg->getExprLoc(),
+             diag::err_non_type_template_parm_type_deduction_failure)
+            << Param->getDeclName() << Param->getType() << Arg->getType()
+            << Arg->getSourceRange();
+        Diag(Param->getLocation(), diag::note_template_param_here);
+        return ExprError();
+      }
     }
     // CheckNonTypeTemplateParameterType will produce a diagnostic if there's
     // an error. The error message normally references the parameter

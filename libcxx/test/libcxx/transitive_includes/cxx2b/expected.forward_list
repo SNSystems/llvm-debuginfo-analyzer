@@ -9,11 +9,9 @@ cstdlib
 cstring
 ctime
 exception
-forward_list
 initializer_list
 iosfwd
 limits
-memory
 new
 ratio
 stdexcept

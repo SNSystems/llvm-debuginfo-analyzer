@@ -1,4 +1,3 @@
-atomic
 cctype
 cerrno
 climits
@@ -17,15 +16,12 @@ exception
 initializer_list
 iosfwd
 limits
-memory
 new
 ratio
 stdexcept
 string
 string_view
 system_error
-thread
 tuple
 type_traits
-typeinfo
 version

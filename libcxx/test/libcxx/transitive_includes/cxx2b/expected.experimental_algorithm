@@ -1,5 +1,4 @@
 algorithm
-atomic
 bit
 climits
 cmath
@@ -9,17 +8,11 @@ cstddef
 cstdint
 cstdlib
 cstring
-ctime
 exception
-experimental/algorithm
 initializer_list
 iosfwd
 limits
-memory
 new
-ratio
-stdexcept
 tuple
 type_traits
-typeinfo
 version

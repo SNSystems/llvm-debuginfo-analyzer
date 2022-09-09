@@ -17,10 +17,8 @@ exception
 initializer_list
 iosfwd
 limits
-memory
 new
 numeric
-random
 ratio
 stdexcept
 string

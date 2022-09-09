@@ -148,11 +148,17 @@ def : PatFprFpr<fadd, FADD_D, FPR64>;
 def : PatFprFpr<fsub, FSUB_D, FPR64>;
 def : PatFprFpr<fmul, FMUL_D, FPR64>;
 def : PatFprFpr<fdiv, FDIV_D, FPR64>;
+def : PatFprFpr<fcopysign, FCOPYSIGN_D, FPR64>;
 def : PatFpr<fneg, FNEG_D, FPR64>;
 def : PatFpr<fabs, FABS_D, FPR64>;
 def : PatFpr<fsqrt, FSQRT_D, FPR64>;
 
 def : Pat<(fdiv fpimm1, (fsqrt FPR64:$fj)), (FRSQRT_D FPR64:$fj)>;
+
+def : Pat<(fcopysign FPR64:$fj, FPR32:$fk),
+          (FCOPYSIGN_D FPR64:$fj, (FCVT_D_S FPR32:$fk))>;
+def : Pat<(fcopysign FPR32:$fj, FPR64:$fk),
+          (FCOPYSIGN_S FPR32:$fj, (FCVT_S_D FPR64:$fk))>;
 
 /// Setcc
 
@@ -251,6 +257,11 @@ def : Pat<(bitconvert GPR:$src), (MOVGR2FR_D GPR:$src)>;
 
 // Convert FP to int
 def : Pat<(bitconvert FPR64:$src), (MOVFR2GR_D FPR64:$src)>;
+} // Predicates = [HasBasicD, IsLA64]
+
+// FP Rounding
+let Predicates = [HasBasicD, IsLA64] in {
+def : PatFpr<frint, FRINT_D, FPR64>;
 } // Predicates = [HasBasicD, IsLA64]
 
 let Predicates = [HasBasicD, IsLA32] in {

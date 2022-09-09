@@ -619,13 +619,16 @@ void BinaryFunction::print(raw_ostream &OS, std::string Annotation,
   // Dump new exception ranges for the function.
   if (!CallSites.empty()) {
     OS << "EH table:\n";
-    for (const CallSite &CSI : CallSites) {
-      OS << "  [" << *CSI.Start << ", " << *CSI.End << ") landing pad : ";
-      if (CSI.LP)
-        OS << *CSI.LP;
-      else
-        OS << "0";
-      OS << ", action : " << CSI.Action << '\n';
+    for (const FunctionFragment &FF : getLayout().fragments()) {
+      for (const auto &FCSI : getCallSites(FF.getFragmentNum())) {
+        const CallSite &CSI = FCSI.second;
+        OS << "  [" << *CSI.Start << ", " << *CSI.End << ") landing pad : ";
+        if (CSI.LP)
+          OS << *CSI.LP;
+        else
+          OS << "0";
+        OS << ", action : " << CSI.Action << '\n';
+      }
     }
     OS << '\n';
   }
@@ -4419,12 +4422,14 @@ void BinaryFunction::printLoopInfo(raw_ostream &OS) const {
   OS << "\n";
 
   std::stack<BinaryLoop *> St;
-  for_each(*BLI, [&](BinaryLoop *L) { St.push(L); });
+  for (BinaryLoop *L : *BLI)
+    St.push(L);
   while (!St.empty()) {
     BinaryLoop *L = St.top();
     St.pop();
 
-    for_each(*L, [&](BinaryLoop *Inner) { St.push(Inner); });
+    for (BinaryLoop *Inner : *L)
+      St.push(Inner);
 
     if (!hasValidProfile())
       continue;

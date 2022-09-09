@@ -3012,6 +3012,19 @@ Instruction *InstCombinerImpl::visitOr(BinaryOperator &I) {
         (match(Op0, m_Not(m_Specific(A))) || match(Op0, m_Not(m_Specific(B)))))
       return BinaryOperator::CreateNot(Builder.CreateAnd(A, B));
 
+    // Same as above, but peek through an 'and' to the common operand:
+    // ~(A & ?) | (A ^ B) --> ~((A & ?) & B)
+    // ~(B & ?) | (A ^ B) --> ~((B & ?) & A)
+    Instruction *And;
+    if ((Op0->hasOneUse() || Op1->hasOneUse()) &&
+        match(Op0, m_Not(m_CombineAnd(m_Instruction(And),
+                                      m_c_And(m_Specific(A), m_Value())))))
+      return BinaryOperator::CreateNot(Builder.CreateAnd(And, B));
+    if ((Op0->hasOneUse() || Op1->hasOneUse()) &&
+        match(Op0, m_Not(m_CombineAnd(m_Instruction(And),
+                                      m_c_And(m_Specific(B), m_Value())))))
+      return BinaryOperator::CreateNot(Builder.CreateAnd(And, A));
+
     // (~A | C) | (A ^ B) --> ~(A & B) | C
     // (~B | C) | (A ^ B) --> ~(A & B) | C
     if (Op0->hasOneUse() && Op1->hasOneUse() &&
@@ -3843,6 +3856,21 @@ Instruction *InstCombinerImpl::visitXor(BinaryOperator &I) {
       if (match(Op0, m_Or(m_Value(X), m_APInt(C))) &&
           MaskedValueIsZero(X, *C, 0, &I))
         return BinaryOperator::CreateXor(X, ConstantInt::get(Ty, *C ^ *RHSC));
+
+      // When X is a power-of-two or zero and zero input is poison:
+      // ctlz(i32 X) ^ 31 --> cttz(X)
+      // cttz(i32 X) ^ 31 --> ctlz(X)
+      auto *II = dyn_cast<IntrinsicInst>(Op0);
+      if (II && II->hasOneUse() && *RHSC == Ty->getScalarSizeInBits() - 1) {
+        Intrinsic::ID IID = II->getIntrinsicID();
+        if ((IID == Intrinsic::ctlz || IID == Intrinsic::cttz) &&
+            match(II->getArgOperand(1), m_One()) &&
+            isKnownToBeAPowerOfTwo(II->getArgOperand(0), /*OrZero */ true)) {
+          IID = (IID == Intrinsic::ctlz) ? Intrinsic::cttz : Intrinsic::ctlz;
+          Function *F = Intrinsic::getDeclaration(II->getModule(), IID, Ty);
+          return CallInst::Create(F, {II->getArgOperand(0), Builder.getTrue()});
+        }
+      }
 
       // If RHSC is inverting the remaining bits of shifted X,
       // canonicalize to a 'not' before the shift to help SCEV and codegen:

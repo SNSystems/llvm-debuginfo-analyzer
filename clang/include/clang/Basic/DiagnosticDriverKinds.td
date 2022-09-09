@@ -406,7 +406,7 @@ def warn_missing_sysroot : Warning<"no such sysroot directory: '%0'">,
   InGroup<DiagGroup<"missing-sysroot">>;
 def warn_incompatible_sysroot : Warning<"using sysroot for '%0' but targeting '%1'">,
   InGroup<DiagGroup<"incompatible-sysroot">>;
-def warn_debug_compression_unavailable : Warning<"cannot compress debug sections (zlib not enabled)">,
+def warn_debug_compression_unavailable : Warning<"cannot compress debug sections (%0 not enabled)">,
   InGroup<DiagGroup<"debug-compression-unavailable">>;
 def warn_drv_disabling_vptr_no_rtti_default : Warning<
   "implicitly disabling vptr sanitizer because rtti wasn't enabled">,
@@ -666,6 +666,8 @@ def err_drv_invalid_directx_shader_module : Error<
   "invalid profile : %0">;
 def err_drv_dxc_missing_target_profile : Error<
   "target profile option (-T) is missing">;
+def err_drv_hlsl_unsupported_target : Error<
+  "HLSL code generation is unsupported for target '%0'">;
 
 def err_drv_invalid_range_dxil_validator_version : Error<
   "invalid validator version : %0\n"

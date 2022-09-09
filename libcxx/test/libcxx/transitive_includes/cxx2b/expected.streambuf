@@ -18,12 +18,10 @@ initializer_list
 ios
 iosfwd
 limits
-memory
 mutex
 new
 ratio
 stdexcept
-streambuf
 string
 string_view
 system_error

@@ -1548,16 +1548,34 @@ Instruction *InstCombinerImpl::foldICmpTruncConstant(ICmpInst &Cmp,
                           ConstantInt::get(V->getType(), 1));
   }
 
+  Type *SrcTy = X->getType();
   unsigned DstBits = Trunc->getType()->getScalarSizeInBits(),
-           SrcBits = X->getType()->getScalarSizeInBits();
+           SrcBits = SrcTy->getScalarSizeInBits();
+
+  // TODO: Handle any shifted constant by subtracting trailing zeros.
+  // TODO: Handle non-equality predicates.
+  Value *Y;
+  if (Cmp.isEquality() && match(X, m_Shl(m_One(), m_Value(Y)))) {
+    // (trunc (1 << Y) to iN) == 0 --> Y u>= N
+    // (trunc (1 << Y) to iN) != 0 --> Y u<  N
+    if (C.isZero()) {
+      auto NewPred = (Pred == Cmp.ICMP_EQ) ? Cmp.ICMP_UGE : Cmp.ICMP_ULT;
+      return new ICmpInst(NewPred, Y, ConstantInt::get(SrcTy, DstBits));
+    }
+    // (trunc (1 << Y) to iN) == 2**C --> Y == C
+    // (trunc (1 << Y) to iN) != 2**C --> Y != C
+    if (C.isPowerOf2())
+      return new ICmpInst(Pred, Y, ConstantInt::get(SrcTy, C.logBase2()));
+  }
+
   if (Cmp.isEquality() && Trunc->hasOneUse()) {
     // Canonicalize to a mask and wider compare if the wide type is suitable:
     // (trunc X to i8) == C --> (X & 0xff) == (zext C)
-    if (!X->getType()->isVectorTy() && shouldChangeType(DstBits, SrcBits)) {
-      Constant *Mask = ConstantInt::get(X->getType(),
-                                        APInt::getLowBitsSet(SrcBits, DstBits));
+    if (!SrcTy->isVectorTy() && shouldChangeType(DstBits, SrcBits)) {
+      Constant *Mask =
+          ConstantInt::get(SrcTy, APInt::getLowBitsSet(SrcBits, DstBits));
       Value *And = Builder.CreateAnd(X, Mask);
-      Constant *WideC = ConstantInt::get(X->getType(), C.zext(SrcBits));
+      Constant *WideC = ConstantInt::get(SrcTy, C.zext(SrcBits));
       return new ICmpInst(Pred, And, WideC);
     }
 
@@ -1570,7 +1588,7 @@ Instruction *InstCombinerImpl::foldICmpTruncConstant(ICmpInst &Cmp,
       // Pull in the high bits from known-ones set.
       APInt NewRHS = C.zext(SrcBits);
       NewRHS |= Known.One & APInt::getHighBitsSet(SrcBits, SrcBits - DstBits);
-      return new ICmpInst(Pred, X, ConstantInt::get(X->getType(), NewRHS));
+      return new ICmpInst(Pred, X, ConstantInt::get(SrcTy, NewRHS));
     }
   }
 
@@ -1583,11 +1601,10 @@ Instruction *InstCombinerImpl::foldICmpTruncConstant(ICmpInst &Cmp,
   if (isSignBitCheck(Pred, C, TrueIfSigned) &&
       match(X, m_Shr(m_Value(ShOp), m_APInt(ShAmtC))) &&
       DstBits == SrcBits - ShAmtC->getZExtValue()) {
-    return TrueIfSigned
-               ? new ICmpInst(ICmpInst::ICMP_SLT, ShOp,
-                              ConstantInt::getNullValue(X->getType()))
-               : new ICmpInst(ICmpInst::ICMP_SGT, ShOp,
-                              ConstantInt::getAllOnesValue(X->getType()));
+    return TrueIfSigned ? new ICmpInst(ICmpInst::ICMP_SLT, ShOp,
+                                       ConstantInt::getNullValue(SrcTy))
+                        : new ICmpInst(ICmpInst::ICMP_SGT, ShOp,
+                                       ConstantInt::getAllOnesValue(SrcTy));
   }
 
   return nullptr;
@@ -4548,6 +4565,18 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
     }
   }
 
+  // For unsigned predicates / eq / ne:
+  // icmp pred (x << 1), x --> icmp getSignedPredicate(pred) x, 0
+  // icmp pred x, (x << 1) --> icmp getSignedPredicate(pred) 0, x
+  if (!ICmpInst::isSigned(Pred)) {
+    if (match(Op0, m_Shl(m_Specific(Op1), m_One())))
+      return new ICmpInst(ICmpInst::getSignedPredicate(Pred), Op1,
+                          Constant::getNullValue(Op1->getType()));
+    else if (match(Op1, m_Shl(m_Specific(Op0), m_One())))
+      return new ICmpInst(ICmpInst::getSignedPredicate(Pred),
+                          Constant::getNullValue(Op0->getType()), Op0);
+  }
+
   if (Value *V = foldMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
 
@@ -6892,6 +6921,7 @@ Instruction *InstCombinerImpl::visitFCmpInst(FCmpInst &I) {
   // fcmp oeq/une (bitcast X), 0.0 --> (and X, SignMaskC) ==/!= 0
   if (match(Op1, m_PosZeroFP()) &&
       match(Op0, m_OneUse(m_BitCast(m_Value(X)))) &&
+      X->getType()->isVectorTy() == OpType->isVectorTy() &&
       X->getType()->getScalarSizeInBits() == OpType->getScalarSizeInBits()) {
     ICmpInst::Predicate IntPred = ICmpInst::BAD_ICMP_PREDICATE;
     if (Pred == FCmpInst::FCMP_OEQ)

@@ -8,7 +8,6 @@ climits
 cmath
 compare
 concepts
-cstdarg
 cstddef
 cstdint
 cstdio
@@ -18,13 +17,11 @@ ctime
 cwchar
 cwctype
 exception
-format
 initializer_list
 ios
 iosfwd
 limits
 locale
-memory
 mutex
 new
 optional

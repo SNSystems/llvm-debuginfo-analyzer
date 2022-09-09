@@ -145,13 +145,15 @@
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DepthFirstIterator.h"
-#include "llvm/ADT/SmallSet.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Argument.h"
@@ -350,6 +352,12 @@ static cl::opt<uint64_t> ClShadowBase("msan-shadow-base",
 static cl::opt<uint64_t> ClOriginBase("msan-origin-base",
                                       cl::desc("Define custom MSan OriginBase"),
                                       cl::Hidden, cl::init(0));
+
+static cl::opt<int>
+    ClDisambiguateWarning("msan-disambiguate-warning-threshold",
+                          cl::desc("Define threshold for number of checks per "
+                                   "debug location to force origin update."),
+                          cl::Hidden, cl::init(3));
 
 const char kMsanModuleCtorName[] = "msan.module_ctor";
 const char kMsanInitName[] = "__msan_init";
@@ -669,20 +677,32 @@ MemorySanitizerOptions::MemorySanitizerOptions(int TO, bool R, bool K,
       Recover(getOptOrDefault(ClKeepGoing, Kernel || R)),
       EagerChecks(getOptOrDefault(ClEagerChecks, EagerChecks)) {}
 
-PreservedAnalyses MemorySanitizerPass::run(Function &F,
-                                           FunctionAnalysisManager &FAM) {
-  MemorySanitizer Msan(*F.getParent(), Options);
-  if (Msan.sanitizeFunction(F, FAM.getResult<TargetLibraryAnalysis>(F)))
-    return PreservedAnalyses::none();
-  return PreservedAnalyses::all();
-}
+PreservedAnalyses MemorySanitizerPass::run(Module &M,
+                                           ModuleAnalysisManager &AM) {
+  bool Modified = false;
+  if (!Options.Kernel) {
+    insertModuleCtor(M);
+    Modified = true;
+  }
 
-PreservedAnalyses ModuleMemorySanitizerPass::run(Module &M,
-                                                 ModuleAnalysisManager &AM) {
-  if (Options.Kernel)
+  auto &FAM = AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+  for (Function &F : M) {
+    if (F.empty())
+      continue;
+    MemorySanitizer Msan(*F.getParent(), Options);
+    Modified |=
+        Msan.sanitizeFunction(F, FAM.getResult<TargetLibraryAnalysis>(F));
+  }
+
+  if (!Modified)
     return PreservedAnalyses::all();
-  insertModuleCtor(M);
-  return PreservedAnalyses::none();
+
+  PreservedAnalyses PA = PreservedAnalyses::none();
+  // GlobalsAA is considered stateless and does not get invalidated unless
+  // explicitly invalidated; PreservedAnalyses::none() is not enough. Sanitizers
+  // make changes that require GlobalsAA to be invalidated.
+  PA.abandon<GlobalsAA>();
+  return PA;
 }
 
 void MemorySanitizerPass::printPipeline(
@@ -783,10 +803,16 @@ void MemorySanitizer::createUserspaceApi(Module &M) {
   // Create the callback.
   // FIXME: this function should have "Cold" calling conv,
   // which is not yet implemented.
-  StringRef WarningFnName = Recover ? "__msan_warning_with_origin"
-                                    : "__msan_warning_with_origin_noreturn";
-  WarningFn =
-      M.getOrInsertFunction(WarningFnName, IRB.getVoidTy(), IRB.getInt32Ty());
+  if (TrackOrigins) {
+    StringRef WarningFnName = Recover ? "__msan_warning_with_origin"
+                                      : "__msan_warning_with_origin_noreturn";
+    WarningFn =
+        M.getOrInsertFunction(WarningFnName, IRB.getVoidTy(), IRB.getInt32Ty());
+  } else {
+    StringRef WarningFnName =
+        Recover ? "__msan_warning" : "__msan_warning_noreturn";
+    WarningFn = M.getOrInsertFunction(WarningFnName, IRB.getVoidTy());
+  }
 
   // Create the global TLS variables.
   RetvalTLS =
@@ -1046,6 +1072,15 @@ static unsigned TypeSizeToSizeIndex(unsigned TypeSize) {
 
 namespace {
 
+/// Helper class to attach debug information of the given instruction onto new
+/// instructions inserted after.
+class NextNodeIRBuilder : public IRBuilder<> {
+public:
+  explicit NextNodeIRBuilder(Instruction *IP) : IRBuilder<>(IP->getNextNode()) {
+    SetCurrentDebugLocation(IP->getDebugLoc());
+  }
+};
+
 /// This class does all the work for a given function. Store and Load
 /// instructions store and load corresponding shadow and origin
 /// values. Most instructions propagate shadow from arguments to their
@@ -1077,8 +1112,9 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
         : Shadow(S), Origin(O), OrigIns(I) {}
   };
   SmallVector<ShadowOriginAndInsertPoint, 16> InstrumentationList;
+  DenseMap<const DILocation *, int> LazyWarningDebugLocationCount;
   bool InstrumentLifetimeStart = ClHandleLifetimeIntrinsics;
-  SmallSet<AllocaInst *, 16> AllocaSet;
+  SmallSetVector<AllocaInst *, 16> AllocaSet;
   SmallVector<std::pair<IntrinsicInst *, AllocaInst *>, 16> LifetimeStartList;
   SmallVector<StoreInst *, 16> StoreList;
 
@@ -1117,6 +1153,10 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
            (&I == FnPrologueEnd || I.comesBefore(FnPrologueEnd));
   }
 
+  // Creates a new origin and records the stack trace. In general we can call
+  // this function for any origin manipulation we like. However it will cost
+  // runtime resources. So use this wisely only if it can provide additional
+  // information helpful to a user.
   Value *updateOrigin(Value *V, IRBuilder<> &IRB) {
     if (MS.TrackOrigins <= 1)
       return V;
@@ -1233,12 +1273,46 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
     }
   }
 
+  // Returns true if Debug Location curresponds to multiple warnings.
+  bool shouldDisambiguateWarningLocation(const DebugLoc &DebugLoc) {
+    if (MS.TrackOrigins < 2)
+      return false;
+
+    if (LazyWarningDebugLocationCount.empty())
+      for (const auto &I : InstrumentationList)
+        ++LazyWarningDebugLocationCount[I.OrigIns->getDebugLoc()];
+
+    return LazyWarningDebugLocationCount[DebugLoc] >= ClDisambiguateWarning;
+  }
+
   /// Helper function to insert a warning at IRB's current insert point.
   void insertWarningFn(IRBuilder<> &IRB, Value *Origin) {
     if (!Origin)
       Origin = (Value *)IRB.getInt32(0);
     assert(Origin->getType()->isIntegerTy());
-    IRB.CreateCall(MS.WarningFn, Origin)->setCannotMerge();
+
+    if (shouldDisambiguateWarningLocation(IRB.getCurrentDebugLocation())) {
+      // Try to create additional origin with debug info of the last origin
+      // instruction. It may provide additional information to the user.
+      if (Instruction *OI = dyn_cast_or_null<Instruction>(Origin)) {
+        assert(MS.TrackOrigins);
+        auto NewDebugLoc = OI->getDebugLoc();
+        // Origin update with missing or the same debug location provides no
+        // additional value.
+        if (NewDebugLoc && NewDebugLoc != IRB.getCurrentDebugLocation()) {
+          // Insert update just before the check, so we call runtime only just
+          // before the report.
+          IRBuilder<> IRBOrigin(&*IRB.GetInsertPoint());
+          IRBOrigin.SetCurrentDebugLocation(NewDebugLoc);
+          Origin = updateOrigin(Origin, IRBOrigin);
+        }
+      }
+    }
+
+    if (MS.CompileKernel || MS.TrackOrigins)
+      IRB.CreateCall(MS.WarningFn, Origin)->setCannotMerge();
+    else
+      IRB.CreateCall(MS.WarningFn)->setCannotMerge();
     // FIXME: Insert UnreachableInst if !MS.Recover?
     // This may invalidate some of the following checks and needs to be done
     // at the very end.
@@ -1274,8 +1348,14 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
       bool InstrumentWithCalls,
       ArrayRef<ShadowOriginAndInsertPoint> InstructionChecks) {
     const DataLayout &DL = F.getParent()->getDataLayout();
+    // Disable combining in some cases. TrackOrigins checks each shadow to pick
+    // correct origin. InstrumentWithCalls expects to reduce shadow using API.
+    bool Combine = !InstrumentWithCalls && !MS.TrackOrigins;
+    Instruction *Instruction = InstructionChecks.front().OrigIns;
+    Value *Shadow = nullptr;
     for (const auto &ShadowData : InstructionChecks) {
-      IRBuilder<> IRB(ShadowData.OrigIns);
+      assert(ShadowData.OrigIns == Instruction);
+      IRBuilder<> IRB(Instruction);
 
       LLVM_DEBUG(dbgs() << "  SHAD0 : " << *ShadowData.Shadow << "\n");
       Value *ConvertedShadow = convertShadowToScalar(ShadowData.Shadow, IRB);
@@ -1289,18 +1369,51 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
         if (llvm::isKnownNonZero(ConvertedShadow, DL)) {
           // Report as the value is definitely uninitialized.
           insertWarningFn(IRB, ShadowData.Origin);
+          if (!MS.Recover)
+            return; // Always fail and stop here, not need to check the rest.
           // Skip entire instruction,
           continue;
         }
         // Fallback to runtime check, which still can be optimized out later.
       }
-      materializeOneCheck(IRB, ConvertedShadow, ShadowData.Origin,
-                          InstrumentWithCalls);
+
+      if (!Combine) {
+        materializeOneCheck(IRB, ConvertedShadow, ShadowData.Origin,
+                            InstrumentWithCalls);
+        continue;
+      }
+
+      Value *BoolShadow = convertToBool(ConvertedShadow, IRB, "_mscmp");
+      Shadow = Shadow ? IRB.CreateOr(Shadow, BoolShadow, "_msor") : BoolShadow;
+    }
+
+    if (Shadow) {
+      assert(Combine);
+      IRBuilder<> IRB(Instruction);
+      materializeOneCheck(IRB, Shadow, nullptr, false);
     }
   }
 
   void materializeChecks(bool InstrumentWithCalls) {
-    materializeInstructionChecks(InstrumentWithCalls, InstrumentationList);
+    llvm::stable_sort(InstrumentationList,
+                      [](const ShadowOriginAndInsertPoint &L,
+                         const ShadowOriginAndInsertPoint &R) {
+                        return L.OrigIns < R.OrigIns;
+                      });
+
+    for (auto I = InstrumentationList.begin();
+         I != InstrumentationList.end();) {
+      auto J =
+          std::find_if(I + 1, InstrumentationList.end(),
+                       [L = I->OrigIns](const ShadowOriginAndInsertPoint &R) {
+                         return L != R.OrigIns;
+                       });
+      // Process all checks of instruction at once.
+      materializeInstructionChecks(InstrumentWithCalls,
+                                   ArrayRef<ShadowOriginAndInsertPoint>(I, J));
+      I = J;
+    }
+
     LLVM_DEBUG(dbgs() << "DONE:\n" << F);
   }
 
@@ -1353,7 +1466,7 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
     if (InstrumentLifetimeStart) {
       for (auto Item : LifetimeStartList) {
         instrumentAlloca(*Item.second, Item.first);
-        AllocaSet.erase(Item.second);
+        AllocaSet.remove(Item.second);
       }
     }
     // Poison the allocas for which we didn't instrument the corresponding
@@ -1928,7 +2041,7 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
   void visitLoadInst(LoadInst &I) {
     assert(I.getType()->isSized() && "Load type must have size");
     assert(!I.getMetadata(LLVMContext::MD_nosanitize));
-    IRBuilder<> IRB(I.getNextNode());
+    NextNodeIRBuilder IRB(&I);
     Type *ShadowTy = getShadowTy(&I);
     Value *Addr = I.getPointerOperand();
     Value *ShadowPtr = nullptr, *OriginPtr = nullptr;
@@ -3600,9 +3713,7 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
         IRB.CreateExtractElement(makeAddAcquireOrderingTable(IRB), Ordering);
     CB.setArgOperand(3, NewOrdering);
 
-    IRBuilder<> NextIRB(CB.getNextNode());
-    NextIRB.SetCurrentDebugLocation(CB.getDebugLoc());
-
+    NextNodeIRBuilder NextIRB(&CB);
     Value *SrcShadowPtr, *SrcOriginPtr;
     std::tie(SrcShadowPtr, SrcOriginPtr) =
         getShadowOriginPtr(SrcPtr, NextIRB, NextIRB.getInt8Ty(), Align(1),
@@ -3957,8 +4068,7 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
   void instrumentAlloca(AllocaInst &I, Instruction *InsPoint = nullptr) {
     if (!InsPoint)
       InsPoint = &I;
-    IRBuilder<> IRB(InsPoint->getNextNode());
-    IRB.SetCurrentDebugLocation(InsPoint->getDebugLoc());
+    NextNodeIRBuilder IRB(InsPoint);
     const DataLayout &DL = F.getParent()->getDataLayout();
     uint64_t TypeSize = DL.getTypeAllocSize(I.getAllocatedType());
     Value *Len = ConstantInt::get(MS.IntptrTy, TypeSize);
@@ -4435,7 +4545,7 @@ struct VarArgAMD64Helper : public VarArgHelper {
     // Copy va_list shadow from the backup copy of the TLS contents.
     for (size_t i = 0, n = VAStartInstrumentationList.size(); i < n; i++) {
       CallInst *OrigInst = VAStartInstrumentationList[i];
-      IRBuilder<> IRB(OrigInst->getNextNode());
+      NextNodeIRBuilder IRB(OrigInst);
       Value *VAListTag = OrigInst->getArgOperand(0);
 
       Type *RegSaveAreaPtrTy = Type::getInt64PtrTy(*MS.C);
@@ -4577,7 +4687,7 @@ struct VarArgMIPS64Helper : public VarArgHelper {
     // Copy va_list shadow from the backup copy of the TLS contents.
     for (size_t i = 0, n = VAStartInstrumentationList.size(); i < n; i++) {
       CallInst *OrigInst = VAStartInstrumentationList[i];
-      IRBuilder<> IRB(OrigInst->getNextNode());
+      NextNodeIRBuilder IRB(OrigInst);
       Value *VAListTag = OrigInst->getArgOperand(0);
       Type *RegSaveAreaPtrTy = Type::getInt64PtrTy(*MS.C);
       Value *RegSaveAreaPtrPtr =
@@ -4766,7 +4876,7 @@ struct VarArgAArch64Helper : public VarArgHelper {
     // the TLS contents.
     for (size_t i = 0, n = VAStartInstrumentationList.size(); i < n; i++) {
       CallInst *OrigInst = VAStartInstrumentationList[i];
-      IRBuilder<> IRB(OrigInst->getNextNode());
+      NextNodeIRBuilder IRB(OrigInst);
 
       Value *VAListTag = OrigInst->getArgOperand(0);
 
@@ -5007,7 +5117,7 @@ struct VarArgPowerPC64Helper : public VarArgHelper {
     // Copy va_list shadow from the backup copy of the TLS contents.
     for (size_t i = 0, n = VAStartInstrumentationList.size(); i < n; i++) {
       CallInst *OrigInst = VAStartInstrumentationList[i];
-      IRBuilder<> IRB(OrigInst->getNextNode());
+      NextNodeIRBuilder IRB(OrigInst);
       Value *VAListTag = OrigInst->getArgOperand(0);
       Type *RegSaveAreaPtrTy = Type::getInt64PtrTy(*MS.C);
       Value *RegSaveAreaPtrPtr =
@@ -5327,7 +5437,7 @@ struct VarArgSystemZHelper : public VarArgHelper {
     for (size_t VaStartNo = 0, VaStartNum = VAStartInstrumentationList.size();
          VaStartNo < VaStartNum; VaStartNo++) {
       CallInst *OrigInst = VAStartInstrumentationList[VaStartNo];
-      IRBuilder<> IRB(OrigInst->getNextNode());
+      NextNodeIRBuilder IRB(OrigInst);
       Value *VAListTag = OrigInst->getArgOperand(0);
       copyRegSaveArea(IRB, VAListTag);
       copyOverflowArea(IRB, VAListTag);

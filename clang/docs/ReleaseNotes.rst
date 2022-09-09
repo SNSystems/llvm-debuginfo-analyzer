@@ -89,6 +89,10 @@ Bug Fixes
 - Fix a crash when attempting to default a virtual constexpr non-special member
   function in a derived class. This fixes
   `Issue 57431 <https://github.com/llvm/llvm-project/issues/57431>`_
+- Fix a crash where we attempt to define a deleted destructor. This fixes
+  `Issue 57516 <https://github.com/llvm/llvm-project/issues/57516>`_
+- Fix ``__builtin_assume_aligned`` crash when the 1st arg is array type. This fixes
+  `Issue 57169 <https://github.com/llvm/llvm-project/issues/57169>`_
 
 
 Improvements to Clang's diagnostics
@@ -127,13 +131,22 @@ Improvements to Clang's diagnostics
   supports both c and c++ language.
 - When diagnosing multi-level pack expansions of mismatched lengths, Clang will
   now, in most cases, be able to point to the relevant outer parameter.
+- no_sanitize("...") on a global variable for known but not relevant sanitizers
+  is now just a warning. It now says that this will be ignored instead of
+  incorrectly saying no_sanitize only applies to functions and methods.
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------
-
-
-Non-comprehensive list of changes in this release
--------------------------------------------------
+- It's now possible to set the crash diagnostics directory through
+  the environment variable ``CLANG_CRASH_DIAGNOSTICS_DIR``.
+  The ``-fcrash-diagnostics-dir`` flag takes precedence.
+- When using header modules, inclusion of a private header and violations of
+  the `use-declaration rules
+  <https://clang.llvm.org/docs/Modules.html#use-declaration>`_ are now
+  diagnosed even when the includer is a textual header. This change can be
+  temporarily reversed with ``-Xclang
+  -fno-modules-validate-textual-header-includes``, but this flag will be
+  removed in a future Clang release.
 
 New Compiler Flags
 ------------------
@@ -165,6 +178,10 @@ Attribute Changes in Clang
 
 Windows Support
 ---------------
+- For the MinGW driver, added the options ``-mguard=none``, ``-mguard=cf`` and
+  ``-mguard=cf-nochecks`` (equivalent to ``/guard:cf-``, ``/guard:cf`` and
+  ``/guard:cf,nochecks`` in clang-cl) for enabling Control Flow Guard checks
+  and generation of address-taken function table.
 
 AIX Support
 -----------
@@ -187,6 +204,10 @@ C++ Language Changes in Clang
 
 - Implemented DR692, DR1395 and DR1432. Use the ``-fclang-abi-compat=15`` option
   to get the old partial ordering behavior regarding packs.
+- Clang's default C++/ObjC++ standard is now ``gnu++17`` instead of ``gnu++14``.
+  This means Clang will by default accept code using features from C++17 and
+  conforming GNU extensions. Projects incompatible with C++17 can add
+  ``-std=gnu++14`` to their build settings to restore the previous behaviour.
 
 C++20 Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
@@ -211,10 +232,17 @@ C++20 Feature Support
   `GH55216 <https://github.com/llvm/llvm-project/issues/55216>`_.
 - Correctly set expression evaluation context as 'immediate function context' in
   consteval functions.
-  This fixes `GH51182 <https://github.com/llvm/llvm-project/issues/51182>`
+  This fixes `GH51182 <https://github.com/llvm/llvm-project/issues/51182>`_.
+
 - Fixes an assert crash caused by looking up missing vtable information on ``consteval``
   virtual functions. Fixes `GH55065 <https://github.com/llvm/llvm-project/issues/55065>`_.
 
+- Skip rebuilding lambda expressions in arguments of immediate invocations.
+  This fixes `GH56183 <https://github.com/llvm/llvm-project/issues/56183>`_,
+  `GH51695 <https://github.com/llvm/llvm-project/issues/51695>`_,
+  `GH50455 <https://github.com/llvm/llvm-project/issues/50455>`_,
+  `GH54872 <https://github.com/llvm/llvm-project/issues/54872>`_,
+  `GH54587 <https://github.com/llvm/llvm-project/issues/54587>`_.
 
 C++2b Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
@@ -260,6 +288,10 @@ DWARF Support in Clang
 Arm and AArch64 Support in Clang
 --------------------------------
 
+- `-march` values for targeting armv2, armv2A, armv3 and armv3M have been removed.
+  Their presence gave the impression that Clang can correctly generate code for
+  them, which it cannot.
+
 Floating Point Support in Clang
 -------------------------------
 
@@ -283,6 +315,8 @@ libclang
 
 - Introduced the new function `clang_getUnqualifiedType`, which mimics
   the behavior of `QualType::getUnqualifiedType` for `CXType`.
+- Introduced the new function `clang_getNonReferenceType`, which mimics
+  the behavior of `QualType::getNonReferenceType` for `CXType`.
 
 Static Analyzer
 ---------------

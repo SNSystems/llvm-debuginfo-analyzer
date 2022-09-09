@@ -11,11 +11,9 @@ ctime
 exception
 experimental/memory_resource
 experimental/utility
-experimental/vector
 initializer_list
 iosfwd
 limits
-memory
 new
 ratio
 stdexcept

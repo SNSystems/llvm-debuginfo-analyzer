@@ -287,6 +287,10 @@ struct BufferizationOptions {
   /// Should be used only with `testAnalysisOnly = true`.
   unsigned analysisFuzzerSeed = 0;
 
+  /// If set to `true`, the analysis is skipped. A buffer is copied before every
+  /// write. This flag cannot be used together with `testAnalysisOnly = true`.
+  bool copyBeforeWrite = false;
+
   /// If set to `true`, does not modify the IR apart from adding attributes (for
   /// checking the results of the analysis) and post analysis steps.
   bool testAnalysisOnly = false;
@@ -566,6 +570,12 @@ namespace detail {
 FailureOr<BaseMemRefType>
 defaultGetBufferType(Value value, const BufferizationOptions &options,
                      const DenseMap<Value, BaseMemRefType> &fixedTypes);
+
+/// This is the default implementation of
+/// BufferizableOpInterface::isRepetitiveRegion. Should not be called from other
+/// places.
+bool defaultIsRepetitiveRegion(BufferizableOpInterface bufferizableOp,
+                               unsigned index);
 } // namespace detail
 
 } // namespace bufferization

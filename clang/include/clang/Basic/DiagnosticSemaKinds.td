@@ -4052,6 +4052,9 @@ def warn_transparent_union_attribute_zero_fields : Warning<
 def warn_attribute_type_not_supported : Warning<
   "%0 attribute argument not supported: %1">,
   InGroup<IgnoredAttributes>;
+def warn_attribute_type_not_supported_global : Warning<
+  "%0 attribute argument '%1' not supported on a global variable">,
+  InGroup<IgnoredAttributes>;
 def warn_attribute_unknown_visibility : Warning<"unknown visibility %0">,
   InGroup<IgnoredAttributes>;
 def warn_attribute_protected_visibility :
@@ -11269,6 +11272,9 @@ def warn_always_inline_coroutine : Warning<
 def err_coroutine_unusable_new : Error<
   "'operator new' provided by %0 is not usable with the function signature of %1"
 >;
+def err_coroutine_unfound_nothrow_new : Error <
+  "unable to find '::operator new(size_t, nothrow_t)' for %0"
+>;
 } // end of coroutines issue category
 
 let CategoryName = "Documentation Issue" in {
@@ -11630,7 +11636,7 @@ def warn_tcb_enforcement_violation : Warning<
 
 // RISC-V builtin required extension warning
 def err_riscv_builtin_requires_extension : Error<
-  "builtin requires at least one of the following extensions support to be enabled : %0">;
+  "builtin requires at least one of the following extensions to be enabled: %0">;
 def err_riscv_builtin_invalid_lmul : Error<
   "LMUL argument must be in the range [0,3] or [5,7]">;
 

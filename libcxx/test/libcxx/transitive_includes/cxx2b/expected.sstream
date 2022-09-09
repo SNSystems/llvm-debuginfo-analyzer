@@ -6,7 +6,6 @@ climits
 cmath
 compare
 concepts
-cstdarg
 cstddef
 cstdint
 cstdio
@@ -22,12 +21,10 @@ iosfwd
 istream
 limits
 locale
-memory
 mutex
 new
 ostream
 ratio
-sstream
 stdexcept
 streambuf
 string

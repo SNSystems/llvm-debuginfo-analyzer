@@ -17,8 +17,6 @@ exception
 initializer_list
 iosfwd
 limits
-memory
-mutex
 new
 ratio
 stdexcept

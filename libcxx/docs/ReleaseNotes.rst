@@ -39,6 +39,8 @@ Implemented Papers
 ------------------
 - P2499R0 - ``string_view`` range constructor should be ``explicit``
 - P2417R2 - A more constexpr bitset
+- P2445R1 - ``std::forward_like``
+- P2273R3 - Making ``std::unique_ptr`` constexpr
 
 Improvements and New Features
 -----------------------------
@@ -51,7 +53,7 @@ Deprecations and Removals
 
   - C++20: ``chrono``
   - C++2b: ``algorithm``, ``array``, ``atomic``, ``bit``, ``chrono``,
-    ``climits``, ``cmath``, ``compare``, ``concepts``, ``cstdlib``,
+    ``climits``, ``cmath``, ``compare``, ``concepts``, ``cstdarg``, ``cstdlib``,
     ``cstring``, ``ctime``, ``exception``, ``functional``,
     ``initializer_list``, ``iosfwd``, ``iterator``, ``memory``, ``new``,
     ``optional``, ``ratio``, ``stdexcept``, ``tuple``, ``typeinfo``,
@@ -75,7 +77,7 @@ API Changes
 
 - ``_LIBCPP_ENABLE_NODISCARD`` and ``_LIBCPP_DISABLE_NODISCARD_AFTER_CXX17`` are no longer respected.
   Any standards-required ``[[nodiscard]]`` applications in C++20 are now always enabled. Any extended applications
-  can now be enabled by defining ``_LIBCPP_ENABLE_NODISCARD_EXT``.
+  are now enabled by default and can be disabled by defining ``_LIBCPP_DISABLE_NODISCARD_EXT``.
 
 ABI Affecting Changes
 ---------------------

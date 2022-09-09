@@ -30,8 +30,8 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/Support/LLVM.h"
-#include "mlir/Support/MathExtras.h"
 #include "llvm/ADT/StringSet.h"
+#include "llvm/ADT/TypeSwitch.h"
 #include "llvm/ADT/bit.h"
 #include <numeric>
 
@@ -227,91 +227,15 @@ struct BitmaskEnumStorage : public AttributeStorage {
 } // namespace vector
 } // namespace mlir
 
-CombiningKindAttr CombiningKindAttr::get(CombiningKind kind,
-                                         MLIRContext *context) {
-  return Base::get(context, static_cast<uint64_t>(kind));
-}
-
-CombiningKind CombiningKindAttr::getKind() const {
-  return static_cast<CombiningKind>(getImpl()->value);
-}
-
-static constexpr const CombiningKind combiningKindsList[] = {
-    // clang-format off
-    CombiningKind::ADD,
-    CombiningKind::MUL,
-    CombiningKind::MINUI,
-    CombiningKind::MINSI,
-    CombiningKind::MINF,
-    CombiningKind::MAXUI,
-    CombiningKind::MAXSI,
-    CombiningKind::MAXF,
-    CombiningKind::AND,
-    CombiningKind::OR,
-    CombiningKind::XOR,
-    // clang-format on
-};
-
-void CombiningKindAttr::print(AsmPrinter &printer) const {
-  printer << "<";
-  auto kinds = llvm::make_filter_range(combiningKindsList, [&](auto kind) {
-    return bitEnumContains(this->getKind(), kind);
-  });
-  llvm::interleaveComma(kinds, printer,
-                        [&](auto kind) { printer << stringifyEnum(kind); });
-  printer << ">";
-}
-
-Attribute CombiningKindAttr::parse(AsmParser &parser, Type type) {
-  if (failed(parser.parseLess()))
-    return {};
-
-  StringRef elemName;
-  if (failed(parser.parseKeyword(&elemName)))
-    return {};
-
-  auto kind = symbolizeCombiningKind(elemName);
-  if (!kind) {
-    parser.emitError(parser.getNameLoc(), "Unknown combining kind: ")
-        << elemName;
-    return {};
-  }
-
-  if (failed(parser.parseGreater()))
-    return {};
-
-  return CombiningKindAttr::get(*kind, parser.getContext());
-}
-
-Attribute VectorDialect::parseAttribute(DialectAsmParser &parser,
-                                        Type type) const {
-  StringRef attrKind;
-  if (parser.parseKeyword(&attrKind))
-    return {};
-
-  if (attrKind == "kind")
-    return CombiningKindAttr::parse(parser, {});
-
-  parser.emitError(parser.getNameLoc(), "Unknown attribute type: ") << attrKind;
-  return {};
-}
-
-void VectorDialect::printAttribute(Attribute attr,
-                                   DialectAsmPrinter &os) const {
-  if (auto ck = attr.dyn_cast<CombiningKindAttr>()) {
-    os << "kind";
-    ck.print(os);
-    return;
-  }
-  llvm_unreachable("Unknown attribute type");
-}
-
 //===----------------------------------------------------------------------===//
 // VectorDialect
 //===----------------------------------------------------------------------===//
 
 void VectorDialect::initialize() {
-  addAttributes<CombiningKindAttr>();
+  addAttributes<
+#define GET_ATTRDEF_LIST
+#include "mlir/Dialect/Vector/IR/VectorOpsAttrDefs.cpp.inc"
+      >();
 
   addOperations<
 #define GET_OP_LIST
@@ -558,7 +482,7 @@ void vector::ContractionOp::build(OpBuilder &builder, OperationState &result,
   result.addAttribute(::mlir::getIndexingMapsAttrName(), indexingMaps);
   result.addAttribute(::mlir::getIteratorTypesAttrName(), iteratorTypes);
   result.addAttribute(ContractionOp::getKindAttrStrName(),
-                      CombiningKindAttr::get(kind, builder.getContext()));
+                      CombiningKindAttr::get(builder.getContext(), kind));
 }
 
 ParseResult ContractionOp::parse(OpAsmParser &parser, OperationState &result) {
@@ -587,9 +511,10 @@ ParseResult ContractionOp::parse(OpAsmParser &parser, OperationState &result) {
   result.attributes.assign(dictAttr.getValue().begin(),
                            dictAttr.getValue().end());
   if (!result.attributes.get(ContractionOp::getKindAttrStrName())) {
-    result.addAttribute(ContractionOp::getKindAttrStrName(),
-                        CombiningKindAttr::get(ContractionOp::getDefaultKind(),
-                                               result.getContext()));
+    result.addAttribute(
+        ContractionOp::getKindAttrStrName(),
+        CombiningKindAttr::get(result.getContext(),
+                               ContractionOp::getDefaultKind()));
   }
   if (masksInfo.empty())
     return success();
@@ -1539,7 +1464,7 @@ namespace {
 // Pattern to rewrite a ExtractOp(Broadcast) -> Broadcast.
 class ExtractOpFromBroadcast final : public OpRewritePattern<ExtractOp> {
 public:
-  using OpRewritePattern<ExtractOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ExtractOp extractOp,
                                 PatternRewriter &rewriter) const override {
@@ -1569,7 +1494,7 @@ public:
 // Pattern to rewrite a ExtractOp(splat ConstantOp) -> ConstantOp.
 class ExtractOpConstantFolder final : public OpRewritePattern<ExtractOp> {
 public:
-  using OpRewritePattern<ExtractOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ExtractOp extractOp,
                                 PatternRewriter &rewriter) const override {
@@ -1756,7 +1681,7 @@ namespace {
 
 // Fold broadcast1(broadcast2(x)) into broadcast1(x).
 struct BroadcastFolder : public OpRewritePattern<BroadcastOp> {
-  using OpRewritePattern<BroadcastOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(BroadcastOp broadcastOp,
                                 PatternRewriter &rewriter) const override {
@@ -1903,7 +1828,7 @@ namespace {
 // Pattern to rewrite a 0-D shuffle with [0] or [1] mask returning a 1-D vector
 // to a broadcast.
 struct Canonicalize0DShuffleOp : public OpRewritePattern<ShuffleOp> {
-  using OpRewritePattern<ShuffleOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ShuffleOp shuffleOp,
                                 PatternRewriter &rewriter) const override {
@@ -1927,7 +1852,7 @@ struct Canonicalize0DShuffleOp : public OpRewritePattern<ShuffleOp> {
 /// Pattern to rewrite a ShuffleOp(SplatOp, SplatOp) to SplatOp.
 class ShuffleSplat final : public OpRewritePattern<ShuffleOp> {
 public:
-  using OpRewritePattern<ShuffleOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ShuffleOp op,
                                 PatternRewriter &rewriter) const override {
@@ -2054,7 +1979,7 @@ namespace {
 // broadcast.
 class InsertToBroadcast final : public OpRewritePattern<InsertOp> {
 public:
-  using OpRewritePattern<InsertOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(InsertOp insertOp,
                                 PatternRewriter &rewriter) const override {
@@ -2071,7 +1996,7 @@ public:
 /// Pattern to rewrite a InsertOp(SplatOp, SplatOp) to SplatOp.
 class InsertSplatToSplat final : public OpRewritePattern<InsertOp> {
 public:
-  using OpRewritePattern<InsertOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(InsertOp op,
                                 PatternRewriter &rewriter) const override {
@@ -2277,7 +2202,7 @@ namespace {
 class FoldInsertStridedSliceSplat final
     : public OpRewritePattern<InsertStridedSliceOp> {
 public:
-  using OpRewritePattern<InsertStridedSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(InsertStridedSliceOp insertStridedSliceOp,
                                 PatternRewriter &rewriter) const override {
@@ -2302,7 +2227,7 @@ public:
 class FoldInsertStridedSliceOfExtract final
     : public OpRewritePattern<InsertStridedSliceOp> {
 public:
-  using OpRewritePattern<InsertStridedSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(InsertStridedSliceOp insertStridedSliceOp,
                                 PatternRewriter &rewriter) const override {
@@ -2385,8 +2310,8 @@ ParseResult OuterProductOp::parse(OpAsmParser &parser, OperationState &result) {
   if (!result.attributes.get(OuterProductOp::getKindAttrStrName())) {
     result.attributes.append(
         OuterProductOp::getKindAttrStrName(),
-        CombiningKindAttr::get(OuterProductOp::getDefaultKind(),
-                               result.getContext()));
+        CombiningKindAttr::get(result.getContext(),
+                               OuterProductOp::getDefaultKind()));
   }
 
   return failure(
@@ -2662,7 +2587,7 @@ namespace {
 class StridedSliceConstantMaskFolder final
     : public OpRewritePattern<ExtractStridedSliceOp> {
 public:
-  using OpRewritePattern<ExtractStridedSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ExtractStridedSliceOp extractStridedSliceOp,
                                 PatternRewriter &rewriter) const override {
@@ -2715,7 +2640,7 @@ public:
 class StridedSliceConstantFolder final
     : public OpRewritePattern<ExtractStridedSliceOp> {
 public:
-  using OpRewritePattern<ExtractStridedSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ExtractStridedSliceOp extractStridedSliceOp,
                                 PatternRewriter &rewriter) const override {
@@ -2741,7 +2666,7 @@ public:
 class StridedSliceBroadcast final
     : public OpRewritePattern<ExtractStridedSliceOp> {
 public:
-  using OpRewritePattern<ExtractStridedSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ExtractStridedSliceOp op,
                                 PatternRewriter &rewriter) const override {
@@ -2784,7 +2709,7 @@ public:
 /// Pattern to rewrite an ExtractStridedSliceOp(SplatOp) to SplatOp.
 class StridedSliceSplat final : public OpRewritePattern<ExtractStridedSliceOp> {
 public:
-  using OpRewritePattern<ExtractStridedSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ExtractStridedSliceOp op,
                                 PatternRewriter &rewriter) const override {
@@ -3257,7 +3182,7 @@ namespace {
 struct FoldExtractSliceIntoTransferRead
     : public OpRewritePattern<TransferReadOp> {
 public:
-  using OpRewritePattern<TransferReadOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(TransferReadOp xferOp,
                                 PatternRewriter &rewriter) const override {
@@ -3354,7 +3279,7 @@ public:
 /// ```
 struct TransferReadAfterWriteToBroadcast
     : public OpRewritePattern<TransferReadOp> {
-  using OpRewritePattern<TransferReadOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(TransferReadOp readOp,
                                 PatternRewriter &rewriter) const override {
@@ -3703,7 +3628,7 @@ namespace {
 /// any other uses.
 class FoldWaw final : public OpRewritePattern<TransferWriteOp> {
 public:
-  using OpRewritePattern<TransferWriteOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(TransferWriteOp writeOp,
                                 PatternRewriter &rewriter) const override {
     if (!writeOp.getShapedType().isa<RankedTensorType>())
@@ -3749,7 +3674,7 @@ public:
 struct FoldInsertSliceIntoTransferWrite
     : public OpRewritePattern<tensor::InsertSliceOp> {
 public:
-  using OpRewritePattern<tensor::InsertSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(tensor::InsertSliceOp insertOp,
                                 PatternRewriter &rewriter) const override {
@@ -3843,7 +3768,7 @@ public:
 struct SwapExtractSliceOfTransferWrite
     : public OpRewritePattern<tensor::InsertSliceOp> {
 public:
-  using OpRewritePattern<tensor::InsertSliceOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(tensor::InsertSliceOp insertOp,
                                 PatternRewriter &rewriter) const override {
@@ -4022,7 +3947,7 @@ LogicalResult MaskedLoadOp::verify() {
 namespace {
 class MaskedLoadFolder final : public OpRewritePattern<MaskedLoadOp> {
 public:
-  using OpRewritePattern<MaskedLoadOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(MaskedLoadOp load,
                                 PatternRewriter &rewriter) const override {
     switch (getMaskFormat(load.getMask())) {
@@ -4073,7 +3998,7 @@ LogicalResult MaskedStoreOp::verify() {
 namespace {
 class MaskedStoreFolder final : public OpRewritePattern<MaskedStoreOp> {
 public:
-  using OpRewritePattern<MaskedStoreOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(MaskedStoreOp store,
                                 PatternRewriter &rewriter) const override {
     switch (getMaskFormat(store.getMask())) {
@@ -4131,7 +4056,7 @@ LogicalResult GatherOp::verify() {
 namespace {
 class GatherFolder final : public OpRewritePattern<GatherOp> {
 public:
-  using OpRewritePattern<GatherOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(GatherOp gather,
                                 PatternRewriter &rewriter) const override {
     switch (getMaskFormat(gather.getMask())) {
@@ -4177,7 +4102,7 @@ LogicalResult ScatterOp::verify() {
 namespace {
 class ScatterFolder final : public OpRewritePattern<ScatterOp> {
 public:
-  using OpRewritePattern<ScatterOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(ScatterOp scatter,
                                 PatternRewriter &rewriter) const override {
     switch (getMaskFormat(scatter.getMask())) {
@@ -4223,7 +4148,7 @@ LogicalResult ExpandLoadOp::verify() {
 namespace {
 class ExpandLoadFolder final : public OpRewritePattern<ExpandLoadOp> {
 public:
-  using OpRewritePattern<ExpandLoadOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(ExpandLoadOp expand,
                                 PatternRewriter &rewriter) const override {
     switch (getMaskFormat(expand.getMask())) {
@@ -4268,7 +4193,7 @@ LogicalResult CompressStoreOp::verify() {
 namespace {
 class CompressStoreFolder final : public OpRewritePattern<CompressStoreOp> {
 public:
-  using OpRewritePattern<CompressStoreOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(CompressStoreOp compress,
                                 PatternRewriter &rewriter) const override {
     switch (getMaskFormat(compress.getMask())) {
@@ -4408,7 +4333,7 @@ namespace {
 // Pattern to rewrite a ShapeCast(splat ConstantOp) -> ConstantOp.
 class ShapeCastConstantFolder final : public OpRewritePattern<ShapeCastOp> {
 public:
-  using OpRewritePattern<ShapeCastOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ShapeCastOp shapeCastOp,
                                 PatternRewriter &rewriter) const override {
@@ -4434,7 +4359,7 @@ public:
 /// enough to capture the result in a single op).
 class ShapeCastBroadcastFolder final : public OpRewritePattern<ShapeCastOp> {
 public:
-  using OpRewritePattern<ShapeCastOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ShapeCastOp shapeCastOp,
                                 PatternRewriter &rewriter) const override {
@@ -4664,7 +4589,7 @@ namespace {
 // Rewrites two back-to-back TransposeOp operations into a single TransposeOp.
 class TransposeFolder final : public OpRewritePattern<vector::TransposeOp> {
 public:
-  using OpRewritePattern<vector::TransposeOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(vector::TransposeOp transposeOp,
                                 PatternRewriter &rewriter) const override {
@@ -4726,7 +4651,7 @@ struct FoldTransposedScalarBroadcast final
 // Folds transpose(splat x : src_type) : res_type into splat x : res_type.
 class FoldTransposeSplat final : public OpRewritePattern<TransposeOp> {
 public:
-  using OpRewritePattern<TransposeOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(TransposeOp transposeOp,
                                 PatternRewriter &rewriter) const override {
@@ -4826,7 +4751,7 @@ namespace {
 // Pattern to rewrite a CreateMaskOp with a ConstantMaskOp.
 class CreateMaskFolder final : public OpRewritePattern<CreateMaskOp> {
 public:
-  using OpRewritePattern<CreateMaskOp>::OpRewritePattern;
+  using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(CreateMaskOp createMaskOp,
                                 PatternRewriter &rewriter) const override {
@@ -4925,12 +4850,12 @@ LogicalResult ScanOp::verify() {
 }
 
 void mlir::vector::populateVectorToVectorCanonicalizationPatterns(
-    RewritePatternSet &patterns) {
+    RewritePatternSet &patterns, PatternBenefit benefit) {
   patterns
       .add<CreateMaskFolder, MaskedLoadFolder, MaskedStoreFolder, GatherFolder,
            ScatterFolder, ExpandLoadFolder, CompressStoreFolder,
            StridedSliceConstantMaskFolder, TransposeFolder>(
-          patterns.getContext());
+          patterns.getContext(), benefit);
 }
 
 //===----------------------------------------------------------------------===//
@@ -5178,6 +5103,9 @@ Value mlir::vector::makeArithReduction(OpBuilder &b, Location loc,
 //===----------------------------------------------------------------------===//
 // TableGen'd op method definitions
 //===----------------------------------------------------------------------===//
+
+#define GET_ATTRDEF_CLASSES
+#include "mlir/Dialect/Vector/IR/VectorOpsAttrDefs.cpp.inc"
 
 #define GET_OP_CLASSES
 #include "mlir/Dialect/Vector/IR/VectorOps.cpp.inc"

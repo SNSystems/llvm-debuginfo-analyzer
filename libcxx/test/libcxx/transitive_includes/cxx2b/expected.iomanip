@@ -6,7 +6,6 @@ climits
 cmath
 compare
 concepts
-cstdarg
 cstddef
 cstdint
 cstdio
@@ -17,13 +16,11 @@ cwchar
 cwctype
 exception
 initializer_list
-iomanip
 ios
 iosfwd
 istream
 limits
 locale
-memory
 mutex
 new
 ostream

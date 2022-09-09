@@ -6,7 +6,6 @@ climits
 cmath
 compare
 concepts
-cstdarg
 cstddef
 cstdint
 cstdio
@@ -22,7 +21,6 @@ iosfwd
 istream
 limits
 locale
-memory
 mutex
 new
 ostream
@@ -31,7 +29,6 @@ stdexcept
 streambuf
 string
 string_view
-strstream
 system_error
 tuple
 type_traits

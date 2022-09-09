@@ -13,10 +13,8 @@ exception
 initializer_list
 iosfwd
 limits
-memory
 new
 ratio
-stack
 stdexcept
 tuple
 type_traits

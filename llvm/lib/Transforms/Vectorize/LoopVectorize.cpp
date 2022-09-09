@@ -366,6 +366,10 @@ cl::opt<bool> PrintVPlansInDotFormat(
     "vplan-print-in-dot-format", cl::init(false), cl::Hidden,
     cl::desc("Use dot format instead of plain text when dumping VPlans"));
 
+cl::opt<cl::boolOrDefault> ForceSafeDivisor(
+    "force-widen-divrem-via-safe-divisor", cl::Hidden,
+    cl::desc("Override cost based safe divisor widening for div/rem instructions"));
+
 /// A helper function that returns true if the given type is irregular. The
 /// type is irregular if its allocated size doesn't equal the store size of an
 /// element of the corresponding vector type.
@@ -475,7 +479,8 @@ public:
 
   /// Widen a single call instruction within the innermost loop.
   void widenCallInstruction(CallInst &CI, VPValue *Def, VPUser &ArgOperands,
-                            VPTransformState &State);
+                            VPTransformState &State,
+                            Intrinsic::ID VectorIntrinsicID);
 
   /// Fix the vectorized code, taking care of header phi's, live-outs, and more.
   void fixVectorizedLoop(VPTransformState &State, VPlan &Plan);
@@ -1435,6 +1440,22 @@ public:
     }));
   }
 
+  /// Given costs for both strategies, return true if the scalar predication
+  /// lowering should be used for div/rem.  This incorporates an override
+  /// option so it is not simply a cost comparison.
+  bool isDivRemScalarWithPredication(InstructionCost ScalarCost,
+                                     InstructionCost SafeDivisorCost) const {
+    switch (ForceSafeDivisor) {
+    case cl::BOU_UNSET:
+      return ScalarCost < SafeDivisorCost;
+    case cl::BOU_TRUE:
+      return false;
+    case cl::BOU_FALSE:
+      return true;
+    };
+    llvm_unreachable("impossible case value");
+  }
+
   /// Returns true if \p I is an instruction which requires predication and
   /// for which our chosen predication strategy is scalarization (i.e. we
   /// don't have an alternate strategy such as masking available).
@@ -1445,6 +1466,14 @@ public:
   /// at runtime.  The result is independent of the predication mechanism.
   /// Superset of instructions that return true for isScalarWithPredication.
   bool isPredicatedInst(Instruction *I) const;
+
+  /// Return the costs for our two available strategies for lowering a
+  /// div/rem operation which requires speculating at least one lane.
+  /// First result is for scalarization (will be invalid for scalable
+  /// vectors); second is for the safe-divisor strategy.
+  std::pair<InstructionCost, InstructionCost>
+  getDivRemSpeculationCost(Instruction *I,
+                           ElementCount VF) const;
 
   /// Returns true if \p I is a memory instruction with consecutive memory
   /// access that can be widened.
@@ -4152,78 +4181,6 @@ bool InnerLoopVectorizer::useOrderedReductions(
   return Cost->useOrderedReductions(RdxDesc);
 }
 
-void InnerLoopVectorizer::widenCallInstruction(CallInst &CI, VPValue *Def,
-                                               VPUser &ArgOperands,
-                                               VPTransformState &State) {
-  assert(!isa<DbgInfoIntrinsic>(CI) &&
-         "DbgInfoIntrinsic should have been dropped during VPlan construction");
-  State.setDebugLocFromInst(&CI);
-
-  SmallVector<Type *, 4> Tys;
-  for (Value *ArgOperand : CI.args())
-    Tys.push_back(ToVectorTy(ArgOperand->getType(), VF.getKnownMinValue()));
-
-  Intrinsic::ID ID = getVectorIntrinsicIDForCall(&CI, TLI);
-
-  // The flag shows whether we use Intrinsic or a usual Call for vectorized
-  // version of the instruction.
-  // Is it beneficial to perform intrinsic call compared to lib call?
-  bool NeedToScalarize = false;
-  InstructionCost CallCost = Cost->getVectorCallCost(&CI, VF, NeedToScalarize);
-  InstructionCost IntrinsicCost =
-      ID ? Cost->getVectorIntrinsicCost(&CI, VF) : 0;
-  bool UseVectorIntrinsic = ID && IntrinsicCost <= CallCost;
-  assert((UseVectorIntrinsic || !NeedToScalarize) &&
-         "Instruction should be scalarized elsewhere.");
-  assert((IntrinsicCost.isValid() || CallCost.isValid()) &&
-         "Either the intrinsic cost or vector call cost must be valid");
-
-  for (unsigned Part = 0; Part < UF; ++Part) {
-    SmallVector<Type *, 2> TysForDecl = {CI.getType()};
-    SmallVector<Value *, 4> Args;
-    for (const auto &I : enumerate(ArgOperands.operands())) {
-      // Some intrinsics have a scalar argument - don't replace it with a
-      // vector.
-      Value *Arg;
-      if (!UseVectorIntrinsic ||
-          !isVectorIntrinsicWithScalarOpAtArg(ID, I.index()))
-        Arg = State.get(I.value(), Part);
-      else
-        Arg = State.get(I.value(), VPIteration(0, 0));
-      if (isVectorIntrinsicWithOverloadTypeAtArg(ID, I.index()))
-        TysForDecl.push_back(Arg->getType());
-      Args.push_back(Arg);
-    }
-
-    Function *VectorF;
-    if (UseVectorIntrinsic) {
-      // Use vector version of the intrinsic.
-      if (VF.isVector())
-        TysForDecl[0] = VectorType::get(CI.getType()->getScalarType(), VF);
-      Module *M = State.Builder.GetInsertBlock()->getModule();
-      VectorF = Intrinsic::getDeclaration(M, ID, TysForDecl);
-      assert(VectorF && "Can't retrieve vector intrinsic.");
-    } else {
-      // Use vector version of the function call.
-      const VFShape Shape = VFShape::get(CI, VF, false /*HasGlobalPred*/);
-#ifndef NDEBUG
-      assert(VFDatabase(CI).getVectorizedFunction(Shape) != nullptr &&
-             "Can't create vector function.");
-#endif
-      VectorF = VFDatabase(CI).getVectorizedFunction(Shape);
-    }
-      SmallVector<OperandBundleDef, 1> OpBundles;
-      CI.getOperandBundlesAsDefs(OpBundles);
-      CallInst *V = Builder.CreateCall(VectorF, Args, OpBundles);
-
-      if (isa<FPMathOperator>(V))
-        V->copyFastMathFlags(&CI);
-
-      State.set(Def, V, Part);
-      State.addMetadata(V, &CI);
-  }
-}
-
 void LoopVectorizationCostModel::collectLoopScalars(ElementCount VF) {
   // We should not collect Scalars more than once per VF. Right now, this
   // function is called from collectUniformsAndScalars(), which already does
@@ -4437,12 +4394,13 @@ bool LoopVectorizationCostModel::isScalarWithPredication(
   case Instruction::UDiv:
   case Instruction::SDiv:
   case Instruction::SRem:
-  case Instruction::URem:
+  case Instruction::URem: {
     // We have the option to use the safe-divisor idiom to avoid predication.
-    // At the moment this is only used for scalable (which legally can't
-    // scalarize), but long term we want to make a cost based decision
-    // for fixed length vectors as well.
-    return !VF.isScalable();
+    // The cost based decision here will always select safe-divisor for
+    // scalable vectors as scalarization isn't legal.
+    const auto [ScalarCost, SafeDivisorCost] = getDivRemSpeculationCost(I, VF);
+    return isDivRemScalarWithPredication(ScalarCost, SafeDivisorCost);
+  }
   }
 }
 
@@ -4484,6 +4442,71 @@ bool LoopVectorizationCostModel::isPredicatedInst(Instruction *I) const {
     // context sensitive reasoning
     return !isSafeToSpeculativelyExecute(I);
   }
+}
+
+std::pair<InstructionCost, InstructionCost>
+LoopVectorizationCostModel::getDivRemSpeculationCost(Instruction *I,
+                                                    ElementCount VF) const {
+  assert(I->getOpcode() == Instruction::UDiv ||
+         I->getOpcode() == Instruction::SDiv ||
+         I->getOpcode() == Instruction::SRem ||
+         I->getOpcode() == Instruction::URem);
+  assert(!isSafeToSpeculativelyExecute(I));
+
+  const TTI::TargetCostKind CostKind = TTI::TCK_RecipThroughput;
+
+  // Scalarization isn't legal for scalable vector types
+  InstructionCost ScalarizationCost = InstructionCost::getInvalid();
+  if (!VF.isScalable()) {
+    // Get the scalarization cost and scale this amount by the probability of
+    // executing the predicated block. If the instruction is not predicated,
+    // we fall through to the next case.
+    ScalarizationCost = 0;
+
+    // These instructions have a non-void type, so account for the phi nodes
+    // that we will create. This cost is likely to be zero. The phi node
+    // cost, if any, should be scaled by the block probability because it
+    // models a copy at the end of each predicated block.
+    ScalarizationCost += VF.getKnownMinValue() *
+      TTI.getCFInstrCost(Instruction::PHI, CostKind);
+
+    // The cost of the non-predicated instruction.
+    ScalarizationCost += VF.getKnownMinValue() *
+      TTI.getArithmeticInstrCost(I->getOpcode(), I->getType(), CostKind);
+
+    // The cost of insertelement and extractelement instructions needed for
+    // scalarization.
+    ScalarizationCost += getScalarizationOverhead(I, VF);
+
+    // Scale the cost by the probability of executing the predicated blocks.
+    // This assumes the predicated block for each vector lane is equally
+    // likely.
+    ScalarizationCost = ScalarizationCost / getReciprocalPredBlockProb();
+  }
+  InstructionCost SafeDivisorCost = 0;
+
+  auto *VecTy = ToVectorTy(I->getType(), VF);
+
+  // The cost of the select guard to ensure all lanes are well defined
+  // after we speculate above any internal control flow.
+  SafeDivisorCost += TTI.getCmpSelInstrCost(
+    Instruction::Select, VecTy,
+    ToVectorTy(Type::getInt1Ty(I->getContext()), VF),
+    CmpInst::BAD_ICMP_PREDICATE, CostKind);
+
+  // Certain instructions can be cheaper to vectorize if they have a constant
+  // second vector operand. One example of this are shifts on x86.
+  Value *Op2 = I->getOperand(1);
+  auto Op2Info = TTI.getOperandInfo(Op2);
+  if (Op2Info.Kind == TargetTransformInfo::OK_AnyValue && Legal->isUniform(Op2))
+    Op2Info.Kind = TargetTransformInfo::OK_UniformValue;
+
+  SmallVector<const Value *, 4> Operands(I->operand_values());
+  SafeDivisorCost += TTI.getArithmeticInstrCost(
+    I->getOpcode(), VecTy, CostKind,
+    {TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None},
+    Op2Info, Operands, I);
+  return {ScalarizationCost, SafeDivisorCost};
 }
 
 bool LoopVectorizationCostModel::interleavedAccessCanBeWidened(
@@ -7069,56 +7092,9 @@ LoopVectorizationCostModel::getInstructionCost(Instruction *I, ElementCount VF,
   case Instruction::URem:
   case Instruction::SRem:
     if (VF.isVector() && isPredicatedInst(I)) {
-      // If we're speculating lanes, we have two options - scalarization and
-      // guarded widening.
-      if (isScalarWithPredication(I, VF)) {
-        // Get the scalarization cost and scale this amount by the probability of
-        // executing the predicated block. If the instruction is not predicated,
-        // we fall through to the next case.
-        InstructionCost Cost = 0;
-
-        // These instructions have a non-void type, so account for the phi nodes
-        // that we will create. This cost is likely to be zero. The phi node
-        // cost, if any, should be scaled by the block probability because it
-        // models a copy at the end of each predicated block.
-        Cost += VF.getKnownMinValue() *
-          TTI.getCFInstrCost(Instruction::PHI, CostKind);
-
-        // The cost of the non-predicated instruction.
-        Cost += VF.getKnownMinValue() *
-          TTI.getArithmeticInstrCost(I->getOpcode(), RetTy, CostKind);
-
-        // The cost of insertelement and extractelement instructions needed for
-        // scalarization.
-        Cost += getScalarizationOverhead(I, VF);
-
-        // Scale the cost by the probability of executing the predicated blocks.
-        // This assumes the predicated block for each vector lane is equally
-        // likely.
-        return Cost / getReciprocalPredBlockProb();
-      }
-      InstructionCost Cost = 0;
-
-      // The cost of the select guard to ensure all lanes are well defined
-      // after we speculate above any internal control flow.
-      Cost += TTI.getCmpSelInstrCost(
-                 Instruction::Select, ToVectorTy(I->getType(), VF),
-                 ToVectorTy(Type::getInt1Ty(I->getContext()), VF),
-                 CmpInst::BAD_ICMP_PREDICATE, CostKind);
-
-      // Certain instructions can be cheaper to vectorize if they have a constant
-      // second vector operand. One example of this are shifts on x86.
-      Value *Op2 = I->getOperand(1);
-      auto Op2Info = TTI.getOperandInfo(Op2);
-      if (Op2Info.Kind == TargetTransformInfo::OK_AnyValue && Legal->isUniform(Op2))
-        Op2Info.Kind = TargetTransformInfo::OK_UniformValue;
-
-      SmallVector<const Value *, 4> Operands(I->operand_values());
-      Cost += TTI.getArithmeticInstrCost(
-                I->getOpcode(), VectorTy, CostKind,
-                {TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None},
-                Op2Info, Operands, I);
-      return Cost;
+      const auto [ScalarCost, SafeDivisorCost] = getDivRemSpeculationCost(I, VF);
+      return isDivRemScalarWithPredication(ScalarCost, SafeDivisorCost) ?
+        ScalarCost : SafeDivisorCost;
     }
     // We've proven all lanes safe to speculate, fall through.
     [[fallthrough]];
@@ -8320,23 +8296,42 @@ VPWidenCallRecipe *VPRecipeBuilder::tryToWidenCall(CallInst *CI,
              ID == Intrinsic::experimental_noalias_scope_decl))
     return nullptr;
 
-  auto willWiden = [&](ElementCount VF) -> bool {
-    // The following case may be scalarized depending on the VF.
-    // The flag shows whether we use Intrinsic or a usual Call for vectorized
-    // version of the instruction.
-    // Is it beneficial to perform intrinsic call compared to lib call?
-    bool NeedToScalarize = false;
-    InstructionCost CallCost = CM.getVectorCallCost(CI, VF, NeedToScalarize);
-    InstructionCost IntrinsicCost = ID ? CM.getVectorIntrinsicCost(CI, VF) : 0;
-    bool UseVectorIntrinsic = ID && IntrinsicCost <= CallCost;
-    return UseVectorIntrinsic || !NeedToScalarize;
-  };
-
-  if (!LoopVectorizationPlanner::getDecisionAndClampRange(willWiden, Range))
-    return nullptr;
-
   ArrayRef<VPValue *> Ops = Operands.take_front(CI->arg_size());
-  return new VPWidenCallRecipe(*CI, make_range(Ops.begin(), Ops.end()));
+
+  // Is it beneficial to perform intrinsic call compared to lib call?
+  bool ShouldUseVectorIntrinsic =
+      ID && LoopVectorizationPlanner::getDecisionAndClampRange(
+                [&](ElementCount VF) -> bool {
+                  bool NeedToScalarize = false;
+                  // Is it beneficial to perform intrinsic call compared to lib
+                  // call?
+                  InstructionCost CallCost =
+                      CM.getVectorCallCost(CI, VF, NeedToScalarize);
+                  InstructionCost IntrinsicCost =
+                      CM.getVectorIntrinsicCost(CI, VF);
+                  return IntrinsicCost <= CallCost;
+                },
+                Range);
+  if (ShouldUseVectorIntrinsic)
+    return new VPWidenCallRecipe(*CI, make_range(Ops.begin(), Ops.end()), ID);
+
+  // Is better to call a vectorized version of the function than to to scalarize
+  // the call?
+  auto ShouldUseVectorCall = LoopVectorizationPlanner::getDecisionAndClampRange(
+      [&](ElementCount VF) -> bool {
+        // The following case may be scalarized depending on the VF.
+        // The flag shows whether we can use a usual Call for vectorized
+        // version of the instruction.
+        bool NeedToScalarize = false;
+        CM.getVectorCallCost(CI, VF, NeedToScalarize);
+        return !NeedToScalarize;
+      },
+      Range);
+  if (ShouldUseVectorCall)
+    return new VPWidenCallRecipe(*CI, make_range(Ops.begin(), Ops.end()),
+                                 Intrinsic::not_intrinsic);
+
+  return nullptr;
 }
 
 bool VPRecipeBuilder::shouldWiden(Instruction *I, VFRange &Range) const {
@@ -9160,7 +9155,7 @@ VPlanPtr LoopVectorizationPlanner::buildVPlan(VFRange &Range) {
   VPlanTransforms::VPInstructionsToVPRecipes(
       OrigLoop, Plan,
       [this](PHINode *P) { return Legal->getIntOrFpInductionDescriptor(P); },
-      DeadInstructions, *PSE.getSE());
+      DeadInstructions, *PSE.getSE(), *TLI);
 
   // Remove the existing terminator of the exiting block of the top-most region.
   // A BranchOnCount will be added instead when adding the canonical IV recipes.
@@ -9310,11 +9305,6 @@ void VPInterleaveRecipe::print(raw_ostream &O, const Twine &Indent,
   }
 }
 #endif
-
-void VPWidenCallRecipe::execute(VPTransformState &State) {
-  State.ILV->widenCallInstruction(*cast<CallInst>(getUnderlyingInstr()), this,
-                                  *this, State);
-}
 
 void VPWidenIntOrFpInductionRecipe::execute(VPTransformState &State) {
   assert(!State.Instance && "Int or FP induction being replicated.");
@@ -9649,12 +9639,24 @@ void VPReplicateRecipe::execute(VPTransformState &State) {
   }
 
   if (IsUniform) {
+    // If the recipe is uniform across all parts (instead of just per VF), only
+    // generate a single instance.
+    Instruction *UI = getUnderlyingInstr();
+    if (isa<LoadInst>(UI) &&
+        all_of(operands(), [](VPValue *Op) { return !Op->getDef(); })) {
+      State.ILV->scalarizeInstruction(UI, this, VPIteration(0, 0), IsPredicated,
+                                      State);
+      for (unsigned Part = 1; Part < State.UF; ++Part)
+        State.set(this, State.get(this, VPIteration(0, 0)),
+                  VPIteration(Part, 0));
+      return;
+    }
+
     // Uniform within VL means we need to generate lane 0 only for each
     // unrolled copy.
     for (unsigned Part = 0; Part < State.UF; ++Part)
-      State.ILV->scalarizeInstruction(getUnderlyingInstr(), this,
-                                      VPIteration(Part, 0), IsPredicated,
-                                      State);
+      State.ILV->scalarizeInstruction(UI, this, VPIteration(Part, 0),
+                                      IsPredicated, State);
     return;
   }
 

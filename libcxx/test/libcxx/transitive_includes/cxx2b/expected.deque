@@ -8,12 +8,10 @@ cstdint
 cstdlib
 cstring
 ctime
-deque
 exception
 initializer_list
 iosfwd
 limits
-memory
 new
 ratio
 stdexcept

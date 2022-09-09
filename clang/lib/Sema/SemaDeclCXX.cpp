@@ -3777,7 +3777,7 @@ namespace {
 
     void CheckInitListExpr(InitListExpr *ILE) {
       InitFieldIndex.push_back(0);
-      for (auto Child : ILE->children()) {
+      for (auto *Child : ILE->children()) {
         if (InitListExpr *SubList = dyn_cast<InitListExpr>(Child)) {
           CheckInitListExpr(SubList);
         } else {
@@ -3848,7 +3848,7 @@ namespace {
       Expr *Callee = E->getCallee();
       if (isa<MemberExpr>(Callee)) {
         HandleValue(Callee, false /*AddressOf*/);
-        for (auto Arg : E->arguments())
+        for (auto *Arg : E->arguments())
           Visit(Arg);
         return;
       }
@@ -3873,7 +3873,7 @@ namespace {
         return Inherited::VisitCXXOperatorCallExpr(E);
 
       Visit(Callee);
-      for (auto Arg : E->arguments())
+      for (auto *Arg : E->arguments())
         HandleValue(Arg->IgnoreParenImpCasts(), false /*AddressOf*/);
     }
 
@@ -6954,8 +6954,8 @@ void Sema::CheckCompletedCXXClass(Scope *S, CXXRecordDecl *Record) {
     // Define defaulted constexpr virtual functions that override a base class
     // function right away.
     // FIXME: We can defer doing this until the vtable is marked as used.
-    if (CSM != CXXInvalid && M->isDefaulted() && M->isConstexpr() &&
-        M->size_overridden_methods())
+    if (CSM != CXXInvalid && !M->isDeleted() && M->isDefaulted() &&
+        M->isConstexpr() && M->size_overridden_methods())
       DefineDefaultedFunction(*this, M, M->getLocation());
 
     if (!Incomplete)
@@ -11582,7 +11582,9 @@ QualType Sema::BuildStdInitializerList(QualType Element, SourceLocation Loc) {
   Args.addArgument(TemplateArgumentLoc(TemplateArgument(Element),
                                        Context.getTrivialTypeSourceInfo(Element,
                                                                         Loc)));
-  return Context.getCanonicalType(
+  return Context.getElaboratedType(
+      ElaboratedTypeKeyword::ETK_None,
+      NestedNameSpecifier::Create(Context, nullptr, getStdNamespace()),
       CheckTemplateIdType(TemplateName(StdInitializerList), Loc, Args));
 }
 
@@ -15582,7 +15584,7 @@ ExprResult Sema::BuildCXXDefaultInitExpr(SourceLocation Loc, FieldDecl *Field) {
         ClassPattern->lookup(Field->getDeclName());
 
     FieldDecl *Pattern = nullptr;
-    for (auto L : Lookup) {
+    for (auto *L : Lookup) {
       if (isa<FieldDecl>(L)) {
         Pattern = cast<FieldDecl>(L);
         break;
@@ -15931,7 +15933,7 @@ bool Sema::CheckOverloadedOperatorDeclaration(FunctionDecl *FnDecl) {
                   diag::err_operator_overload_static) << FnDecl->getDeclName();
   } else {
     bool ClassOrEnumParam = false;
-    for (auto Param : FnDecl->parameters()) {
+    for (auto *Param : FnDecl->parameters()) {
       QualType ParamType = Param->getType().getNonReferenceType();
       if (ParamType->isDependentType() || ParamType->isRecordType() ||
           ParamType->isEnumeralType()) {
@@ -15954,7 +15956,7 @@ bool Sema::CheckOverloadedOperatorDeclaration(FunctionDecl *FnDecl) {
   // operator (CWG2507) allow default arguments.
   if (Op != OO_Call) {
     ParmVarDecl *FirstDefaultedParam = nullptr;
-    for (auto Param : FnDecl->parameters()) {
+    for (auto *Param : FnDecl->parameters()) {
       if (Param->hasDefaultArg()) {
         FirstDefaultedParam = Param;
         break;
@@ -16260,7 +16262,7 @@ bool Sema::CheckLiteralOperatorDeclaration(FunctionDecl *FnDecl) {
 
   // A parameter-declaration-clause containing a default argument is not
   // equivalent to any of the permitted forms.
-  for (auto Param : FnDecl->parameters()) {
+  for (auto *Param : FnDecl->parameters()) {
     if (Param->hasDefaultArg()) {
       Diag(Param->getDefaultArgRange().getBegin(),
            diag::err_literal_operator_default_argument)
@@ -17968,7 +17970,7 @@ bool Sema::DefineUsedVTables() {
       // definition.
       bool IsExplicitInstantiationDeclaration =
           ClassTSK == TSK_ExplicitInstantiationDeclaration;
-      for (auto R : Class->redecls()) {
+      for (auto *R : Class->redecls()) {
         TemplateSpecializationKind TSK
           = cast<CXXRecordDecl>(R)->getTemplateSpecializationKind();
         if (TSK == TSK_ExplicitInstantiationDeclaration)
@@ -18183,8 +18185,8 @@ void Sema::CheckDelegatingCtorCycles() {
   llvm::SmallPtrSet<CXXConstructorDecl*, 4> Valid, Invalid, Current;
 
   for (DelegatingCtorDeclsType::iterator
-         I = DelegatingCtorDecls.begin(ExternalSource),
-         E = DelegatingCtorDecls.end();
+           I = DelegatingCtorDecls.begin(ExternalSource.get()),
+           E = DelegatingCtorDecls.end();
        I != E; ++I)
     DelegatingCycleHelper(*I, Valid, Invalid, Current, *this);
 

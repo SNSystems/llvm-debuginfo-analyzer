@@ -142,6 +142,7 @@ def : PatFprFpr<fadd, FADD_S, FPR32>;
 def : PatFprFpr<fsub, FSUB_S, FPR32>;
 def : PatFprFpr<fmul, FMUL_S, FPR32>;
 def : PatFprFpr<fdiv, FDIV_S, FPR32>;
+def : PatFprFpr<fcopysign, FCOPYSIGN_S, FPR32>;
 def : PatFpr<fneg, FNEG_S, FPR32>;
 def : PatFpr<fabs, FABS_S, FPR32>;
 def : PatFpr<fsqrt, FSQRT_S, FPR32>;
@@ -248,6 +249,11 @@ def : Pat<(loongarch_movfr2gr_s_la64 FPR32:$src),
 def : Pat<(f32 (sint_to_fp GPR:$src)), (FFINT_S_W (MOVGR2FR_W GPR:$src))>;
 } // Predicates = [HasBasicF, IsLA64]
 
+// FP Rounding
+let Predicates = [HasBasicF, IsLA64] in {
+def : PatFpr<frint, FRINT_S, FPR32>;
+} // Predicates = [HasBasicF, IsLA64]
+
 let Predicates = [HasBasicF, IsLA32] in {
 // GPR -> FPR
 def : Pat<(bitconvert (i32 GPR:$src)), (MOVGR2FR_W GPR:$src)>;
@@ -255,4 +261,4 @@ def : Pat<(bitconvert (i32 GPR:$src)), (MOVGR2FR_W GPR:$src)>;
 def : Pat<(i32 (bitconvert FPR32:$src)), (MOVFR2GR_S FPR32:$src)>;
 // int -> f32
 def : Pat<(f32 (sint_to_fp (i32 GPR:$src))), (FFINT_S_W (MOVGR2FR_W GPR:$src))>;
-} // Predicates = [HasBasicF, IsLA64]
+} // Predicates = [HasBasicF, IsLA32]

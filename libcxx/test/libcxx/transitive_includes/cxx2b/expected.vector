@@ -12,12 +12,10 @@ exception
 initializer_list
 iosfwd
 limits
-memory
 new
 ratio
 stdexcept
 tuple
 type_traits
 typeinfo
-vector
 version

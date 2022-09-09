@@ -9,14 +9,12 @@ cstdlib
 cstring
 ctime
 exception
-experimental/list
 experimental/memory_resource
 experimental/utility
 initializer_list
 iosfwd
 limits
 list
-memory
 new
 ratio
 stdexcept

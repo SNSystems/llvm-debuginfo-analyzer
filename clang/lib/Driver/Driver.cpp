@@ -2152,12 +2152,6 @@ bool Driver::HandleImmediateArgs(const Compilation &C) {
     return false;
   }
 
-  if (C.getArgs().hasArg(options::OPT_print_multiarch)) {
-    llvm::outs() << TC.getMultiarchTriple(*this, TC.getTriple(), SysRoot)
-                 << "\n";
-    return false;
-  }
-
   if (C.getArgs().hasArg(options::OPT_print_targets)) {
     llvm::TargetRegistry::printRegisteredTargetsForVersion(llvm::outs());
     return false;
@@ -3721,7 +3715,7 @@ public:
                                      /*BoundArch=*/nullptr);
       // Propagate active offloading kinds for each input to the link action.
       // Each input may have different active offloading kind.
-      for (auto A : HostAction->inputs()) {
+      for (auto *A : HostAction->inputs()) {
         auto ArgLoc = HostActionToInputArgMap.find(A);
         if (ArgLoc == HostActionToInputArgMap.end())
           continue;
@@ -3908,9 +3902,7 @@ void Driver::BuildActions(Compilation &C, DerivedArgList &Args,
   OffloadingActionBuilder OffloadBuilder(C, Args, Inputs);
 
   bool UseNewOffloadingDriver =
-      (C.isOffloadingHostKind(Action::OFK_OpenMP) &&
-       Args.hasFlag(options::OPT_fopenmp_new_driver,
-                    options::OPT_no_offload_new_driver, true)) ||
+      C.isOffloadingHostKind(Action::OFK_OpenMP) ||
       Args.hasFlag(options::OPT_offload_new_driver,
                    options::OPT_no_offload_new_driver, false);
 
@@ -4317,10 +4309,14 @@ Action *Driver::BuildOffloadingActions(Compilation &C,
 
       auto TCAndArch = TCAndArchs.begin();
       for (Action *&A : DeviceActions) {
+        if (A->getType() == types::TY_Nothing)
+          continue;
+
         A = ConstructPhaseAction(C, Args, Phase, A, Kind);
 
         if (isa<CompileJobAction>(A) && isa<CompileJobAction>(HostAction) &&
-            Kind == Action::OFK_OpenMP) {
+            Kind == Action::OFK_OpenMP &&
+            HostAction->getType() != types::TY_Nothing) {
           // OpenMP offloading has a dependency on the host compile action to
           // identify which declarations need to be emitted. This shouldn't be
           // collapsed with any other actions so we can use it in the device.
@@ -4388,11 +4384,15 @@ Action *Driver::BuildOffloadingActions(Compilation &C,
              nullptr, Action::OFK_None);
   }
 
+  // If we are unable to embed a single device output into the host, we need to
+  // add each device output as a host dependency to ensure they are still built.
+  bool SingleDeviceOutput = !llvm::any_of(OffloadActions, [](Action *A) {
+    return A->getType() == types::TY_Nothing;
+  }) && isa<CompileJobAction>(HostAction);
   OffloadAction::HostDependence HDep(
       *HostAction, *C.getSingleOffloadToolChain<Action::OFK_Host>(),
-      /*BoundArch=*/nullptr, isa<CompileJobAction>(HostAction) ? DDep : DDeps);
-  return C.MakeAction<OffloadAction>(
-      HDep, isa<CompileJobAction>(HostAction) ? DDep : DDeps);
+      /*BoundArch=*/nullptr, SingleDeviceOutput ? DDep : DDeps);
+  return C.MakeAction<OffloadAction>(HDep, SingleDeviceOutput ? DDep : DDeps);
 }
 
 Action *Driver::ConstructPhaseAction(
@@ -4536,7 +4536,8 @@ void Driver::BuildJobs(Compilation &C) const {
   //
   // OffloadClass of type TY_Nothing: device-only output will place many outputs
   // into a single offloading action. We should count all inputs to the action
-  // as outputs.
+  // as outputs. Also ignore device-only outputs if we're compiling with
+  // -fsyntax-only.
   if (FinalOutput) {
     unsigned NumOutputs = 0;
     unsigned NumIfsOutputs = 0;
@@ -4550,7 +4551,8 @@ void Driver::BuildJobs(Compilation &C) const {
              A->getInputs().front()->getKind() == Action::IfsMergeJobClass)))
         ++NumOutputs;
       else if (A->getKind() == Action::OffloadClass &&
-               A->getType() == types::TY_Nothing)
+               A->getType() == types::TY_Nothing &&
+               !C.getArgs().hasArg(options::OPT_fsyntax_only))
         NumOutputs += A->size();
     }
 
@@ -5417,15 +5419,18 @@ const char *Driver::CreateTempFile(Compilation &C, StringRef Prefix,
                                    StringRef BoundArch) const {
   SmallString<128> TmpName;
   Arg *A = C.getArgs().getLastArg(options::OPT_fcrash_diagnostics_dir);
-  if (CCGenDiagnostics && A) {
-    SmallString<128> CrashDirectory(A->getValue());
-    if (!getVFS().exists(CrashDirectory))
-      llvm::sys::fs::create_directories(CrashDirectory);
-    llvm::sys::path::append(CrashDirectory, Prefix);
+  Optional<std::string> CrashDirectory =
+      CCGenDiagnostics && A
+          ? std::string(A->getValue())
+          : llvm::sys::Process::GetEnv("CLANG_CRASH_DIAGNOSTICS_DIR");
+  if (CrashDirectory) {
+    if (!getVFS().exists(*CrashDirectory))
+      llvm::sys::fs::create_directories(*CrashDirectory);
+    SmallString<128> Path(*CrashDirectory);
+    llvm::sys::path::append(Path, Prefix);
     const char *Middle = !Suffix.empty() ? "-%%%%%%." : "-%%%%%%";
-    std::error_code EC = llvm::sys::fs::createUniqueFile(
-        CrashDirectory + Middle + Suffix, TmpName);
-    if (EC) {
+    if (std::error_code EC =
+            llvm::sys::fs::createUniqueFile(Path + Middle + Suffix, TmpName)) {
       Diag(clang::diag::err_unable_to_make_temp) << EC.message();
       return "";
     }

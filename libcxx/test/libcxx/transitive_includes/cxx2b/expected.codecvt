@@ -3,7 +3,6 @@ cctype
 cerrno
 climits
 cmath
-codecvt
 compare
 concepts
 cstddef
@@ -18,7 +17,6 @@ exception
 initializer_list
 iosfwd
 limits
-memory
 mutex
 new
 ratio

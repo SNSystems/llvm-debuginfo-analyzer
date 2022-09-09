@@ -18,11 +18,9 @@ exception
 initializer_list
 iosfwd
 limits
-memory
 mutex
 new
 ratio
-regex
 stdexcept
 string
 string_view

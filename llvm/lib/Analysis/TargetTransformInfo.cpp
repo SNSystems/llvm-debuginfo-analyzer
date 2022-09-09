@@ -451,6 +451,10 @@ bool TargetTransformInfo::hasDivRemOp(Type *DataType, bool IsSigned) const {
   return TTIImpl->hasDivRemOp(DataType, IsSigned);
 }
 
+unsigned TargetTransformInfo::maxLegalDivRemBitWidth() const {
+  return TTIImpl->maxLegalDivRemBitWidth();
+}
+
 bool TargetTransformInfo::hasVolatileVariant(Instruction *I,
                                              unsigned AddrSpace) const {
   return TTIImpl->hasVolatileVariant(I, AddrSpace);
@@ -570,6 +574,11 @@ TargetTransformInfo::getPopcntSupport(unsigned IntTyWidthInBit) const {
 
 bool TargetTransformInfo::haveFastSqrt(Type *Ty) const {
   return TTIImpl->haveFastSqrt(Ty);
+}
+
+bool TargetTransformInfo::isExpensiveToSpeculativelyExecute(
+    const Instruction *I) const {
+  return TTIImpl->isExpensiveToSpeculativelyExecute(I);
 }
 
 bool TargetTransformInfo::isFCmpOrdCheaperThanFCmpZero(Type *Ty) const {

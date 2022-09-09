@@ -42,8 +42,8 @@ struct SparsificationPass
   SparsificationPass() = default;
   SparsificationPass(const SparsificationPass &pass) = default;
   SparsificationPass(const SparsificationOptions &options) {
-    parallelization = static_cast<int32_t>(options.parallelizationStrategy);
-    vectorization = static_cast<int32_t>(options.vectorizationStrategy);
+    parallelization = options.parallelizationStrategy;
+    vectorization = options.vectorizationStrategy;
     vectorLength = options.vectorLength;
     enableSIMDIndex32 = options.enableSIMDIndex32;
     enableVLAVectorization = options.enableVLAVectorization;
@@ -56,10 +56,8 @@ struct SparsificationPass
     populateSparseTensorRewriting(prePatterns);
     (void)applyPatternsAndFoldGreedily(getOperation(), std::move(prePatterns));
     // Translate strategy flags to strategy options.
-    SparsificationOptions options(
-        sparseParallelizationStrategy(parallelization),
-        sparseVectorizationStrategy(vectorization), vectorLength,
-        enableSIMDIndex32, enableVLAVectorization);
+    SparsificationOptions options(parallelization, vectorization, vectorLength,
+                                  enableSIMDIndex32, enableVLAVectorization);
     // Apply sparsification and vector cleanup rewriting.
     RewritePatternSet patterns(ctx);
     populateSparsificationPatterns(patterns, options);
@@ -123,8 +121,7 @@ struct SparseTensorConversionPass
         });
     // The following operations and dialects may be introduced by the
     // rewriting rules, and are therefore marked as legal.
-    target.addLegalOp<bufferization::ToMemrefOp, bufferization::ToTensorOp,
-                      complex::ConstantOp, complex::NotEqualOp, linalg::FillOp,
+    target.addLegalOp<complex::ConstantOp, complex::NotEqualOp, linalg::FillOp,
                       linalg::YieldOp, tensor::ExtractOp>();
     target.addLegalDialect<
         arith::ArithmeticDialect, bufferization::BufferizationDialect,
@@ -159,7 +156,8 @@ struct SparseTensorCodegenPass
     // Everything in the sparse dialect must go!
     target.addIllegalDialect<SparseTensorDialect>();
     // All dynamic rules below accept new function, call, return, and various
-    // tensor and bufferization operations as legal output of the rewriting.
+    // tensor and bufferization operations as legal output of the rewriting
+    // provided that all sparse tensor types have been fully rewritten.
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return converter.isSignatureLegal(op.getFunctionType());
     });
@@ -169,10 +167,24 @@ struct SparseTensorCodegenPass
     target.addDynamicallyLegalOp<func::ReturnOp>([&](func::ReturnOp op) {
       return converter.isLegal(op.getOperandTypes());
     });
+    target.addDynamicallyLegalOp<bufferization::AllocTensorOp>(
+        [&](bufferization::AllocTensorOp op) {
+          return converter.isLegal(op.getType());
+        });
+    target.addDynamicallyLegalOp<bufferization::DeallocTensorOp>(
+        [&](bufferization::DeallocTensorOp op) {
+          return converter.isLegal(op.getTensor().getType());
+        });
+    // The following operations and dialects may be introduced by the
+    // codegen rules, and are therefore marked as legal.
+    target.addLegalOp<linalg::FillOp>();
+    target.addLegalDialect<arith::ArithmeticDialect,
+                           bufferization::BufferizationDialect,
+                           memref::MemRefDialect, scf::SCFDialect>();
+    target.addLegalOp<UnrealizedConversionCastOp>();
     // Populate with rules and apply rewriting rules.
     populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(patterns,
                                                                    converter);
-    populateCallOpTypeConversionPattern(patterns, converter);
     scf::populateSCFStructuralTypeConversionsAndLegality(converter, patterns,
                                                          target);
     populateSparseTensorCodegenPatterns(converter, patterns);
@@ -187,33 +199,6 @@ struct SparseTensorCodegenPass
 //===----------------------------------------------------------------------===//
 // Strategy flag methods.
 //===----------------------------------------------------------------------===//
-
-SparseParallelizationStrategy
-mlir::sparseParallelizationStrategy(int32_t flag) {
-  switch (flag) {
-  default:
-    return SparseParallelizationStrategy::kNone;
-  case 1:
-    return SparseParallelizationStrategy::kDenseOuterLoop;
-  case 2:
-    return SparseParallelizationStrategy::kAnyStorageOuterLoop;
-  case 3:
-    return SparseParallelizationStrategy::kDenseAnyLoop;
-  case 4:
-    return SparseParallelizationStrategy::kAnyStorageAnyLoop;
-  }
-}
-
-SparseVectorizationStrategy mlir::sparseVectorizationStrategy(int32_t flag) {
-  switch (flag) {
-  default:
-    return SparseVectorizationStrategy::kNone;
-  case 1:
-    return SparseVectorizationStrategy::kDenseInnerLoop;
-  case 2:
-    return SparseVectorizationStrategy::kAnyStorageInnerLoop;
-  }
-}
 
 SparseToSparseConversionStrategy
 mlir::sparseToSparseConversionStrategy(int32_t flag) {
