@@ -135,7 +135,7 @@ StringRef LVElement::accessibilityString(uint32_t Access) const {
   }
 }
 
-uint32_t LVElement::getAccessibilityCode(MemberAccess Access) {
+Optional<uint32_t> LVElement::getAccessibilityCode(MemberAccess Access) {
   switch (Access) {
   case MemberAccess::Private:
     return dwarf::DW_ACCESS_private;
@@ -144,7 +144,7 @@ uint32_t LVElement::getAccessibilityCode(MemberAccess Access) {
   case MemberAccess::Public:
     return dwarf::DW_ACCESS_public;
   default:
-    return 0;
+    return None;
   }
 }
 
@@ -182,7 +182,7 @@ StringRef LVElement::virtualityString(uint32_t Virtuality) const {
   }
 }
 
-uint32_t LVElement::getVirtualityCode(MethodKind Virtuality) {
+Optional<uint32_t> LVElement::getVirtualityCode(MethodKind Virtuality) {
   switch (Virtuality) {
   case MethodKind::Virtual:
     return dwarf::DW_VIRTUALITY_virtual;
@@ -193,7 +193,7 @@ uint32_t LVElement::getVirtualityCode(MethodKind Virtuality) {
     // No direct equivalents in DWARF. Assume Virtual.
     return dwarf::DW_VIRTUALITY_virtual;
   default:
-    return 0;
+    return None;
   }
 }
 

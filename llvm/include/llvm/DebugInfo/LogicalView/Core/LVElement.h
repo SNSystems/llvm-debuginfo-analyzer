@@ -268,9 +268,9 @@ public:
   accessibilityString(uint32_t Access = dwarf::DW_ACCESS_private) const;
 
   // CodeView Accessibility Codes.
-  uint32_t getAccessibilityCode(codeview::MemberAccess Access);
+  Optional<uint32_t> getAccessibilityCode(codeview::MemberAccess Access);
   void setAccessibilityCode(codeview::MemberAccess Access) {
-    AccessibilityCode = getAccessibilityCode(Access);
+    AccessibilityCode = getAccessibilityCode(Access).value();
   }
 
   // DWARF Inline Codes.
@@ -285,9 +285,9 @@ public:
   virtualityString(uint32_t Virtuality = dwarf::DW_VIRTUALITY_none) const;
 
   // CodeView Virtuality Codes.
-  uint32_t getVirtualityCode(codeview::MethodKind Virtuality);
+  Optional<uint32_t> getVirtualityCode(codeview::MethodKind Virtuality);
   void setVirtualityCode(codeview::MethodKind Virtuality) {
-    VirtualityCode = getVirtualityCode(Virtuality);
+    VirtualityCode = getVirtualityCode(Virtuality).value();
   }
 
   // DWARF Extern Codes.
