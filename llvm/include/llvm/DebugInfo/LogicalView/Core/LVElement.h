@@ -270,7 +270,8 @@ public:
   // CodeView Accessibility Codes.
   Optional<uint32_t> getAccessibilityCode(codeview::MemberAccess Access);
   void setAccessibilityCode(codeview::MemberAccess Access) {
-    AccessibilityCode = getAccessibilityCode(Access).value();
+    if (Optional<uint32_t> Code = getAccessibilityCode(Access))
+      AccessibilityCode = Code.value();
   }
 
   // DWARF Inline Codes.
@@ -287,7 +288,8 @@ public:
   // CodeView Virtuality Codes.
   Optional<uint32_t> getVirtualityCode(codeview::MethodKind Virtuality);
   void setVirtualityCode(codeview::MethodKind Virtuality) {
-    VirtualityCode = getVirtualityCode(Virtuality).value();
+    if (Optional<uint32_t> Code = getVirtualityCode(Virtuality))
+      VirtualityCode = Code.value();
   }
 
   // DWARF Extern Codes.
