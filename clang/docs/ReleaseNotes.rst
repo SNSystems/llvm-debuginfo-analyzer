@@ -36,6 +36,30 @@ main Clang web page, this document applies to the *next* release, not
 the current one. To see the release notes for a specific release, please
 see the `releases page <https://llvm.org/releases/>`_.
 
+Potentially Breaking Changes
+============================
+These changes are ones which we think may surprise users when upgrading to
+Clang |release| because of the opportunity they pose for disruption to existing
+code bases.
+
+- Clang will now correctly diagnose as ill-formed a constant expression where an
+  enum without a fixed underlying type is set to a value outside the range of
+  the enumeration's values. Due to the extended period of time this bug was
+  present in major C++ implementations (including Clang), this error has the
+  ability to be downgraded into a warning (via:
+  ``-Wno-error=enum-constexpr-conversion``) to provide a transition period for
+  users. This diagnostic is expected to turn into an error-only diagnostic in
+  the next Clang release. Fixes
+  `Issue 50055: <https://github.com/llvm/llvm-project/issues/50055>`_.
+- ``-Wincompatible-function-pointer-types`` now defaults to an error in all C
+  language modes. It may be downgraded to a warning with
+  ``-Wno-error=incompatible-function-pointer-types`` or disabled entirely with
+  ``-Wno-implicit-function-pointer-types``. *NOTE* We recommend that projects
+  using configure scripts verify the results do not change before/after setting
+  ``-Werror=incompatible-function-pointer-types`` to avoid incompatibility with
+  Clang 16.
+
+
 What's New in Clang |release|?
 ==============================
 
@@ -93,18 +117,15 @@ Bug Fixes
   `Issue 57516 <https://github.com/llvm/llvm-project/issues/57516>`_
 - Fix ``__builtin_assume_aligned`` crash when the 1st arg is array type. This fixes
   `Issue 57169 <https://github.com/llvm/llvm-project/issues/57169>`_
+- Clang configuration files are now read through the virtual file system
+  rather than the physical one, if these are different.
+- Clang will now no longer treat a C 'overloadable' function without a prototype as
+  a variadic function with the attribute.  This should make further diagnostics more
+  clear.
 
 
 Improvements to Clang's diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-- Clang will now correctly diagnose as ill-formed a constant expression where an
-  enum without a fixed underlying type is set to a value outside the range of
-  the enumeration's values. Due to the extended period of time this bug was
-  present in major C++ implementations (including Clang), this error has the
-  ability to be downgraded into a warning (via: -Wno-error=enum-constexpr-conversion)
-  to provide a transition period for users. This diagnostic is expected to turn
-  into an error-only diagnostic in the next Clang release. Fixes
-  `Issue 50055: <https://github.com/llvm/llvm-project/issues/50055>`_.
 - Clang will now check compile-time determinable string literals as format strings.
   Fixes `Issue 55805: <https://github.com/llvm/llvm-project/issues/55805>`_.
 - ``-Wformat`` now recognizes ``%b`` for the ``printf``/``scanf`` family of
@@ -117,10 +138,6 @@ Improvements to Clang's diagnostics
   potential false positives, this diagnostic will not diagnose use of the
   ``true`` macro (from ``<stdbool.h>>`) in C language mode despite the macro
   being defined to expand to ``1``.
-- ``-Wincompatible-function-pointer-types`` now defaults to an error in all C
-  language modes. It may be downgraded to a warning with
-  ``-Wno-error=incompatible-function-pointer-types`` or disabled entirely with
-  ``-Wno-implicit-function-pointer-types``.
 - Clang will now print more information about failed static assertions. In
   particular, simple static assertion expressions are evaluated to their
   compile-time value and printed out if the assertion fails.
@@ -134,6 +151,11 @@ Improvements to Clang's diagnostics
 - no_sanitize("...") on a global variable for known but not relevant sanitizers
   is now just a warning. It now says that this will be ignored instead of
   incorrectly saying no_sanitize only applies to functions and methods.
+- No longer mention ``reinterpet_cast`` in the invalid constant expression
+  diagnostic note when in C mode.
+- Clang will now give a more suitale diagnostic for declaration of block
+  scope identifiers that have external/internal linkage that has an initializer.
+  Fixes `Issue 57478: <https://github.com/llvm/llvm-project/issues/57478>`_.
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------
@@ -176,6 +198,16 @@ Attribute Changes in Clang
 - Introduced a new function attribute ``__attribute__((nouwtable))`` to suppress
   LLVM IR ``uwtable`` function attribute.
 
+- Updated the value returned by ``__has_c_attribute(nodiscard)`` to ``202003L``
+  based on the final date specified by the C2x committee draft. We already
+  supported the ability to specify a message in the attribute, so there were no
+  changes to the attribute behavior.
+
+- Updated the value returned by ``__has_c_attribute(fallthrough)`` to ``201910L``
+  based on the final date specified by the C2x committee draft. We previously
+  used ``201904L`` (the date the proposal was seen by the committee) by mistake.
+  There were no other changes to the attribute behavior.
+
 Windows Support
 ---------------
 - For the MinGW driver, added the options ``-mguard=none``, ``-mguard=cf`` and
@@ -198,6 +230,9 @@ C Language Changes in Clang
 
 C2x Feature Support
 -------------------
+- Implemented `WG14 N2662 <https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2662.pdf>`_,
+  so the [[maybe_unused]] attribute may be applied to a label to silence an
+  ``-Wunused-label`` warning.
 
 C++ Language Changes in Clang
 -----------------------------

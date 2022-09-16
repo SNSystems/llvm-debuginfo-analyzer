@@ -1631,6 +1631,38 @@ TEST(Hover, All) {
             HI.Definition = "int foo";
           }},
       {
+          R"cpp(// Function definition via using declaration
+            namespace ns { 
+              void foo(); 
+            }
+            int main() {
+              using ns::foo;
+              ^[[foo]]();
+            }
+          )cpp",
+          [](HoverInfo &HI) {
+            HI.Name = "foo";
+            HI.Kind = index::SymbolKind::Function;
+            HI.NamespaceScope = "ns::";
+            HI.Type = "void ()";
+            HI.Definition = "void foo()";
+            HI.Documentation = "";
+            HI.ReturnType = "void";
+            HI.Parameters = std::vector<HoverInfo::Param>{};
+          }},
+      {
+          R"cpp( // using declaration and two possible function declarations
+            namespace ns { void foo(int); void foo(char); }
+            using ns::foo;
+            template <typename T> void bar() { [[f^oo]](T{}); }
+          )cpp",
+          [](HoverInfo &HI) {
+            HI.Name = "foo";
+            HI.Kind = index::SymbolKind::Using;
+            HI.NamespaceScope = "";
+            HI.Definition = "using ns::foo";
+          }},
+      {
           R"cpp(// Macro
             #define MACRO 0
             int main() { return ^[[MACRO]]; }
@@ -1722,6 +1754,25 @@ TEST(Hover, All) {
               ONE, TWO, THREE,
             };
             void foo() {
+              Hello hello = [[O^NE]];
+            }
+          )cpp",
+          [](HoverInfo &HI) {
+            HI.Name = "ONE";
+            HI.Kind = index::SymbolKind::EnumConstant;
+            HI.NamespaceScope = "";
+            HI.LocalScope = "Hello::";
+            HI.Type = "enum Hello";
+            HI.Definition = "ONE";
+            HI.Value = "0";
+          }},
+      {
+          R"cpp(// C++20's using enum
+            enum class Hello {
+              ONE, TWO, THREE,
+            };
+            void foo() {
+              using enum Hello;
               Hello hello = [[O^NE]];
             }
           )cpp",
@@ -1940,7 +1991,7 @@ TEST(Hover, All) {
           [](HoverInfo &HI) {
             HI.Name = "auto";
             HI.Kind = index::SymbolKind::TypeAlias;
-            HI.Definition = "std::initializer_list<int>";
+            HI.Definition = "class std::initializer_list<int>";
           }},
       {
           R"cpp(// User defined conversion to auto
@@ -3301,7 +3352,14 @@ TEST(Hover, HideBigInitializers) {
   EXPECT_EQ(H->Definition, "int arr[]");
 }
 
-TEST(Hover, GlobalVarEnumeralCastNoCrash) {
+#if defined(__aarch64__)
+// FIXME: AARCH64 sanitizer buildbots are broken after 72142fbac4.
+#define PREDEFINEMACROS_TEST(x) DISABLED_##x
+#else
+#define PREDEFINEMACROS_TEST(x) x
+#endif
+
+TEST(Hover, PREDEFINEMACROS_TEST(GlobalVarEnumeralCastNoCrash)) {
   Annotations T(R"cpp(
     using uintptr_t = __UINTPTR_TYPE__;
     enum Test : uintptr_t {};
@@ -3319,7 +3377,7 @@ TEST(Hover, GlobalVarEnumeralCastNoCrash) {
   EXPECT_EQ(*HI->Value, "&global_var");
 }
 
-TEST(Hover, GlobalVarIntCastNoCrash) {
+TEST(Hover, PREDEFINEMACROS_TEST(GlobalVarIntCastNoCrash)) {
   Annotations T(R"cpp(
     using uintptr_t = __UINTPTR_TYPE__;
     unsigned global_var;

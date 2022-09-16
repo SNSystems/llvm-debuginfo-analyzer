@@ -27,6 +27,7 @@
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/EHPersonalities.h"
+#include "llvm/Analysis/Loads.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -4102,11 +4103,6 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
   SDValue Ptr = getValue(SV);
 
   Type *Ty = I.getType();
-  Align Alignment = I.getAlign();
-
-  AAMDNodes AAInfo = I.getAAMetadata();
-  const MDNode *Ranges = I.getMetadata(LLVMContext::MD_range);
-
   SmallVector<EVT, 4> ValueVTs, MemVTs;
   SmallVector<uint64_t, 4> Offsets;
   ComputeValueVTs(TLI, DAG.getDataLayout(), Ty, ValueVTs, &MemVTs, &Offsets);
@@ -4114,6 +4110,9 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
   if (NumValues == 0)
     return;
 
+  Align Alignment = I.getAlign();
+  AAMDNodes AAInfo = I.getAAMetadata();
+  const MDNode *Ranges = I.getMetadata(LLVMContext::MD_range);
   bool isVolatile = I.isVolatile();
   MachineMemOperand::Flags MMOFlags =
       TLI.getLoadMemOperandFlags(I, DAG.getDataLayout());
@@ -4134,15 +4133,14 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
     Root = DAG.getEntryNode();
     ConstantMemory = true;
     MMOFlags |= MachineMemOperand::MOInvariant;
-
-    // FIXME: pointsToConstantMemory probably does not imply dereferenceable,
-    // but the previous usage implied it did. Probably should check
-    // isDereferenceableAndAlignedPointer.
-    MMOFlags |= MachineMemOperand::MODereferenceable;
   } else {
     // Do not serialize non-volatile loads against each other.
     Root = DAG.getRoot();
   }
+
+  if (isDereferenceableAndAlignedPointer(SV, Ty, Alignment, DAG.getDataLayout(),
+                                         &I, nullptr, LibInfo))
+    MMOFlags |= MachineMemOperand::MODereferenceable;
 
   SDLoc dl = getCurSDLoc();
 
@@ -9382,12 +9380,11 @@ void SelectionDAGBuilder::visitStackmap(const CallInst &CI) {
 
   assert(CI.getType()->isVoidTy() && "Stackmap cannot return a value.");
 
-  SDValue Chain, InFlag, Callee, NullPtr;
+  SDValue Chain, InFlag, Callee;
   SmallVector<SDValue, 32> Ops;
 
   SDLoc DL = getCurSDLoc();
   Callee = getValue(CI.getCalledOperand());
-  NullPtr = DAG.getIntPtrConstant(0, DL, true);
 
   // The stackmap intrinsic only records the live variables (the arguments
   // passed to it) and emits NOPS (if requested). Unlike the patchpoint
@@ -9430,7 +9427,7 @@ void SelectionDAGBuilder::visitStackmap(const CallInst &CI) {
   Chain = DAG.getNode(ISD::STACKMAP, DL, NodeTys, Ops);
   InFlag = Chain.getValue(1);
 
-  Chain = DAG.getCALLSEQ_END(Chain, NullPtr, NullPtr, InFlag, DL);
+  Chain = DAG.getCALLSEQ_END(Chain, 0, 0, InFlag, DL);
 
   // Stackmaps don't generate values, so nothing goes into the NodeMap.
 
