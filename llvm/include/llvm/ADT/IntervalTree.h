@@ -33,7 +33,11 @@
 // any further additions.
 //
 // Synopsis:
-//   PointT objects are mapped to ValueT objects.
+//   Closed intervals delimited by PointT objects are mapped to ValueT objects.
+//
+// Restrictions:
+//   PointT must be a fundamental type.
+//   ValueT must be a fundamental or pointer type.
 //
 // template <typename PointT, typename ValueT, typename DataT>
 // class IntervalTree {
@@ -73,7 +77,7 @@
 // [31, 56] <- (3156),    [12, 21] <- (1221),    [25, 41] <- (2541),
 // [49, 65] <- (4965),    [71, 79] <- (7179),    [11, 16] <- (1116),
 // [20, 30] <- (2030),    [36, 54] <- (3654),    [60, 70] <- (6070),
-// [74, 80] <- (7480),    [15, 40] <- (1540),    [43, 45] <- (4345),
+// [74, 80] <- (7480),    [15, 40] <- (1540),    [43, 43] <- (4343),
 // [50, 75] <- (5075),    [10, 85] <- (1085)
 //
 // The data represents a set of overlapping intervals:
@@ -82,7 +86,7 @@
 //                      31------------------------56
 //     12--------21 25------------41      49-------------65   71-----79
 //   11----16  20-----30    36----------------54    60------70  74---- 80
-//       15---------------------40  43--45  50--------------------75
+//       15---------------------40  43--43  50--------------------75
 // 10----------------------------------------------------------------------85
 //
 // The items are stored in a binary tree with each node storing:
@@ -103,8 +107,8 @@
 //
 // The following is the output from print():
 //
-// 0: MP:43 IR [10,85] [31,56] [36,54] [39,50] [43,45]
-// 0: MP:43 IL [10,85] [31,56] [36,54] [39,50] [43,45]
+// 0: MP:43 IR [10,85] [31,56] [36,54] [39,50] [43,43]
+// 0: MP:43 IL [10,85] [31,56] [36,54] [39,50] [43,43]
 // 1:   MP:25 IR [25,41] [15,40] [20,30]
 // 1:   MP:25 IL [15,40] [20,30] [25,41]
 // 2:     MP:15 IR [12,21] [11,16]
@@ -133,7 +137,7 @@
 //                    LS |       [31,56] [31,56]       | RS
 //                       |       [36,54] [36,54]       |
 //                       |       [39,50] [39,50]       |
-//                       |       [43,45] [43,45]       |
+//                       |       [43,43] [43,43]       |
 //                       V                             V
 //        +------------MP:25------------+            MP:61------------+
 //        |            IL IR            |            IL IR            |
@@ -190,7 +194,7 @@ namespace llvm {
 //===----------------------------------------------------------------------===//
 /// An interval data composed by a \a Left and \a Right points and an
 /// associated \a Value.
-/// \a PointT corresponds to the interval ranges type.
+/// \a PointT corresponds to the interval endpoints type.
 /// \a ValueT corresponds to the interval value type.
 template <typename PointT, typename ValueT> class IntervalData {
 protected:
@@ -205,7 +209,9 @@ private:
 public:
   IntervalData() = delete;
   IntervalData(PointType Left, PointType Right, ValueType Value)
-      : Left(Left), Right(Right), Value(Value) {}
+      : Left(Left), Right(Right), Value(Value) {
+    assert(Left <= Right && "'Left' must be less or equal that 'Right'");
+  }
   virtual ~IntervalData() = default;
   PointType left() const { return Left; }
   PointType right() const { return Right; }
@@ -232,17 +238,19 @@ public:
 // Helper class template that is used by the IntervalTree to ensure that one
 // does instantiate using only fundamental and/or pointer types.
 template <typename T>
-using TypeIsValid =
-    std::integral_constant<bool, std::is_fundamental<T>::value ||
-                                     std::is_pointer<T>::value>;
+using PointTypeIsValid = std::bool_constant<std::is_fundamental<T>::value>;
+
+template <typename T>
+using ValueTypeIsValid = std::bool_constant<std::is_fundamental<T>::value ||
+                                            std::is_pointer<T>::value>;
 
 template <typename PointT, typename ValueT,
           typename DataT = IntervalData<PointT, ValueT>>
 class IntervalTree {
-  static_assert(TypeIsValid<PointT>::value,
-                "PointT must be an fundamental or pointer type");
-  static_assert(TypeIsValid<ValueT>::value,
-                "ValueT must be an fundamental or pointer type");
+  static_assert(PointTypeIsValid<PointT>::value,
+                "PointT must be a fundamental type");
+  static_assert(ValueTypeIsValid<ValueT>::value,
+                "ValueT must be a fundamental or pointer type");
 
 public:
   using PointType = PointT;
@@ -309,7 +317,7 @@ private:
   /// Print the interval list (left and right) for a given \a Node.
   static void printList(raw_ostream &OS, IntervalReferences &IntervalSet,
                         unsigned Start, unsigned Size, bool HexFormat = true) {
-    assert(Start + Size < IntervalSet.size() &&
+    assert(Start + Size <= IntervalSet.size() &&
            "Start + Size must be in bounds of the IntervalSet");
     const char *Format = HexFormat ? "[0x%08x,0x%08x] " : "[%2d,%2d] ";
     if (Size) {

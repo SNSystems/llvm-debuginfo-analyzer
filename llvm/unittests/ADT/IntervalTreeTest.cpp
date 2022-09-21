@@ -80,9 +80,9 @@ TEST(IntervalTreeTest, UserClass) {
   UUReferences Intervals;
   UUPoint Point;
 
-  EXPECT_EQ(Tree.empty(), true);
+  EXPECT_TRUE(Tree.empty());
   Tree.clear();
-  EXPECT_EQ(Tree.empty(), true);
+  EXPECT_TRUE(Tree.empty());
 
   // [10, 20] <- (10.20)
   // [30, 40] <- (30.40)
@@ -95,7 +95,7 @@ TEST(IntervalTreeTest, UserClass) {
   // Invalid interval values: x < [10
   Point = 5;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [10...20]
   Point = 10;
@@ -116,7 +116,7 @@ TEST(IntervalTreeTest, UserClass) {
   // Invalid interval values: 20] < x < [30
   Point = 25;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [30...40]
   Point = 30;
@@ -137,10 +137,10 @@ TEST(IntervalTreeTest, UserClass) {
   // Invalid interval values: 40] < x
   Point = 45;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 }
 
-using UUPoint = unsigned; // Interval range type.
+using UUPoint = unsigned; // Interval endpoint type.
 using UUValue = unsigned; // Mapped value type.
 
 using UUTree = IntervalTree<UUPoint, UUValue>;
@@ -166,13 +166,13 @@ void checkData(UUPoint Point, UUIter Iter, UUPoint Left, UUPoint Right,
 TEST(IntervalTreeTest, NoIntervals) {
   UUAlloc Allocator;
   UUTree Tree(Allocator);
-  EXPECT_EQ(Tree.empty(), true);
+  EXPECT_TRUE(Tree.empty());
   Tree.clear();
-  EXPECT_EQ(Tree.empty(), true);
+  EXPECT_TRUE(Tree.empty());
 
   // Create the tree and switch to query mode.
   Tree.create();
-  EXPECT_EQ(Tree.empty(), true);
+  EXPECT_TRUE(Tree.empty());
   EXPECT_EQ(Tree.find(1), Tree.find_end());
 }
 
@@ -188,14 +188,14 @@ TEST(IntervalTreeTest, OneInterval) {
   //    [10...20]
   Tree.insert(10, 20, 1020);
 
-  EXPECT_EQ(Tree.empty(), true);
+  EXPECT_TRUE(Tree.empty());
   Tree.create();
   EXPECT_FALSE(Tree.empty());
 
   // Invalid interval values: x < [10.
   Point = 5;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [10...20].
   Point = 10;
@@ -216,7 +216,7 @@ TEST(IntervalTreeTest, OneInterval) {
   // Invalid interval values: 20] < x
   Point = 25;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 }
 
 // Two items tree tests. No overlapping.
@@ -237,7 +237,7 @@ TEST(IntervalTreeTest, TwoIntervals) {
   // Invalid interval values: x < [10
   Point = 5;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [10...20]
   Point = 10;
@@ -258,7 +258,7 @@ TEST(IntervalTreeTest, TwoIntervals) {
   // Invalid interval values: 20] < x < [30
   Point = 25;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [30...40]
   Point = 30;
@@ -279,7 +279,7 @@ TEST(IntervalTreeTest, TwoIntervals) {
   // Invalid interval values: 40] < x
   Point = 45;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 }
 
 // Three items tree tests. No overlapping.
@@ -302,7 +302,7 @@ TEST(IntervalTreeTest, ThreeIntervals) {
   // Invalid interval values: x < [10
   Point = 5;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [10...20]
   Point = 10;
@@ -323,7 +323,7 @@ TEST(IntervalTreeTest, ThreeIntervals) {
   // Invalid interval values: 20] < x < [30
   Point = 25;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [30...40]
   Point = 30;
@@ -344,7 +344,7 @@ TEST(IntervalTreeTest, ThreeIntervals) {
   // Invalid interval values: 40] < x < [50
   Point = 45;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values: [50...60]
   Point = 50;
@@ -365,7 +365,84 @@ TEST(IntervalTreeTest, ThreeIntervals) {
   // Invalid interval values: 60] < x
   Point = 65;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
+}
+
+// One item tree tests.
+TEST(IntervalTreeTest, EmptyIntervals) {
+  UUAlloc Allocator;
+  UUTree Tree(Allocator);
+  UUReferences Intervals;
+  UUPoint Point;
+
+  // [40, 60] <- (4060)
+  // [50, 50] <- (5050)
+  // [10, 10] <- (1010)
+  // [70, 70] <- (7070)
+  //
+  //                [40...............60]
+  //                      [50...50]
+  //    [10...10]
+  //                                        [70...70]
+  Tree.insert(40, 60, 4060);
+  Tree.insert(50, 50, 5050);
+  Tree.insert(10, 10, 1010);
+  Tree.insert(70, 70, 7070);
+
+  EXPECT_TRUE(Tree.empty());
+  Tree.create();
+  EXPECT_FALSE(Tree.empty());
+
+  // Invalid interval values: x < [10.
+  Point = 5;
+  Intervals = Tree.getContaining(Point);
+  EXPECT_TRUE(Intervals.empty());
+
+  // Valid interval values: [10...10].
+  Point = 10;
+  Intervals = Tree.getContaining(Point);
+  ASSERT_TRUE(Intervals.size() == 1);
+  checkData(Point, Intervals[0], 10, 10, 1010);
+
+  // Invalid interval values: 10] < x
+  Point = 15;
+  Intervals = Tree.getContaining(Point);
+  EXPECT_TRUE(Intervals.empty());
+
+  // Invalid interval values: x < [50.
+  Point = 45;
+  Intervals = Tree.getContaining(Point);
+  ASSERT_TRUE(Intervals.size() == 1);
+  checkData(Point, Intervals[0], 40, 60, 4060);
+
+  // Valid interval values: [50...50].
+  Point = 50;
+  Intervals = Tree.getContaining(Point);
+  ASSERT_TRUE(Intervals.size() == 2);
+  checkData(Point, Intervals[0], 40, 60, 4060);
+  checkData(Point, Intervals[1], 50, 50, 5050);
+
+  // Invalid interval values: 50] < x
+  Point = 55;
+  Intervals = Tree.getContaining(Point);
+  ASSERT_TRUE(Intervals.size() == 1);
+  checkData(Point, Intervals[0], 40, 60, 4060);
+
+  // Invalid interval values: x < [70.
+  Point = 65;
+  Intervals = Tree.getContaining(Point);
+  EXPECT_TRUE(Intervals.empty());
+
+  // Valid interval values: [70...70].
+  Point = 70;
+  Intervals = Tree.getContaining(Point);
+  ASSERT_TRUE(Intervals.size() == 1);
+  checkData(Point, Intervals[0], 70, 70, 7070);
+
+  // Invalid interval values: 70] < x
+  Point = 75;
+  Intervals = Tree.getContaining(Point);
+  EXPECT_TRUE(Intervals.empty());
 }
 
 // Simple overlapping tests.
@@ -393,7 +470,7 @@ TEST(IntervalTreeTest, SimpleIntervalsOverlapping) {
   // Invalid interval values: x < [10
   Point = 5;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 
   // Valid interval values:
   Point = 10;
@@ -625,7 +702,7 @@ TEST(IntervalTreeTest, SimpleIntervalsOverlapping) {
   // Invalid interval values: 90] < x
   Point = 95;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 }
 
 // Complex Overlapping.
@@ -1439,10 +1516,10 @@ TEST(IntervalTreeTest, ComplexIntervalsOverlapping) {
   // Invalid interval values.
   Point = 5;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
   Point = 90;
   Intervals = Tree.getContaining(Point);
-  EXPECT_EQ(Intervals.empty(), true);
+  EXPECT_TRUE(Intervals.empty());
 }
 
 // Four items tree tests. Overlapping. Check mapped values and iterators.
