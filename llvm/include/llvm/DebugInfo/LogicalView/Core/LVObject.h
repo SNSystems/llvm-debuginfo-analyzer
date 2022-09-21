@@ -225,7 +225,7 @@ public:
   PROPERTY(Property, HasCodeViewLocation);
 
 public:
-  // True if the scope has not been named or typed or no line number.
+  // True if the scope has been named or typed or with line number.
   virtual bool isNamed() const { return false; }
   virtual bool isTyped() const { return false; }
   virtual bool isFiled() const { return false; }

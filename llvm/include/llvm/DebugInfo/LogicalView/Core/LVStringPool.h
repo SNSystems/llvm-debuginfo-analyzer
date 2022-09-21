@@ -89,7 +89,7 @@ public:
   }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-  virtual void dump() const { print(dbgs()); }
+  void dump() const { print(dbgs()); }
 #endif
 };
 
