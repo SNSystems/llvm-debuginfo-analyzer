@@ -25,7 +25,6 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
-#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 
 using namespace mlir;
@@ -123,6 +122,11 @@ struct TestLinalgTransforms
       *this, "test-bubble-up-extract-slice-op-pattern",
       llvm::cl::desc("Test rewrite of linalgOp + extract_slice into "
                      "extract_slice + linalgOp"),
+      llvm::cl::init(false)};
+  Option<bool> testSwapExtractSliceWithFill{
+      *this, "test-swap-extract-slice-with-fill-pattern",
+      llvm::cl::desc(
+          "Test patterns to swap tensor.extract_slice(linalg.fill())"),
       llvm::cl::init(false)};
 };
 } // namespace
@@ -509,6 +513,12 @@ static void applyBubbleUpExtractSliceOpPattern(func::FuncOp funcOp) {
   (void)applyPatternsAndFoldGreedily(funcOp, std::move(patterns));
 }
 
+static void applySwapExtractSliceWithFillPattern(func::FuncOp funcOp) {
+  RewritePatternSet patterns(funcOp.getContext());
+  populateSwapExtractSliceWithFillPatterns(patterns);
+  (void)applyPatternsAndFoldGreedily(funcOp, std::move(patterns));
+}
+
 /// Apply transformations specified as patterns.
 void TestLinalgTransforms::runOnOperation() {
   auto lambda = [&](void *) {
@@ -552,6 +562,8 @@ void TestLinalgTransforms::runOnOperation() {
     return applySplitReduction(getOperation());
   if (testBubbleUpExtractSliceOpPattern)
     return applyBubbleUpExtractSliceOpPattern(getOperation());
+  if (testSwapExtractSliceWithFill)
+    return applySwapExtractSliceWithFillPattern(getOperation());
 }
 
 namespace mlir {

@@ -18,7 +18,7 @@ namespace llvm {
 
 class PassRegistry;
 
-/// Initialize all passes linked into the TransformUtils library.
+/// Initialize all passes linked into the Core library.
 void initializeCore(PassRegistry&);
 
 /// Initialize all passes linked into the TransformUtils library.
@@ -277,6 +277,7 @@ void initializeMachineBlockFrequencyInfoPass(PassRegistry&);
 void initializeMachineBlockPlacementPass(PassRegistry&);
 void initializeMachineBlockPlacementStatsPass(PassRegistry&);
 void initializeMachineBranchProbabilityInfoPass(PassRegistry&);
+void initializeMachineCFGPrinterPass(PassRegistry &);
 void initializeMachineCSEPass(PassRegistry&);
 void initializeMachineCombinerPass(PassRegistry&);
 void initializeMachineCopyPropagationPass(PassRegistry&);

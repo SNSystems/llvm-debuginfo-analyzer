@@ -1078,10 +1078,17 @@ Value *InstCombinerImpl::SimplifyMultipleUseDemandedBits(
     if (DemandedFromOps.isSubsetOf(LHSKnown.Zero))
       return I->getOperand(1);
 
-    bool NSW = cast<OverflowingBinaryOperator>(I)->hasNoSignedWrap();
-    Known = KnownBits::computeForAddSub(true, NSW, LHSKnown, RHSKnown);
-    if (DemandedMask.isSubsetOf(Known.Zero|Known.One))
-      return Constant::getIntegerValue(ITy, Known.One);
+    break;
+  }
+  case Instruction::Sub: {
+    unsigned NLZ = DemandedMask.countLeadingZeros();
+    APInt DemandedFromOps = APInt::getLowBitsSet(BitWidth, BitWidth - NLZ);
+
+    // If an operand subtracts zeros from every bit below the highest demanded
+    // bit, that operand doesn't change the result. Return the other side.
+    computeKnownBits(I->getOperand(1), RHSKnown, Depth + 1, CxtI);
+    if (DemandedFromOps.isSubsetOf(RHSKnown.Zero))
+      return I->getOperand(0);
 
     break;
   }

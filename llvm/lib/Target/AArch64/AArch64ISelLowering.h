@@ -58,6 +58,9 @@ enum NodeType : unsigned {
 
   CALL_BTI, // Function call followed by a BTI instruction.
 
+  SMSTART,
+  SMSTOP,
+
   // Produces the full sequence of instructions for getting the thread pointer
   // offset of a variable into X0, using the TLSDesc model.
   TLSDESC_CALLSEQ,
@@ -872,6 +875,14 @@ public:
 
   bool shouldExpandGetActiveLaneMask(EVT VT, EVT OpVT) const override;
 
+  /// If a change in streaming mode is required on entry to/return from a
+  /// function call it emits and returns the corresponding SMSTART or SMSTOP node.
+  /// \p Entry tells whether this is before/after the Call, which is necessary
+  /// because PSTATE.SM is only queried once.
+  SDValue changeStreamingMode(SelectionDAG &DAG, SDLoc DL, bool Enable,
+                              SDValue Chain, SDValue InFlag,
+                              SDValue PStateSM, bool Entry) const;
+
 private:
   /// Keep a pointer to the AArch64Subtarget around so that we can
   /// make the right decision when generating code for different targets.
@@ -1030,8 +1041,6 @@ private:
   SDValue LowerWindowsDYNAMIC_STACKALLOC(SDValue Op, SDValue Chain,
                                          SDValue &Size,
                                          SelectionDAG &DAG) const;
-  SDValue LowerSVEStructLoad(unsigned Intrinsic, ArrayRef<SDValue> LoadOps,
-                             EVT VT, SelectionDAG &DAG, const SDLoc &DL) const;
 
   SDValue LowerFixedLengthVectorIntDivideToSVE(SDValue Op,
                                                SelectionDAG &DAG) const;

@@ -3021,6 +3021,9 @@ def err_attribute_too_many_arguments : Error<
 def err_attribute_too_few_arguments : Error<
   "%0 attribute takes at least %1 argument%s1">;
 def err_attribute_invalid_vector_type : Error<"invalid vector element type %0">;
+def err_attribute_invalid_bitint_vector_type : Error<
+  "'_BitInt' vector element width must be %select{a power of 2|"
+  "at least as wide as 'CHAR_BIT'}0">;
 def err_attribute_invalid_matrix_type : Error<"invalid matrix element type %0">;
 def err_attribute_bad_neon_vector_size : Error<
   "Neon vector size must be 64 or 128 bits">;
@@ -7700,6 +7703,8 @@ def warn_overaligned_type : Warning<
   "type %0 requires %1 bytes of alignment and the default allocator only "
   "guarantees %2 bytes">,
   InGroup<OveralignedType>, DefaultIgnore;
+def err_array_element_alignment : Error<
+  "size of array element of type %0 (%1 bytes) isn't a multiple of its alignment (%2 bytes)">;
 def err_aligned_allocation_unavailable : Error<
   "aligned %select{allocation|deallocation}0 function of type '%1' is "
   "%select{only|not}4 available on %2%select{ %3 or newer|}4">;
@@ -11273,7 +11278,16 @@ def err_coroutine_unusable_new : Error<
   "'operator new' provided by %0 is not usable with the function signature of %1"
 >;
 def err_coroutine_unfound_nothrow_new : Error <
-  "unable to find '::operator new(size_t, nothrow_t)' for %0"
+  "unable to find %select{'::operator new(size_t, nothrow_t)'|"
+  "'::operator new(size_t, align_val_t, nothrow_t)'}1 for %0"
+>;
+def warn_non_aligned_allocation_function : Warning <
+  "under -fcoro-aligned-allocation, the non-aligned allocation function "
+  "for the promise type %0 has higher precedence than the global aligned "
+  "allocation function">,
+  InGroup<CoroNonAlignedAllocationFunction>;
+def err_conflicting_aligned_options : Error <
+  "conflicting option '-fcoro-aligned-allocation' and '-fno-aligned-allocation'"
 >;
 } // end of coroutines issue category
 
@@ -11658,6 +11672,9 @@ def err_hlsl_missing_semantic_annotation : Error<
 def err_hlsl_init_priority_unsupported : Error<
   "initializer priorities are not supported in HLSL">;
 
+def err_hlsl_unsupported_register_type : Error<"invalid resource class specifier '%0' used; expected 'b', 's', 't', or 'u'">;
+def err_hlsl_unsupported_register_number : Error<"register number should be an integer">;
+def err_hlsl_expected_space : Error<"invalid space specifier '%0' used; expected 'space' followed by an integer, like space1">;
 def err_hlsl_pointers_unsupported : Error<
   "%select{pointers|references}0 are unsupported in HLSL">;
 

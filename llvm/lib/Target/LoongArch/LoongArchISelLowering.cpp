@@ -112,6 +112,8 @@ LoongArchTargetLowering::LoongArchTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SELECT_CC, MVT::f32, Expand);
     setOperationAction(ISD::BR_CC, MVT::f32, Expand);
     setOperationAction(ISD::FMA, MVT::f32, Legal);
+    setOperationAction(ISD::FMINNUM_IEEE, MVT::f32, Legal);
+    setOperationAction(ISD::FMAXNUM_IEEE, MVT::f32, Legal);
   }
   if (Subtarget.hasBasicD()) {
     setCondCodeAction(FPCCToExpand, MVT::f64, Expand);
@@ -120,6 +122,8 @@ LoongArchTargetLowering::LoongArchTargetLowering(const TargetMachine &TM,
     setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, Expand);
     setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, Expand);
     setOperationAction(ISD::FMA, MVT::f64, Legal);
+    setOperationAction(ISD::FMINNUM_IEEE, MVT::f64, Legal);
+    setOperationAction(ISD::FMAXNUM_IEEE, MVT::f64, Legal);
   }
 
   // Effectively disable jump table generation.
@@ -1797,6 +1801,9 @@ bool LoongArchTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
   default:
     return false;
   case Intrinsic::loongarch_masked_atomicrmw_xchg_i32:
+  case Intrinsic::loongarch_masked_atomicrmw_add_i32:
+  case Intrinsic::loongarch_masked_atomicrmw_sub_i32:
+  case Intrinsic::loongarch_masked_atomicrmw_nand_i32:
     Info.opc = ISD::INTRINSIC_W_CHAIN;
     Info.memVT = MVT::i32;
     Info.ptrVal = I.getArgOperand(0);
@@ -1827,6 +1834,12 @@ getIntrinsicForMaskedAtomicRMWBinOp(unsigned GRLen,
       llvm_unreachable("Unexpected AtomicRMW BinOp");
     case AtomicRMWInst::Xchg:
       return Intrinsic::loongarch_masked_atomicrmw_xchg_i64;
+    case AtomicRMWInst::Add:
+      return Intrinsic::loongarch_masked_atomicrmw_add_i64;
+    case AtomicRMWInst::Sub:
+      return Intrinsic::loongarch_masked_atomicrmw_sub_i64;
+    case AtomicRMWInst::Nand:
+      return Intrinsic::loongarch_masked_atomicrmw_nand_i64;
       // TODO: support other AtomicRMWInst.
     }
   }
@@ -1837,6 +1850,12 @@ getIntrinsicForMaskedAtomicRMWBinOp(unsigned GRLen,
       llvm_unreachable("Unexpected AtomicRMW BinOp");
     case AtomicRMWInst::Xchg:
       return Intrinsic::loongarch_masked_atomicrmw_xchg_i32;
+    case AtomicRMWInst::Add:
+      return Intrinsic::loongarch_masked_atomicrmw_add_i32;
+    case AtomicRMWInst::Sub:
+      return Intrinsic::loongarch_masked_atomicrmw_sub_i32;
+    case AtomicRMWInst::Nand:
+      return Intrinsic::loongarch_masked_atomicrmw_nand_i32;
       // TODO: support other AtomicRMWInst.
     }
   }

@@ -1404,7 +1404,7 @@ Instruction *InstCombinerImpl::visitAdd(BinaryOperator &I) {
                                                       m_Deferred(A)))))) {
     Value *Add =
         Builder.CreateAdd(A, Constant::getAllOnesValue(A->getType()), "",
-                          I.hasNoSignedWrap(), I.hasNoSignedWrap());
+                          I.hasNoUnsignedWrap(), I.hasNoSignedWrap());
     return BinaryOperator::CreateAnd(Add, A);
   }
 
@@ -1431,6 +1431,15 @@ Instruction *InstCombinerImpl::visitAdd(BinaryOperator &I) {
     Constant *NewMulC = ConstantInt::get(Ty, 1 - *C1);
     Value *NewMul = Builder.CreateMul(A, NewMulC);
     return BinaryOperator::CreateAdd(NewMul, ConstantInt::getAllOnesValue(Ty));
+  }
+
+  // (A * -2**C) + B --> B - (A << C)
+  const APInt *NegPow2C;
+  if (match(&I, m_c_Add(m_OneUse(m_Mul(m_Value(A), m_NegatedPower2(NegPow2C))),
+                        m_Value(B)))) {
+    Constant *ShiftAmtC = ConstantInt::get(Ty, NegPow2C->countTrailingZeros());
+    Value *Shl = Builder.CreateShl(A, ShiftAmtC);
+    return BinaryOperator::CreateSub(B, Shl);
   }
 
   // TODO(jingyue): Consider willNotOverflowSignedAdd and

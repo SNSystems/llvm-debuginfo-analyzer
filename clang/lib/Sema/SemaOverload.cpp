@@ -684,6 +684,7 @@ clang::MakeDeductionFailureInfo(ASTContext &Context,
 
   case Sema::TDK_Success:
   case Sema::TDK_NonDependentConversionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     llvm_unreachable("not a deduction failure");
   }
 
@@ -733,6 +734,7 @@ void DeductionFailureInfo::Destroy() {
 
   // Unhandled
   case Sema::TDK_MiscellaneousDeductionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     break;
   }
 }
@@ -770,6 +772,7 @@ TemplateParameter DeductionFailureInfo::getTemplateParameter() {
 
   // Unhandled
   case Sema::TDK_MiscellaneousDeductionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     break;
   }
 
@@ -805,6 +808,7 @@ TemplateArgumentList *DeductionFailureInfo::getTemplateArgumentList() {
 
   // Unhandled
   case Sema::TDK_MiscellaneousDeductionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     break;
   }
 
@@ -836,6 +840,7 @@ const TemplateArgument *DeductionFailureInfo::getFirstArg() {
 
   // Unhandled
   case Sema::TDK_MiscellaneousDeductionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     break;
   }
 
@@ -867,6 +872,7 @@ const TemplateArgument *DeductionFailureInfo::getSecondArg() {
 
   // Unhandled
   case Sema::TDK_MiscellaneousDeductionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     break;
   }
 
@@ -1066,6 +1072,15 @@ Sema::CheckOverload(Scope *S, FunctionDecl *New, const LookupResult &Old,
 
         if (!isa<FunctionTemplateDecl>(OldD) &&
             !shouldLinkPossiblyHiddenDecl(*I, New))
+          continue;
+
+        // C++20 [temp.friend] p9: A non-template friend declaration with a
+        // requires-clause shall be a definition.  A friend function template
+        // with a constraint that depends on a template parameter from an
+        // enclosing template shall be a definition.  Such a constrained friend
+        // function or function template declaration does not declare the same
+        // function or function template as a declaration in any other scope.
+        if (Context.FriendsDifferByConstraints(OldF, New))
           continue;
 
         Match = *I;
@@ -6515,7 +6530,8 @@ void Sema::AddOverloadCandidate(
 
   if (Function->getTrailingRequiresClause()) {
     ConstraintSatisfaction Satisfaction;
-    if (CheckFunctionConstraints(Function, Satisfaction) ||
+    if (CheckFunctionConstraints(Function, Satisfaction, /*Loc*/ {},
+                                 /*ForOverloadResolution*/ true) ||
         !Satisfaction.IsSatisfied) {
       Candidate.Viable = false;
       Candidate.FailureKind = ovl_fail_constraints_not_satisfied;
@@ -7021,7 +7037,8 @@ Sema::AddMethodCandidate(CXXMethodDecl *Method, DeclAccessPair FoundDecl,
 
   if (Method->getTrailingRequiresClause()) {
     ConstraintSatisfaction Satisfaction;
-    if (CheckFunctionConstraints(Method, Satisfaction) ||
+    if (CheckFunctionConstraints(Method, Satisfaction, /*Loc*/ {},
+                                 /*ForOverloadResolution*/ true) ||
         !Satisfaction.IsSatisfied) {
       Candidate.Viable = false;
       Candidate.FailureKind = ovl_fail_constraints_not_satisfied;
@@ -11482,6 +11499,7 @@ static unsigned RankDeductionFailure(const DeductionFailureInfo &DFI) {
   switch ((Sema::TemplateDeductionResult)DFI.Result) {
   case Sema::TDK_Success:
   case Sema::TDK_NonDependentConversionFailure:
+  case Sema::TDK_AlreadyDiagnosed:
     llvm_unreachable("non-deduction failure while diagnosing bad deduction");
 
   case Sema::TDK_Invalid:

@@ -5993,6 +5993,16 @@ TEST_F(FormatTest, LayoutStatementsAroundPreprocessorDirectives) {
                          ");\n"
                          "#else\n"
                          "#endif");
+
+  // Verify that indentation is correct when there is an `#if 0` with an
+  // `#else`.
+  verifyFormat("#if 0\n"
+               "{\n"
+               "#else\n"
+               "{\n"
+               "#endif\n"
+               "  x;\n"
+               "}");
 }
 
 TEST_F(FormatTest, GraciouslyHandleIncorrectPreprocessorConditions) {
@@ -9854,6 +9864,10 @@ TEST_F(FormatTest, UnderstandsTemplateParameters) {
   verifyFormat("Constructor(A... a) : a_(X<A>{std::forward<A>(a)}...) {}");
   verifyFormat("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < <");
   verifyFormat("some_templated_type<decltype([](int i) { return i; })>");
+
+  verifyFormat("#define FOO(typeName, realClass)                           \\\n"
+               "  { #typeName, foo<FooType>(new foo<realClass>(#typeName)) }",
+               getLLVMStyleWithColumns(60));
 }
 
 TEST_F(FormatTest, UnderstandsShiftOperators) {
@@ -25367,27 +25381,18 @@ TEST_F(FormatTest, InsertBraces) {
 
   verifyFormat("do {\n"
                "#if 0\n"
-               " if (a) {\n"
-               "#else\n"
-               "  if (b) {\n"
-               "#endif\n"
-               "}\n"
-               "}\n"
-               "while (0)\n"
-               "  ;",
-               Style);
-  // TODO: Replace the test above with the one below after #57539 is fixed.
-#if 0
-  verifyFormat("do {\n"
-               "#if 0\n"
-               "  if (a) {\n"
                "#else\n"
                "  if (b) {\n"
                "#endif\n"
                "  }\n"
                "} while (0);",
                Style);
-#endif
+
+  Style.RemoveBracesLLVM = true;
+  verifyFormat("if (a) //\n"
+               "  return b;",
+               Style);
+  Style.RemoveBracesLLVM = false;
 
   Style.ColumnLimit = 15;
 
@@ -26005,6 +26010,17 @@ TEST_F(FormatTest, RemoveBraces) {
   verifyFormat("if !consteval {\n"
                "  g();\n"
                "}",
+               Style);
+
+  verifyFormat("while (0)\n"
+               "  if (a)\n"
+               "    return b;\n"
+               "return a;",
+               "while (0) {\n"
+               "  if (a) {\n"
+               "    return b;\n"
+               "}}\n"
+               "return a;",
                Style);
 
   Style.ColumnLimit = 65;
