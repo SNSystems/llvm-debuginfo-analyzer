@@ -100,7 +100,7 @@ void LVElement::setName(StringRef ElementName) {
 }
 
 void LVElement::setFilename(StringRef Filename) {
-  // Get index for the flatted out filename.
+  // Get index for the flattened out filename.
   FilenameIndex = getStringIndex(Filename);
 }
 

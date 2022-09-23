@@ -466,7 +466,7 @@ void LVScope::resolveElements() {
 }
 
 StringRef LVScope::resolveReferencesChain() {
-  // If the scope have a DW_AT_specification or DW_AT_abstract_origin,
+  // If the scope has a DW_AT_specification or DW_AT_abstract_origin,
   // follow the chain to resolve the name from those references.
   if (getHasReference() && !isNamed())
     setName(getReference()->resolveReferencesChain());
@@ -719,7 +719,7 @@ void LVScope::traverseParents(LVScopeGetFunction GetFunction,
   // Traverse the parent tree.
   LVScope *Parent = this;
   while (Parent) {
-    // Terminates if the 'SetFunction' have been already executed.
+    // Terminates if the 'SetFunction' has been already executed.
     if ((Parent->*GetFunction)())
       break;
     (Parent->*SetFunction)();
@@ -733,7 +733,7 @@ void LVScope::traverseParentsAndChildren(LVObjectGetFunction GetFunction,
     // First traverse the parent tree.
     LVScope *Parent = this;
     while (Parent) {
-      // Terminates if the 'SetFunction' have been already executed.
+      // Terminates if the 'SetFunction' has been already executed.
       if ((Parent->*GetFunction)())
         break;
       (Parent->*SetFunction)();
@@ -1780,7 +1780,6 @@ void LVScopeFunction::resolveReferences() {
     if (Scopes)
       for (LVScope *Scope : *Scopes)
         if (Scope->getHasReferenceAbstract() && !Scope->getAddedMissing())
-          // Add missing elements at the function nested scopes.
           Scope->addMissingElements(Scope->getReference());
   }
 

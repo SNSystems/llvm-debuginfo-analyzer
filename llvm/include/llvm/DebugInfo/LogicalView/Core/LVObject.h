@@ -157,7 +157,7 @@ class LVObject {
   } TagAttrOpcode = {dwarf::DW_TAG_null};
 
   // The parent of this object (nullptr if the root scope). For locations,
-  // the parent it is a symbol object; otherwise is a scope object.
+  // the parent is a symbol object; otherwise it is a scope object.
   union {
     LVElement *Element;
     LVScope *Scope;

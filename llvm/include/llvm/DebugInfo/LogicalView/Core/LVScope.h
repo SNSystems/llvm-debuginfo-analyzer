@@ -736,7 +736,7 @@ public:
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };
 
-// Class to represent a DWARF subroutine function.
+// Class to represent a DWARF subroutine type.
 class LVScopeFunctionType final : public LVScopeFunction {
 public:
   LVScopeFunctionType() : LVScopeFunction() { setIsFunctionType(); }
@@ -774,6 +774,7 @@ public:
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };
 
+// Class to represent the binary file being analyzed.
 class LVScopeRoot final : public LVScope {
   size_t FileFormatNameIndex = 0;
 

@@ -154,7 +154,7 @@ void LVType::resolveName() {
   resolveFullname(BaseType, getName());
 
   // In the case of unnamed types, try to generate a name for it, using
-  // the parents name and the line information. Ignore the template
+  // the parents name and the line information. Ignore the template parameters.
   if (!isNamed() && !getIsTemplateParam())
     generateName();
 
