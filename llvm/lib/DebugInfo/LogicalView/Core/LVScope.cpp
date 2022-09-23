@@ -56,7 +56,7 @@ LVScope::~LVScope() {
 
 // Return a string representation for the scope kind.
 const char *LVScope::kind() const {
-  static const char *Kind = KindUndefined;
+  const char *Kind = KindUndefined;
   if (getIsArray())
     Kind = KindArray;
   else if (getIsBlock())

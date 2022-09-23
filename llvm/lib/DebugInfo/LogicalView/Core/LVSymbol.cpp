@@ -34,7 +34,7 @@ const char *const KindVariable = "Variable";
 
 // Return a string representation for the symbol kind.
 const char *LVSymbol::kind() const {
-  static const char *Kind = KindUndefined;
+  const char *Kind = KindUndefined;
   if (getIsCallSiteParameter())
     Kind = KindCallSiteParameter;
   else if (getIsConstant())

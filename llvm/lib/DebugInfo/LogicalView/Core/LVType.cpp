@@ -46,7 +46,7 @@ const char *const KindVolatile = "Volatile";
 //===----------------------------------------------------------------------===//
 // Return a string representation for the type kind.
 const char *LVType::kind() const {
-  static const char *Kind = KindUndefined;
+  const char *Kind = KindUndefined;
   if (getIsBase())
     Kind = KindBaseType;
   else if (getIsConst())

@@ -38,7 +38,7 @@ const char *const KindNeverStepInto = "NeverStepInto";   // CodeView
 //===----------------------------------------------------------------------===//
 // Return a string representation for the line kind.
 const char *LVLine::kind() const {
-  static const char *Kind = KindUndefined;
+  const char *Kind = KindUndefined;
   if (getIsLineDebug())
     Kind = KindLineDebug;
   else if (getIsLineAssembler())
