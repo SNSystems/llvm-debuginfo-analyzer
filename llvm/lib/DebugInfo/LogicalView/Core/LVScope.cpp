@@ -1537,8 +1537,8 @@ void LVScopeCompileUnit::printTotals(raw_ostream &OS) const {
                  Totals[Index].second);
 }
 
-void LVScopeCompileUnit::printScopeSize(LVScope *Scope, raw_ostream &OS) {
-  LVSizesMap::iterator Iter = Sizes.find(Scope);
+void LVScopeCompileUnit::printScopeSize(const LVScope *Scope, raw_ostream &OS) {
+  LVSizesMap::const_iterator Iter = Sizes.find(Scope);
   if (Iter != Sizes.end()) {
     LVOffset Size = Iter->second;
     assert(CUContributionSize && "Invalid CU contribution size.");
@@ -1562,22 +1562,23 @@ void LVScopeCompileUnit::printScopeSize(LVScope *Scope, raw_ostream &OS) {
 
 void LVScopeCompileUnit::printSizes(raw_ostream &OS) const {
   // Recursively print the contributions for each scope.
-  std::function<void(LVScope * Scope)> PrintScope = [&](LVScope *Scope) {
-    // If we have selection criteria, then use only the selected scopes.
-    if (options().getSelectExecute() && options().getReportAnyView()) {
-      for (LVScope *Scope : MatchedScopes)
-        if (Scope->getLevel() < options().getOutputLevel())
-          printScopeSize(Scope, OS);
-      return;
-    }
-    if (Scope->getLevel() < options().getOutputLevel()) {
-      if (const LVScopes *Scopes = Scope->getScopes())
-        for (LVScope *Scope : *Scopes) {
-          printScopeSize(Scope, OS);
-          PrintScope(Scope);
+  std::function<void(const LVScope *Scope)> PrintScope =
+      [&](const LVScope *Scope) {
+        // If we have selection criteria, then use only the selected scopes.
+        if (options().getSelectExecute() && options().getReportAnyView()) {
+          for (const LVScope *Scope : MatchedScopes)
+            if (Scope->getLevel() < options().getOutputLevel())
+              printScopeSize(Scope, OS);
+          return;
         }
-    }
-  };
+        if (Scope->getLevel() < options().getOutputLevel()) {
+          if (const LVScopes *Scopes = Scope->getScopes())
+            for (const LVScope *Scope : *Scopes) {
+              printScopeSize(Scope, OS);
+              PrintScope(Scope);
+            }
+        }
+      };
 
   bool PrintScopes = options().getPrintScopes();
   if (!PrintScopes)
@@ -1590,8 +1591,8 @@ void LVScopeCompileUnit::printSizes(raw_ostream &OS) const {
 
   // Print the scopes regardless if the user has requested any scopes
   // printing. Set the option just to allow printing the contributions.
-  printScopeSize(const_cast<LVScopeCompileUnit *>(this), OS);
-  PrintScope(const_cast<LVScopeCompileUnit *>(this));
+  printScopeSize(this, OS);
+  PrintScope(this);
 
   // Print total scope sizes by level.
   printTotals(OS);
@@ -1695,7 +1696,7 @@ void LVScopeCompileUnit::printMatchedElements(raw_ostream &OS,
     print(OS);
 
     OS << "\nScope Sizes:\n";
-    printScopeSize(const_cast<LVScopeCompileUnit *>(this), OS);
+    printScopeSize(this, OS);
     for (LVElement *Element : MatchedElements)
       if (Element->getIsScope())
         // Print sizes only for scopes.

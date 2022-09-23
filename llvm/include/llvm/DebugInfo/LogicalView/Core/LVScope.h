@@ -449,7 +449,7 @@ class LVScopeCompileUnit final : public LVScope {
   LVOffsetLinesMap LinesZero;
 
   // Record scopes contribution in bytes to the debug information.
-  using LVSizesMap = std::map<LVScope *, LVOffset>;
+  using LVSizesMap = std::map<const LVScope *, LVOffset>;
   LVSizesMap Sizes;
   LVOffset CUContributionSize = 0;
 
@@ -475,8 +475,8 @@ class LVScopeCompileUnit final : public LVScope {
   LVLine *lineLowerBound(LVAddress Address, LVScope *Scope) const;
   LVLine *lineUpperBound(LVAddress Address, LVScope *Scope) const;
 
-  void printScopeSize(LVScope *Scope, raw_ostream &OS);
-  void printScopeSize(LVScope *Scope, raw_ostream &OS) const {
+  void printScopeSize(const LVScope *Scope, raw_ostream &OS);
+  void printScopeSize(const LVScope *Scope, raw_ostream &OS) const {
     (const_cast<LVScopeCompileUnit *>(this))->printScopeSize(Scope, OS);
   }
   void printTotals(raw_ostream &OS) const;
