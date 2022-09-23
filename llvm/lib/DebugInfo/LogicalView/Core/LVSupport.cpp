@@ -20,7 +20,10 @@ using namespace llvm::logicalview;
 
 #define DEBUG_TYPE "Support"
 
-// Transforms '\\' into '/' (Platform independent).
+// Perform the following transformations to the given 'Path':
+// - all characters to lowercase.
+// - '\\' into '/' (Platform independent).
+// - '//' into '/'
 std::string llvm::logicalview::transformPath(StringRef Path) {
   std::string Name(Path);
   std::transform(Name.begin(), Name.end(), Name.begin(), tolower);
@@ -34,24 +37,21 @@ std::string llvm::logicalview::transformPath(StringRef Path) {
   return Name;
 }
 
-// Transforms specific characters in the given pathname into '_'.
-// The characters are:
+// Convert the given 'Path' to lowercase and change any matching character
+// from 'CharSet' into '_'.
+// The characters in 'CharSet' are:
 //   '/', '\', '<', '>', '.', ':', '%', '*', '?', '|', '"', ' '.
 std::string llvm::logicalview::flattenedFilePath(StringRef Path) {
   std::string Name(Path);
   std::transform(Name.begin(), Name.end(), Name.begin(), tolower);
-  std::replace(Name.begin(), Name.end(), '.', '_');
-  std::replace(Name.begin(), Name.end(), '/', '_');
-  std::replace(Name.begin(), Name.end(), ':', '_');
-  std::replace(Name.begin(), Name.end(), '<', '_');
-  std::replace(Name.begin(), Name.end(), '>', '_');
-  std::replace(Name.begin(), Name.end(), '%', '_');
-  std::replace(Name.begin(), Name.end(), '*', '_');
-  std::replace(Name.begin(), Name.end(), '?', '_');
-  std::replace(Name.begin(), Name.end(), '|', '_');
-  std::replace(Name.begin(), Name.end(), '\\', '_');
-  std::replace(Name.begin(), Name.end(), '"', '_');
-  std::replace(Name.begin(), Name.end(), ' ', '_');
+
+  const char *CharSet = "/\\<>.:%*?|\" ";
+  char *Input = Name.data();
+  while (Input && *Input) {
+    Input = strpbrk(Input, CharSet);
+    if (Input)
+      *Input++ = '_';
+  };
   return Name;
 }
 
