@@ -58,23 +58,9 @@ template <typename T> class LVProperties {
 public:
   LVProperties() = default;
 
-  void set(T Idx) {
-    assert(static_cast<unsigned>(Idx) < static_cast<unsigned>(T::LastEntry) &&
-           "Invalid property");
-    Bits.set(static_cast<unsigned>(Idx));
-  }
-
-  void reset(T Idx) {
-    assert(static_cast<unsigned>(Idx) < static_cast<unsigned>(T::LastEntry) &&
-           "Invalid property");
-    Bits.reset(static_cast<unsigned>(Idx));
-  }
-
-  bool get(T Idx) const {
-    assert(static_cast<unsigned>(Idx) < static_cast<unsigned>(T::LastEntry) &&
-           "Invalid property");
-    return Bits[static_cast<unsigned>(Idx)];
-  }
+  void set(T Idx) { Bits[static_cast<unsigned>(Idx)] = 1; }
+  void reset(T Idx) { Bits[static_cast<unsigned>(Idx)] = 0; }
+  bool get(T Idx) const { return Bits[static_cast<unsigned>(Idx)]; }
 };
 
 // Generate get, set and reset 'bool' functions for LVProperties instances.
