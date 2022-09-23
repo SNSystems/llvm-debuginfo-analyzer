@@ -361,7 +361,7 @@ bool LVSymbol::equals(const LVSymbol *Symbol) const {
     return false;
 
   if (getReference() && !getReference()->equals(Symbol->getReference()))
-      return false;
+    return false;
 
   return true;
 }

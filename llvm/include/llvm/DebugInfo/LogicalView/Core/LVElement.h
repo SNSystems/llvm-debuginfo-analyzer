@@ -359,7 +359,7 @@ public:
   // to the one supplied. Returns true if they are equal. False otherwise.
   bool equals(const LVElement *Element) const;
   // Report the element as missing or added during comparison.
-  virtual void report(LVComparePass Pass){};
+  virtual void report(LVComparePass Pass) {}
 
 public:
   static LVElementDispatch &getDispatch() { return Dispatch; }

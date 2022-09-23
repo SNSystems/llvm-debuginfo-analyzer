@@ -135,7 +135,7 @@ class LVTypeRecords {
   NameTable NameFromIds;
 
 public:
-  LVTypeRecords(LVShared *Shared) : Shared(Shared){};
+  LVTypeRecords(LVShared *Shared) : Shared(Shared) {}
 
   void add(uint32_t StreamIdx, TypeIndex TI, TypeLeafKind Kind,
            LVElement *Element = nullptr);
@@ -233,7 +233,7 @@ class LVNamespaceDeduction {
   }
 
 public:
-  LVNamespaceDeduction(LVShared *Shared) : Shared(Shared){};
+  LVNamespaceDeduction(LVShared *Shared) : Shared(Shared) {}
 
   void init();
   void add(StringRef String);

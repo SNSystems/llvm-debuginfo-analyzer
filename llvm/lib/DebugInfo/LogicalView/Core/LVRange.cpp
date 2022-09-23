@@ -29,8 +29,8 @@ void LVRange::startSearch() {
     LLVM_DEBUG({
       LVScope *Scope = RangeEntry.scope();
       dbgs() << "Scope: " << format_decimal(Scope->getLevel(), 5) << " "
-              << "Range: [" << hexValue(RangeEntry.lower()) << ":"
-              << hexValue(RangeEntry.upper()) << "]\n";
+             << "Range: [" << hexValue(RangeEntry.lower()) << ":"
+             << hexValue(RangeEntry.upper()) << "]\n";
     });
 
     RangesTree.insert(RangeEntry.lower(), RangeEntry.upper(),

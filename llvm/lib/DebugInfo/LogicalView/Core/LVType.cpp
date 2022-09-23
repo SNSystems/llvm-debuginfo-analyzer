@@ -430,8 +430,9 @@ void LVTypeParam::encodeTemplateArgument(std::string &Name) const {
       if (ArgType->getIsTypedef()) {
         LVObject *BaseType = ArgType->getUnderlyingType();
         Name.append(std::string(BaseType->getName()));
-      } else
+      } else {
         Name.append(std::string(ArgType->getName()));
+      }
     } else {
       if (getIsKindScope()) {
         LVScope *ArgScope = getTypeAsScope();

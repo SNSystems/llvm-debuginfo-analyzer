@@ -87,9 +87,7 @@ public:
       return std::move(Err);
     return Readers[0];
   }
-  void deleteReader(LVReader *Reader) {
-    delete Reader;
-  }
+  void deleteReader(LVReader *Reader) { delete Reader; }
 
 public:
   void print(raw_ostream &OS) const;

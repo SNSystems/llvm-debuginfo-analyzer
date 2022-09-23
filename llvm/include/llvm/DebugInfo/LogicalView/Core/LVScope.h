@@ -139,8 +139,8 @@ protected:
   void printActiveRanges(raw_ostream &OS, bool Full = true) const {
     (const_cast<LVScope *>(this))->printActiveRanges(OS, Full);
   }
-  virtual void printSizes(raw_ostream &OS) const {};
-  virtual void printSummary(raw_ostream &OS) const {};
+  virtual void printSizes(raw_ostream &OS) const {}
+  virtual void printSummary(raw_ostream &OS) const {}
 
   // Encoded template arguments.
   virtual StringRef getEncodedArgs() const { return StringRef(); }
@@ -316,8 +316,8 @@ public:
 public:
   void print(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override;
-  virtual void printWarnings(raw_ostream &OS, bool Full = true) const {};
-  virtual void printMatchedElements(raw_ostream &OS, bool UseMatchedElements){};
+  virtual void printWarnings(raw_ostream &OS, bool Full = true) const {}
+  virtual void printMatchedElements(raw_ostream &OS, bool UseMatchedElements) {}
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   void dump() const override { print(dbgs()); }
