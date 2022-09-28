@@ -14,6 +14,9 @@ def PThreadStartT : NamedType<"__pthread_start_t">;
 def PThreadTSSDtorT : NamedType<"__pthread_tss_dtor_t">;
 def PThreadKeyT : NamedType<"pthread_key_t">;
 def PThreadKeyTPtr : PtrType<PThreadKeyT>;
+def PThreadOnceT : NamedType<"pthread_once_t">;
+def PThreadOnceTPtr : PtrType<PThreadOnceT>;
+def PThreadOnceCallback : NamedType<"__pthread_once_func_t">;
 
 def InoT : NamedType<"ino_t">;
 def UidT : NamedType<"uid_t">;
@@ -36,6 +39,9 @@ def StructDirent : NamedType<"struct dirent">;
 def StructDirentPtr : PtrType<StructDirent>;
 def StructDirentPtrPtr : PtrType<StructDirentPtr>;
 def ConstStructDirentPtrPtr : ConstType<StructDirentPtrPtr>;
+
+def StructTimeSpec : NamedType<"struct timespec">;
+def StructTimeSpecPtr : PtrType<StructTimeSpec>;
 
 def POSIX : StandardSpec<"POSIX"> {
   PtrType CharPtr = PtrType<CharType>;
@@ -201,6 +207,13 @@ def POSIX : StandardSpec<"POSIX"> {
       [], // Enumerations
       [
         FunctionSpec<
+            "madvise",
+            RetValSpec<IntType>,
+            [ArgSpec<VoidPtr>,
+             ArgSpec<SizeTType>,
+             ArgSpec<IntType>]
+        >,
+        FunctionSpec<
             "mmap",
             RetValSpec<VoidPtr>,
             [ArgSpec<VoidPtr>,
@@ -211,9 +224,23 @@ def POSIX : StandardSpec<"POSIX"> {
              ArgSpec<OffTType>]
         >,
         FunctionSpec<
+            "mprotect",
+            RetValSpec<IntType>,
+            [ArgSpec<VoidPtr>,
+             ArgSpec<SizeTType>,
+             ArgSpec<IntType>]
+        >,
+        FunctionSpec<
             "munmap",
             RetValSpec<IntType>,
             [ArgSpec<VoidPtr>, ArgSpec<SizeTType>]
+        >,
+        FunctionSpec<
+            "posix_madvise",
+            RetValSpec<IntType>,
+            [ArgSpec<VoidPtr>,
+             ArgSpec<SizeTType>,
+             ArgSpec<IntType>]
         >,
       ]
   >;
@@ -651,6 +678,8 @@ def POSIX : StandardSpec<"POSIX"> {
         PThreadKeyT,
         PThreadMutexAttrTType,
         PThreadMutexTType,
+        PThreadOnceCallback,
+        PThreadOnceT,
         PThreadStartT,
         PThreadTSSDtorT,
         PThreadTType,
@@ -837,6 +866,11 @@ def POSIX : StandardSpec<"POSIX"> {
           RetValSpec<VoidPtr>,
           [ArgSpec<PThreadKeyT>, ArgSpec<ConstVoidPtr>]
       >,
+      FunctionSpec<
+          "pthread_once",
+          RetValSpec<IntType>,
+          [ArgSpec<PThreadOnceTPtr>, ArgSpec<PThreadOnceCallback>]
+      >,
     ]
   >;
 
@@ -898,6 +932,23 @@ def POSIX : StandardSpec<"POSIX"> {
       ]
   >;
 
+  HeaderSpec Time = HeaderSpec<
+      "time.h",
+      [], // Macros
+      [StructTimeSpec], // Types
+      [], // Enumerations
+      [
+          FunctionSpec<
+              "nanosleep",
+              RetValSpec<IntType>,
+              [
+	      	      ArgSpec<StructTimeSpecPtr>,
+	      	      ArgSpec<StructTimeSpecPtr>,
+	            ]
+          >,
+      ]
+  >;
+
   let Headers = [
     CType,
     Dirent,
@@ -911,6 +962,7 @@ def POSIX : StandardSpec<"POSIX"> {
     SysResource,
     SysStat,
     SysUtsName,
+    Time,
     UniStd,
     String
   ];

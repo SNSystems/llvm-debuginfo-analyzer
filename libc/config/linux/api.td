@@ -171,7 +171,7 @@ def StdlibAPI : PublicAPI<"stdlib.h"> {
 }
 
 def TimeAPI : PublicAPI<"time.h"> {
-  let Types = ["time_t", "struct tm"];
+  let Types = ["time_t", "struct tm", "struct timespec"];
 }
 
 def ErrnoAPI : PublicAPI<"errno.h"> {
@@ -196,22 +196,6 @@ def ErrnoAPI : PublicAPI<"errno.h"> {
 def SysMManAPI : PublicAPI<"sys/mman.h"> {
   let Types = ["off_t", "size_t"];
   let Macros = [
-    SimpleMacroDef<"PROT_NONE", "0">,
-    SimpleMacroDef<"PROT_READ", "1">,
-    SimpleMacroDef<"PROT_WRITE", "2">,
-    SimpleMacroDef<"PROT_EXEC", "4">,
-
-    SimpleMacroDef<"MAP_FIXED", "1">,
-    SimpleMacroDef<"MAP_PRIVATE", "2">,
-    SimpleMacroDef<"MAP_SHARED", "4">,
-
-    SimpleMacroDef<"MAP_FAILED", "((void*)-1)">,
-
-    // TODO: The value of 0x20 is good for x86_64, but has to be extended
-    // in some manner to accommodate other machine architectures.
-    SimpleMacroDef<"MAP_ANONYMOUS", "0x20">
-
-    // TODO: Add other MAP_* macros used by Linux.
   ];
 
 }
@@ -250,6 +234,7 @@ def ThreadsAPI : PublicAPI<"threads.h"> {
 
 def PThreadAPI : PublicAPI<"pthread.h"> {
   let Types = [
+      "__pthread_once_func_t",
       "__pthread_start_t",
       "__pthread_tss_dtor_t",
       "pthread_attr_t",
@@ -257,6 +242,7 @@ def PThreadAPI : PublicAPI<"pthread.h"> {
       "pthread_mutexattr_t",
       "pthread_t",
       "pthread_key_t",
+      "pthread_once_t",
   ];
 }
 

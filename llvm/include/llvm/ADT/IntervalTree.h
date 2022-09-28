@@ -210,7 +210,7 @@ public:
   IntervalData() = delete;
   IntervalData(PointType Left, PointType Right, ValueType Value)
       : Left(Left), Right(Right), Value(Value) {
-    assert(Left <= Right && "'Left' must be less or equal that 'Right'");
+    assert(Left <= Right && "'Left' must be less or equal to 'Right'");
   }
   virtual ~IntervalData() = default;
   PointType left() const { return Left; }

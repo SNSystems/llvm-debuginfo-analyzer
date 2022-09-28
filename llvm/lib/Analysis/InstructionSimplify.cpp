@@ -4233,6 +4233,55 @@ static Value *simplifySelectBitTest(Value *TrueVal, Value *FalseVal, Value *X,
   return nullptr;
 }
 
+static Value *simplifyCmpSelOfMaxMin(Value *CmpLHS, Value *CmpRHS,
+                                     ICmpInst::Predicate Pred, Value *TVal,
+                                     Value *FVal) {
+  // Canonicalize common cmp+sel operand as CmpLHS.
+  if (CmpRHS == TVal || CmpRHS == FVal) {
+    std::swap(CmpLHS, CmpRHS);
+    Pred = ICmpInst::getSwappedPredicate(Pred);
+  }
+
+  // Canonicalize common cmp+sel operand as TVal.
+  if (CmpLHS == FVal) {
+    std::swap(TVal, FVal);
+    Pred = ICmpInst::getInversePredicate(Pred);
+  }
+
+  // (X pred Y) ? X : max/min(X, Y)
+  Value *X = CmpLHS, *Y = CmpRHS;
+  auto *MMI = dyn_cast<MinMaxIntrinsic>(FVal);
+  if (!MMI || TVal != X ||
+      !match(FVal, m_c_MaxOrMin(m_Specific(X), m_Specific(Y))))
+    return nullptr;
+
+  // (X == Y) ? X : max/min(X, Y) --> max/min(X, Y)
+  if (Pred == CmpInst::ICMP_EQ)
+    return MMI;
+
+  // (X != Y) ? X : max/min(X, Y) --> X
+  if (Pred == CmpInst::ICMP_NE)
+    return X;
+
+  // (X >  Y) ? X : max(X, Y) --> max(X, Y)
+  // (X >= Y) ? X : max(X, Y) --> max(X, Y)
+  // (X <  Y) ? X : min(X, Y) --> min(X, Y)
+  // (X <= Y) ? X : min(X, Y) --> min(X, Y)
+  ICmpInst::Predicate MMPred = MMI->getPredicate();
+  if (MMPred == CmpInst::getStrictPredicate(Pred))
+    return MMI;
+
+  // (X <  Y) ? X : max(X, Y) --> X
+  // (X <= Y) ? X : max(X, Y) --> X
+  // (X >  Y) ? X : min(X, Y) --> X
+  // (X >= Y) ? X : min(X, Y) --> X
+  ICmpInst::Predicate InvPred = CmpInst::getInversePredicate(Pred);
+  if (MMPred == CmpInst::getStrictPredicate(InvPred))
+    return X;
+
+  return nullptr;
+}
+
 /// An alternative way to test if a bit is set or not uses sgt/slt instead of
 /// eq/ne.
 static Value *simplifySelectWithFakeICmpEq(Value *CmpLHS, Value *CmpRHS,
@@ -4257,6 +4306,9 @@ static Value *simplifySelectWithICmpCond(Value *CondVal, Value *TrueVal,
   Value *CmpLHS, *CmpRHS;
   if (!match(CondVal, m_ICmp(Pred, m_Value(CmpLHS), m_Value(CmpRHS))))
     return nullptr;
+
+  if (Value *V = simplifyCmpSelOfMaxMin(CmpLHS, CmpRHS, Pred, TrueVal, FalseVal))
+    return V;
 
   // Canonicalize ne to eq predicate.
   if (Pred == ICmpInst::ICMP_NE) {
@@ -5791,8 +5843,8 @@ static Value *simplifyBinaryIntrinsic(Function *F, Value *Op0, Value *Op1,
     if (Op0 == Op1)
       return Op0;
 
-    // Canonicalize constant operand as Op1.
-    if (isa<Constant>(Op0))
+    // Canonicalize immediate constant operand as Op1.
+    if (match(Op0, m_ImmConstant()))
       std::swap(Op0, Op1);
 
     // Assume undef is the limit value.

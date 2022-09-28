@@ -93,6 +93,7 @@ add_gen_header(
     .llvm_libc_common_h
     .llvm-libc-types.time_t
     .llvm-libc-types.struct_tm
+    .llvm-libc-types.struct_timespec
 )
 
 add_gen_header(
@@ -187,6 +188,8 @@ add_gen_header(
     .llvm-libc-types.pthread_key_t
     .llvm-libc-types.pthread_mutex_t
     .llvm-libc-types.pthread_mutexattr_t
+    .llvm-libc-types.pthread_once_t
+    .llvm-libc-types.__pthread_once_func_t
     .llvm-libc-types.pthread_t
 )
 
@@ -203,6 +206,7 @@ add_gen_header(
     .llvm_libc_common_h
     .llvm-libc-types.off_t
     .llvm-libc-types.ssize_t
+    .llvm-libc-macros.sys_mman_macros
 )
 
 add_gen_header(

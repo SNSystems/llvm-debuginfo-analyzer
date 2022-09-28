@@ -2030,6 +2030,7 @@ cc_library(
     hdrs = ["include/mlir/Dialect/SparseTensor/IR/SparseTensor.h"],
     includes = ["include"],
     deps = [
+        ":ArithmeticDialect",
         ":IR",
         ":InferTypeOpInterface",
         ":SparseTensorAttrDefsIncGen",
@@ -2159,6 +2160,14 @@ gentbl_cc_library(
         (
             ["-gen-op-doc"],
             "g3doc/Dialects/NVGPU/NVGPU.md",
+        ),
+        (
+            ["-gen-typedef-decls"],
+            "include/mlir/Dialect/NVGPU/IR/NVGPUTypes.h.inc",
+        ),
+        (
+            ["-gen-typedef-defs"],
+            "include/mlir/Dialect/NVGPU/IR/NVGPUTypes.cpp.inc",
         ),
     ],
     tblgen = ":mlir-tblgen",
@@ -2298,6 +2307,33 @@ cc_library(
     ],
 )
 
+td_library(
+    name = "DialectUtilsTdFiles",
+    srcs = [
+        "include/mlir/Dialect/Utils/StructuredOpsUtils.td",
+    ],
+    includes = ["include"],
+    deps = [":OpBaseTdFiles"],
+)
+
+gentbl_cc_library(
+    name = "DialectUtilsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-enum-decls"],
+            "include/mlir/Dialect/Utils/DialectUtilsEnums.h.inc",
+        ),
+        (
+            ["-gen-enum-defs"],
+            "include/mlir/Dialect/Utils/DialectUtilsEnums.cpp.inc",
+        ),
+    ],
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/Utils/StructuredOpsUtils.td",
+    deps = [":DialectUtilsTdFiles"],
+)
+
 cc_library(
     name = "DialectUtils",
     srcs = glob([
@@ -2309,6 +2345,8 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":ArithmeticUtils",
+        ":DialectUtilsIncGen",
         ":IR",
         ":Support",
         "//llvm:Support",
@@ -2440,6 +2478,7 @@ cc_library(
         "include/mlir/Dialect/Affine/LoopFusionUtils.h",
         "include/mlir/Dialect/Affine/LoopUtils.h",
         "include/mlir/Dialect/Affine/Utils.h",
+        "include/mlir/Dialect/Affine/ViewLikeInterfaceUtils.h",
     ],
     includes = ["include"],
     deps = [
@@ -2453,6 +2492,7 @@ cc_library(
         ":SCFDialect",
         ":Support",
         ":TransformUtils",
+        ":ViewLikeInterface",
         "//llvm:Support",
     ],
 )
@@ -4995,7 +5035,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":AffineDialect",
-        ":ArithmeticUtils",
+        ":DialectUtils",
         ":IR",
         ":InferTypeOpInterface",
         ":TensorDialect",
@@ -5067,6 +5107,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":AffineDialect",
+        ":AffineUtils",
         ":ArithmeticDialect",
         ":ArithmeticUtils",
         ":BufferizationDialect",
@@ -6224,7 +6265,10 @@ cc_library(
 
 cc_library(
     name = "MlirOptLib",
-    srcs = ["lib/Tools/mlir-opt/MlirOptMain.cpp"],
+    srcs = [
+        "include/mlir/Tools/ParseUtilties.h",
+        "lib/Tools/mlir-opt/MlirOptMain.cpp",
+    ],
     hdrs = ["include/mlir/Tools/mlir-opt/MlirOptMain.h"],
     includes = ["include"],
     deps = [
@@ -7187,11 +7231,13 @@ td_library(
     name = "LinalgOpsTdFiles",
     srcs = [
         "include/mlir/Dialect/Linalg/IR/LinalgBase.td",
+        "include/mlir/Dialect/Linalg/IR/LinalgEnums.td",
         "include/mlir/Dialect/Linalg/IR/LinalgOps.td",
     ],
     includes = ["include"],
     deps = [
         ":ControlFlowInterfacesTdFiles",
+        ":DialectUtilsTdFiles",
         ":InferTypeOpInterfaceTdFiles",
         ":LoopLikeInterfaceTdFiles",
         ":OpBaseTdFiles",
@@ -7240,14 +7286,6 @@ gentbl_cc_library(
             "include/mlir/Dialect/Linalg/IR/LinalgOpsDialect.cpp.inc",
         ),
         (
-            ["-gen-enum-decls"],
-            "include/mlir/Dialect/Linalg/IR/LinalgOpsEnums.h.inc",
-        ),
-        (
-            ["-gen-enum-defs"],
-            "include/mlir/Dialect/Linalg/IR/LinalgOpsEnums.cpp.inc",
-        ),
-        (
             ["-gen-attrdef-decls"],
             "include/mlir/Dialect/Linalg/IR/LinalgOpsAttrDefs.h.inc",
         ),
@@ -7258,6 +7296,24 @@ gentbl_cc_library(
     ],
     tblgen = ":mlir-tblgen",
     td_file = "include/mlir/Dialect/Linalg/IR/LinalgOps.td",
+    deps = [":LinalgOpsTdFiles"],
+)
+
+gentbl_cc_library(
+    name = "LinalgEnumsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-enum-decls"],
+            "include/mlir/Dialect/Linalg/IR/LinalgOpsEnums.h.inc",
+        ),
+        (
+            ["-gen-enum-defs"],
+            "include/mlir/Dialect/Linalg/IR/LinalgOpsEnums.cpp.inc",
+        ),
+    ],
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/Linalg/IR/LinalgEnums.td",
     deps = [":LinalgOpsTdFiles"],
 )
 
@@ -7516,6 +7572,7 @@ cc_library(
         ":FuncDialect",
         ":IR",
         ":InferTypeOpInterface",
+        ":LinalgEnumsIncGen",
         ":LinalgInterfacesIncGen",
         ":LinalgNamedStructuredOpsYamlIncGen",
         ":LinalgOpsIncGen",
@@ -7706,6 +7763,7 @@ cc_library(
     hdrs = ["include/mlir/Interfaces/TilingInterface.h"],
     includes = ["include"],
     deps = [
+        ":DialectUtils",
         ":IR",
         ":Support",
         ":TilingInterfaceIncGen",
@@ -8544,7 +8602,6 @@ cc_library(
         ":ArithmeticCanonicalizationIncGen",
         ":ArithmeticOpsIncGen",
         ":CommonFolders",
-        ":DialectUtils",
         ":IR",
         ":InferIntRangeInterface",
         ":InferTypeOpInterface",

@@ -210,6 +210,13 @@ Improvements to Clang's diagnostics
   ``LL`` suffix.
 - Clang now correctly diagnoses index that refers past the last possible element
   of FAM-like arrays.
+- Clang now correctly diagnoses a warning when defercencing a void pointer in C mode.
+  This fixes `Issue 53631 <https://github.com/llvm/llvm-project/issues/53631>`_
+- Clang will now diagnose an overload set where a candidate has a constraint that
+  refers to an expression with a previous error as nothing viable, so that it
+  doesn't generate strange cascading errors, particularly in cases where a
+  subsuming constraint fails, which would result in a less-specific overload to
+  be selected.
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------
@@ -397,6 +404,8 @@ Arm and AArch64 Support in Clang
 - ``-march`` values for targeting armv2, armv2A, armv3 and armv3M have been removed.
   Their presence gave the impression that Clang can correctly generate code for
   them, which it cannot.
+- Add driver and tuning support for Neoverse V2 via the flag ``-mcpu=neoverse-v2``.
+  Native detection is also supported via ``-mcpu=native``.
 
 Floating Point Support in Clang
 -------------------------------
@@ -424,6 +433,10 @@ libclang
   the behavior of ``QualType::getNonReferenceType`` for ``CXType``.
 - Introduced the new function ``clang_CXXMethod_isDeleted``, which queries
   whether the method is declared ``= delete``.
+- ``clang_Cursor_getNumTemplateArguments``, ``clang_Cursor_getTemplateArgumentKind``, 
+  ``clang_Cursor_getTemplateArgumentType``, ``clang_Cursor_getTemplateArgumentValue`` and 
+  ``clang_Cursor_getTemplateArgumentUnsignedValue`` now work on struct, class,
+  and partial template specialization cursors in addition to function cursors.
 
 Static Analyzer
 ---------------

@@ -375,8 +375,8 @@
 //
 
 // LDGARANGE: {{".*ld.*"}} {{.*}}
-// LDGARANGE-NOT: "-generate-arange-section"
-// LLDGARANGE: {{".*lld.*"}} {{.*}} "-generate-arange-section"
+// LDGARANGE-NOT: "-plugin-opt=-generate-arange-section"
+// LLDGARANGE: {{".*lld.*"}} {{.*}} "-plugin-opt=-generate-arange-section"
 // SNLDTLTOGARANGE: {{".*orbis-ld.*"}} {{.*}} "-lto-thin-debug-options=-generate-arange-section"
 // SNLDFLTOGARANGE: {{".*orbis-ld.*"}} {{.*}} "-lto-debug-options=-generate-arange-section"
 
@@ -463,6 +463,6 @@
 // SIMPLE_TMPL_NAMES: -gsimple-template-names=simple
 // FWD_TMPL_PARAMS-DAG: -debug-forward-template-params
 // RUN: not %clang -### -target x86_64 -c -g -gsimple-template-names=mangled %s 2>&1 | FileCheck --check-prefix=MANGLED_TEMP_NAMES %s
-// MANGLED_TEMP_NAMES: error: unknown argument: '-gsimple-template-names=mangled'
+// MANGLED_TEMP_NAMES: error: unknown argument '-gsimple-template-names=mangled'; did you mean '-Xclang -gsimple-template-names=mangled'
 // RUN: %clang -### -target x86_64 -c -g %s 2>&1 | FileCheck --check-prefix=FULL_TEMP_NAMES --implicit-check-not=debug-forward-template-params %s
 // FULL_TEMP_NAMES-NOT: -gsimple-template-names

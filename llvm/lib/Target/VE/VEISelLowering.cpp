@@ -201,6 +201,10 @@ void VETargetLowering::initSPUActions() {
     setOperationAction(ISD::AND, IntVT, Act);
     setOperationAction(ISD::OR, IntVT, Act);
     setOperationAction(ISD::XOR, IntVT, Act);
+
+    // Legal smax and smin
+    setOperationAction(ISD::SMAX, IntVT, Legal);
+    setOperationAction(ISD::SMIN, IntVT, Legal);
   }
   /// } Int Ops
 
@@ -245,6 +249,7 @@ void VETargetLowering::initSPUActions() {
     setOperationAction(ISD::FCOPYSIGN, VT, Expand);
     setOperationAction(ISD::FCOS, VT, Expand);
     setOperationAction(ISD::FMA, VT, Expand);
+    setOperationAction(ISD::FPOW, VT, Expand);
     setOperationAction(ISD::FSIN, VT, Expand);
     setOperationAction(ISD::FSQRT, VT, Expand);
   }

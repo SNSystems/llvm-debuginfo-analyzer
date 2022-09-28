@@ -206,6 +206,30 @@ calculateConstraintSatisfaction(Sema &S, const Expr *ConstraintExpr,
     // Evaluator has decided satisfaction without yielding an expression.
     return ExprEmpty();
 
+  // We don't have the ability to evaluate this, since it contains a
+  // RecoveryExpr, so we want to fail overload resolution.  Otherwise,
+  // we'd potentially pick up a different overload, and cause confusing
+  // diagnostics. SO, add a failure detail that will cause us to make this
+  // overload set not viable.
+  if (SubstitutedAtomicExpr.get()->containsErrors()) {
+    Satisfaction.IsSatisfied = false;
+    Satisfaction.ContainsErrors = true;
+
+    PartialDiagnostic Msg = S.PDiag(diag::note_constraint_references_error);
+    SmallString<128> DiagString;
+    DiagString = ": ";
+    Msg.EmitToString(S.getDiagnostics(), DiagString);
+    unsigned MessageSize = DiagString.size();
+    char *Mem = new (S.Context) char[MessageSize];
+    memcpy(Mem, DiagString.c_str(), MessageSize);
+    Satisfaction.Details.emplace_back(
+        ConstraintExpr,
+        new (S.Context) ConstraintSatisfaction::SubstitutionDiagnostic{
+            SubstitutedAtomicExpr.get()->getBeginLoc(),
+            StringRef(Mem, MessageSize)});
+    return SubstitutedAtomicExpr;
+  }
+
   EnterExpressionEvaluationContext ConstantEvaluated(
       S, Sema::ExpressionEvaluationContext::ConstantEvaluated);
   SmallVector<PartialDiagnosticAt, 2> EvaluationDiags;
@@ -505,9 +529,16 @@ bool Sema::CheckFunctionConstraints(const FunctionDecl *FD,
     return false;
   }
 
-  ContextRAII SavedContext{
-      *this, cast<DeclContext>(
-                 const_cast<FunctionDecl *>(FD)->getNonClosureContext())};
+  DeclContext *CtxToSave = const_cast<FunctionDecl *>(FD);
+
+  while (isLambdaCallOperator(CtxToSave) || FD->isTransparentContext()) {
+    if (isLambdaCallOperator(CtxToSave))
+      CtxToSave = CtxToSave->getParent()->getParent();
+    else
+      CtxToSave = CtxToSave->getNonTransparentContext();
+  }
+
+  ContextRAII SavedContext{*this, CtxToSave};
   LocalInstantiationScope Scope(*this, !ForOverloadResolution ||
                                            isLambdaCallOperator(FD));
   llvm::Optional<MultiLevelTemplateArgumentList> MLTAL =
