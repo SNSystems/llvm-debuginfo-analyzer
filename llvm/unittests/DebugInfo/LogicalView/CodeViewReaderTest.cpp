@@ -37,7 +37,7 @@ LVScope *getFirstScopeChild(LVScope *Parent) {
   EXPECT_NE(Parent, nullptr);
   const LVScopes *Scopes = Parent->getScopes();
   EXPECT_NE(Scopes, nullptr);
-  EXPECT_EQ(Scopes->size(), 1);
+  EXPECT_EQ(Scopes->size(), 1u);
 
   LVScopes::const_iterator Iter = Scopes->begin();
   LVScope *Child = *Iter;
@@ -70,19 +70,19 @@ void checkElementPropertiesClangCodeview(LVReader *Reader) {
   EXPECT_EQ(Root->getFileFormatName(), "COFF-x86-64");
   EXPECT_EQ(Root->getName(), CodeViewClang);
 
-  EXPECT_EQ(CompileUnit->getBaseAddress(), 0);
+  EXPECT_EQ(CompileUnit->getBaseAddress(), 0u);
   EXPECT_TRUE(CompileUnit->getProducer().startswith("clang"));
   EXPECT_EQ(CompileUnit->getName(), "test.cpp");
 
-  EXPECT_EQ(Function->lineCount(), 16);
-  EXPECT_EQ(Function->scopeCount(), 1);
-  EXPECT_EQ(Function->symbolCount(), 3);
-  EXPECT_EQ(Function->typeCount(), 1);
-  EXPECT_EQ(Function->rangeCount(), 1);
+  EXPECT_EQ(Function->lineCount(), 16u);
+  EXPECT_EQ(Function->scopeCount(), 1u);
+  EXPECT_EQ(Function->symbolCount(), 3u);
+  EXPECT_EQ(Function->typeCount(), 1u);
+  EXPECT_EQ(Function->rangeCount(), 1u);
 
   const LVLocations *Ranges = Function->getRanges();
   EXPECT_NE(Ranges, nullptr);
-  ASSERT_EQ(Ranges->size(), 1);
+  ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
   EXPECT_STREQ(Location->getIntervalInfo().c_str(),
@@ -92,37 +92,37 @@ void checkElementPropertiesClangCodeview(LVReader *Reader) {
   Function->getRanges(RangeList);
 
   const LVRangeEntries &RangeEntries = RangeList.getEntries();
-  ASSERT_EQ(RangeEntries.size(), 2);
+  ASSERT_EQ(RangeEntries.size(), 2u);
   LVRangeEntries::const_iterator IterRanges = RangeEntries.cbegin();
   LVRangeEntry RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0);
-  EXPECT_EQ(RangeEntry.upper(), 0x46);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0u);
+  EXPECT_EQ(RangeEntry.upper(), 0x46u);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0u);
 
   ++IterRanges;
   RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0x21);
-  EXPECT_EQ(RangeEntry.upper(), 0x35);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0x21u);
+  EXPECT_EQ(RangeEntry.upper(), 0x35u);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo::?");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0u);
 
   const LVPublicNames &PublicNames = CompileUnit->getPublicNames();
-  ASSERT_EQ(PublicNames.size(), 1);
+  ASSERT_EQ(PublicNames.size(), 1u);
   LVPublicNames::const_iterator IterNames = PublicNames.cbegin();
   LVScope *Foo = (*IterNames).first;
   EXPECT_EQ(Foo->getName(), "foo");
-  EXPECT_EQ(Foo->getLineNumber(), 0);
+  EXPECT_EQ(Foo->getLineNumber(), 0u);
   LVNameInfo NameInfo = (*IterNames).second;
-  EXPECT_EQ(NameInfo.first, 0);
-  EXPECT_EQ(NameInfo.second, 0x46);
+  EXPECT_EQ(NameInfo.first, 0u);
+  EXPECT_EQ(NameInfo.second, 0x46u);
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
   EXPECT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x10);
+  ASSERT_EQ(Lines->size(), 0x10u);
 }
 
 // Check the logical elements basic properties (MSVC - Codeview).
@@ -136,19 +136,19 @@ void checkElementPropertiesMsvcCodeview(LVReader *Reader) {
   EXPECT_EQ(Root->getFileFormatName(), "COFF-x86-64");
   EXPECT_EQ(Root->getName(), CodeViewMsvc);
 
-  EXPECT_EQ(CompileUnit->getBaseAddress(), 0);
+  EXPECT_EQ(CompileUnit->getBaseAddress(), 0u);
   EXPECT_TRUE(CompileUnit->getProducer().startswith("Microsoft"));
   EXPECT_EQ(CompileUnit->getName(), "test.cpp");
 
-  EXPECT_EQ(Function->lineCount(), 14);
-  EXPECT_EQ(Function->scopeCount(), 1);
-  EXPECT_EQ(Function->symbolCount(), 3);
-  EXPECT_EQ(Function->typeCount(), 0);
-  EXPECT_EQ(Function->rangeCount(), 1);
+  EXPECT_EQ(Function->lineCount(), 14u);
+  EXPECT_EQ(Function->scopeCount(), 1u);
+  EXPECT_EQ(Function->symbolCount(), 3u);
+  EXPECT_EQ(Function->typeCount(), 0u);
+  EXPECT_EQ(Function->rangeCount(), 1u);
 
   const LVLocations *Ranges = Function->getRanges();
   EXPECT_NE(Ranges, nullptr);
-  ASSERT_EQ(Ranges->size(), 1);
+  ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
   EXPECT_STREQ(Location->getIntervalInfo().c_str(),
@@ -158,37 +158,37 @@ void checkElementPropertiesMsvcCodeview(LVReader *Reader) {
   Function->getRanges(RangeList);
 
   const LVRangeEntries &RangeEntries = RangeList.getEntries();
-  ASSERT_EQ(RangeEntries.size(), 2);
+  ASSERT_EQ(RangeEntries.size(), 2u);
   LVRangeEntries::const_iterator IterRanges = RangeEntries.cbegin();
   LVRangeEntry RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0);
-  EXPECT_EQ(RangeEntry.upper(), 0x31);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0u);
+  EXPECT_EQ(RangeEntry.upper(), 0x31u);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0u);
 
   ++IterRanges;
   RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0x1b);
-  EXPECT_EQ(RangeEntry.upper(), 0x28);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0x1bu);
+  EXPECT_EQ(RangeEntry.upper(), 0x28u);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo::?");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0u);
 
   const LVPublicNames &PublicNames = CompileUnit->getPublicNames();
-  ASSERT_EQ(PublicNames.size(), 1);
+  ASSERT_EQ(PublicNames.size(), 1u);
   LVPublicNames::const_iterator IterNames = PublicNames.cbegin();
   LVScope *Foo = (*IterNames).first;
   EXPECT_EQ(Foo->getName(), "foo");
-  EXPECT_EQ(Foo->getLineNumber(), 0);
+  EXPECT_EQ(Foo->getLineNumber(), 0u);
   LVNameInfo NameInfo = (*IterNames).second;
-  EXPECT_EQ(NameInfo.first, 0);
-  EXPECT_EQ(NameInfo.second, 0x31);
+  EXPECT_EQ(NameInfo.first, 0u);
+  EXPECT_EQ(NameInfo.second, 0x31u);
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
   EXPECT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x0e);
+  ASSERT_EQ(Lines->size(), 0x0eu);
 }
 
 // Check the logical elements basic properties (MSVC - PDB).
@@ -202,19 +202,19 @@ void checkElementPropertiesMsvcCodeviewPdb(LVReader *Reader) {
   EXPECT_EQ(Root->getFileFormatName(), "COFF-x86-64");
   EXPECT_EQ(Root->getName(), CodeViewPdbMsvc);
 
-  EXPECT_EQ(CompileUnit->getBaseAddress(), 0);
+  EXPECT_EQ(CompileUnit->getBaseAddress(), 0u);
   EXPECT_TRUE(CompileUnit->getProducer().startswith("Microsoft"));
   EXPECT_EQ(CompileUnit->getName(), "test.cpp");
 
-  EXPECT_EQ(Function->lineCount(), 14);
-  EXPECT_EQ(Function->scopeCount(), 1);
-  EXPECT_EQ(Function->symbolCount(), 3);
-  EXPECT_EQ(Function->typeCount(), 0);
-  EXPECT_EQ(Function->rangeCount(), 1);
+  EXPECT_EQ(Function->lineCount(), 14u);
+  EXPECT_EQ(Function->scopeCount(), 1u);
+  EXPECT_EQ(Function->symbolCount(), 3u);
+  EXPECT_EQ(Function->typeCount(), 0u);
+  EXPECT_EQ(Function->rangeCount(), 1u);
 
   const LVLocations *Ranges = Function->getRanges();
   EXPECT_NE(Ranges, nullptr);
-  ASSERT_EQ(Ranges->size(), 1);
+  ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
   EXPECT_STREQ(Location->getIntervalInfo().c_str(),
@@ -224,37 +224,37 @@ void checkElementPropertiesMsvcCodeviewPdb(LVReader *Reader) {
   Function->getRanges(RangeList);
 
   const LVRangeEntries &RangeEntries = RangeList.getEntries();
-  ASSERT_EQ(RangeEntries.size(), 2);
+  ASSERT_EQ(RangeEntries.size(), 2u);
   LVRangeEntries::const_iterator IterRanges = RangeEntries.cbegin();
   LVRangeEntry RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0);
-  EXPECT_EQ(RangeEntry.upper(), 0x31);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0u);
+  EXPECT_EQ(RangeEntry.upper(), 0x31u);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0u);
 
   ++IterRanges;
   RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0x1b);
-  EXPECT_EQ(RangeEntry.upper(), 0x28);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0x1bu);
+  EXPECT_EQ(RangeEntry.upper(), 0x28u);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo::?");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0u);
 
   const LVPublicNames &PublicNames = CompileUnit->getPublicNames();
-  ASSERT_EQ(PublicNames.size(), 1);
+  ASSERT_EQ(PublicNames.size(), 1u);
   LVPublicNames::const_iterator IterNames = PublicNames.cbegin();
   LVScope *Foo = (*IterNames).first;
   EXPECT_EQ(Foo->getName(), "foo");
-  EXPECT_EQ(Foo->getLineNumber(), 0);
+  EXPECT_EQ(Foo->getLineNumber(), 0u);
   LVNameInfo NameInfo = (*IterNames).second;
-  EXPECT_EQ(NameInfo.first, 0);
-  EXPECT_EQ(NameInfo.second, 0x31);
+  EXPECT_EQ(NameInfo.first, 0u);
+  EXPECT_EQ(NameInfo.second, 0x31u);
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
   EXPECT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x0e);
+  ASSERT_EQ(Lines->size(), 0x0eu);
 }
 
 struct SelectionInfo {
@@ -283,7 +283,7 @@ void checkElementSelection(LVReader *Reader, std::vector<SelectionInfo> &Data,
     LVElement *Element = Iter->second;
     EXPECT_NE(Element, nullptr);
     EXPECT_NE(Element->getName().find(Entry.Name), StringRef::npos);
-    EXPECT_EQ((Element->*Entry.Function)(), 1);
+    EXPECT_EQ((Element->*Entry.Function)(), 1u);
     ++Iter;
   }
 
@@ -292,7 +292,7 @@ void checkElementSelection(LVReader *Reader, std::vector<SelectionInfo> &Data,
   std::set<StringRef> SetScopes;
   for (LVScope *Scope : MatchedScopes)
     SetScopes.insert(Scope->getName());
-  ASSERT_EQ(SetScopes.size(), 3);
+  ASSERT_EQ(SetScopes.size(), 3u);
 
   // Parents of selected elements.
   std::set<StringRef>::iterator IterScope;
@@ -312,7 +312,7 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
 
   // Get comparison table.
   LVPassTable PassTable = Compare.getPassTable();
-  ASSERT_EQ(PassTable.size(), 2);
+  ASSERT_EQ(PassTable.size(), 2u);
 
   LVReader *Reader;
   LVElement *Element;
@@ -323,8 +323,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Reference);
-  EXPECT_EQ(Element->getLevel(), 3);
-  EXPECT_EQ(Element->getLineNumber(), 0);
+  EXPECT_EQ(Element->getLevel(), 3u);
+  EXPECT_EQ(Element->getLineNumber(), 0u);
   EXPECT_EQ(Element->getName(), "INTEGER");
   EXPECT_EQ(Pass, LVComparePass::Missing);
 
@@ -333,8 +333,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Target);
-  EXPECT_EQ(Element->getLevel(), 4);
-  EXPECT_EQ(Element->getLineNumber(), 0);
+  EXPECT_EQ(Element->getLevel(), 4u);
+  EXPECT_EQ(Element->getLineNumber(), 0u);
   EXPECT_EQ(Element->getName(), "INTEGER");
   EXPECT_EQ(Pass, LVComparePass::Added);
 }

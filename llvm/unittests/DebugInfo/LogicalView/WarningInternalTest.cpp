@@ -292,7 +292,7 @@ void ReaderTestWarningInternal::addElements() {
 void ReaderTestWarningInternal::resolveElements() {
   // Traverse the given scope and its children checking for any warnings.
   std::function<void(LVScope * Parent)> TraverseScope = [&](LVScope *Parent) {
-    auto Warnings = [&](const auto *Entry) {
+    auto Warnings = [&](auto *Entry) {
       if (Entry->getIsLine()) {
         LVLine *Line = (LVLine *)Entry;
         if (options().getWarningLines() && Line->getIsLineDebug() &&
@@ -390,13 +390,13 @@ void ReaderTestWarningInternal::initElements() {
   Function->addObject(LocationTwo);
   Function->addObject(LocationFive);
   Function->addObject(LocationSix);
-  EXPECT_EQ(Function->rangeCount(), 4);
+  EXPECT_EQ(Function->rangeCount(), 4u);
 
   // Add ranges to NestedScope.
   // NestedScope: LocationThree, LocationFour
   NestedScope->addObject(LocationThree);
   NestedScope->addObject(LocationFour);
-  EXPECT_EQ(NestedScope->rangeCount(), 2);
+  EXPECT_EQ(NestedScope->rangeCount(), 2u);
 
   // Get all ranges.
   LVRange Ranges;
@@ -446,13 +446,13 @@ void ReaderTestWarningInternal::checkWarnings() {
   //   Function, LineTwo
   //   NestedScope, LineFour
   LVOffsetLinesMap LinesZero = CompileUnit->getLinesZero();
-  ASSERT_EQ(LinesZero.size(), 2);
+  ASSERT_EQ(LinesZero.size(), 2u);
 
   LVOffsetLinesMap::iterator IterZero = LinesZero.begin();
   EXPECT_EQ(IterZero->first, Function->getOffset());
   LVLines *Lines = IterZero->second;
   EXPECT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 1);
+  ASSERT_EQ(Lines->size(), 1u);
   LVLine *Line = *(Lines->begin());
   EXPECT_NE(Line, nullptr);
   EXPECT_EQ(Line, LineTwo);
@@ -461,7 +461,7 @@ void ReaderTestWarningInternal::checkWarnings() {
   EXPECT_EQ(IterZero->first, NestedScope->getOffset());
   Lines = IterZero->second;
   EXPECT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 1);
+  ASSERT_EQ(Lines->size(), 1u);
   Line = *(Lines->begin());
   EXPECT_NE(Line, nullptr);
   EXPECT_EQ(Line, LineFour);
@@ -471,7 +471,7 @@ void ReaderTestWarningInternal::checkWarnings() {
   //   NestedScope (line zero)
   //   NestedVariable (invalid location)
   LVOffsetElementMap InvalidOffsets = CompileUnit->getWarningOffsets();
-  ASSERT_EQ(InvalidOffsets.size(), 3);
+  ASSERT_EQ(InvalidOffsets.size(), 3u);
 
   LVOffsetElementMap::iterator IterOffset = InvalidOffsets.begin();
   EXPECT_EQ(IterOffset->second, Function);
@@ -483,13 +483,13 @@ void ReaderTestWarningInternal::checkWarnings() {
   // Invalid ranges.
   //   Function
   LVOffsetLocationsMap InvalidRanges = CompileUnit->getInvalidRanges();
-  ASSERT_EQ(InvalidRanges.size(), 1);
+  ASSERT_EQ(InvalidRanges.size(), 1u);
 
   LVOffsetLocationsMap::iterator IterRange = InvalidRanges.begin();
   EXPECT_EQ(IterRange->first, Function->getOffset());
   LVLocations *Locations = IterRange->second;
   EXPECT_NE(Locations, nullptr);
-  ASSERT_EQ(Locations->size(), 1);
+  ASSERT_EQ(Locations->size(), 1u);
   LVLocation *Location = *(Locations->begin());
   EXPECT_NE(Location, nullptr);
   EXPECT_EQ(Location, LocationFive);
@@ -497,37 +497,37 @@ void ReaderTestWarningInternal::checkWarnings() {
   // Invalid location.
   //   NestedVariable
   LVOffsetLocationsMap InvalidLocations = CompileUnit->getInvalidLocations();
-  ASSERT_EQ(InvalidLocations.size(), 1);
+  ASSERT_EQ(InvalidLocations.size(), 1u);
 
   LVOffsetLocationsMap::iterator IterLocations = InvalidLocations.begin();
   EXPECT_EQ(IterLocations->first, NestedVariable->getOffset());
   Locations = IterLocations->second;
   EXPECT_NE(Locations, nullptr);
-  ASSERT_EQ(Locations->size(), 1);
+  ASSERT_EQ(Locations->size(), 1u);
   Location = *(Locations->begin());
   EXPECT_NE(Location, nullptr);
   EXPECT_EQ(Location->getLowerAddress(), LocationThree->getLowerAddress());
   EXPECT_EQ(Location->getUpperAddress(), LocationFour->getLowerAddress());
   EXPECT_EQ(Location->getLowerLine()->getLineNumber(),
             LineThree->getLineNumber());
-  EXPECT_EQ(Location->getUpperLine()->getLineNumber(), 0);
+  EXPECT_EQ(Location->getUpperLine()->getLineNumber(), 0u);
 
   // Invalid coverages.
   //   NestedVariable
   LVOffsetSymbolMap InvalidCoverages = CompileUnit->getInvalidCoverages();
-  ASSERT_EQ(InvalidCoverages.size(), 1);
+  ASSERT_EQ(InvalidCoverages.size(), 1u);
 
   LVOffsetSymbolMap::iterator IterCoverages = InvalidCoverages.begin();
   EXPECT_EQ(IterCoverages->first, NestedVariable->getOffset());
   EXPECT_EQ(IterCoverages->second, NestedVariable);
   EXPECT_GE((int)NestedVariable->getCoveragePercentage(), 100);
   EXPECT_EQ((int)NestedVariable->getCoveragePercentage(), 900);
-  EXPECT_EQ(NestedVariable->getCoverageFactor(), 0x1200);
+  EXPECT_EQ(NestedVariable->getCoverageFactor(), 0x1200u);
 
-  EXPECT_EQ((unsigned)Parameter->getCoveragePercentage(), 100);
-  EXPECT_EQ(Parameter->getCoverageFactor(), 100);
+  EXPECT_EQ((unsigned)Parameter->getCoveragePercentage(), 100u);
+  EXPECT_EQ(Parameter->getCoverageFactor(), 100u);
 
-  EXPECT_EQ((unsigned)LocalVariable->getCoveragePercentage(), 47);
+  EXPECT_EQ((unsigned)LocalVariable->getCoveragePercentage(), 47u);
   EXPECT_EQ(LocalVariable->getCoverageFactor(),
             LineSix->getAddress() - LineOne->getAddress());
 }

@@ -36,7 +36,7 @@ LVScopeCompileUnit *getFirstCompileUnit(LVScopeRoot *Root) {
   EXPECT_NE(Root, nullptr);
   const LVScopes *CompileUnits = Root->getScopes();
   EXPECT_NE(CompileUnits, nullptr);
-  EXPECT_EQ(CompileUnits->size(), 1);
+  EXPECT_EQ(CompileUnits->size(), 1u);
 
   LVScopes::const_iterator Iter = CompileUnits->begin();
   EXPECT_NE(Iter, nullptr);
@@ -67,19 +67,19 @@ void checkElementProperties(LVReader *Reader) {
   EXPECT_EQ(Root->getFileFormatName(), "elf64-x86-64");
   EXPECT_EQ(Root->getName(), DwarfClang);
 
-  EXPECT_EQ(CompileUnit->getBaseAddress(), 0);
+  EXPECT_EQ(CompileUnit->getBaseAddress(), 0u);
   EXPECT_TRUE(CompileUnit->getProducer().startswith("clang"));
   EXPECT_EQ(CompileUnit->getName(), "test.cpp");
 
-  EXPECT_EQ(CompileUnit->lineCount(), 0);
-  EXPECT_EQ(CompileUnit->scopeCount(), 1);
-  EXPECT_EQ(CompileUnit->symbolCount(), 0);
-  EXPECT_EQ(CompileUnit->typeCount(), 7);
-  EXPECT_EQ(CompileUnit->rangeCount(), 1);
+  EXPECT_EQ(CompileUnit->lineCount(), 0u);
+  EXPECT_EQ(CompileUnit->scopeCount(), 1u);
+  EXPECT_EQ(CompileUnit->symbolCount(), 0u);
+  EXPECT_EQ(CompileUnit->typeCount(), 7u);
+  EXPECT_EQ(CompileUnit->rangeCount(), 1u);
 
   const LVLocations *Ranges = CompileUnit->getRanges();
   EXPECT_NE(Ranges, nullptr);
-  ASSERT_EQ(Ranges->size(), 1);
+  ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
   EXPECT_STREQ(Location->getIntervalInfo().c_str(),
@@ -89,37 +89,37 @@ void checkElementProperties(LVReader *Reader) {
   CompileUnit->getRanges(RangeList);
 
   const LVRangeEntries &RangeEntries = RangeList.getEntries();
-  ASSERT_EQ(RangeEntries.size(), 2);
+  ASSERT_EQ(RangeEntries.size(), 2u);
   LVRangeEntries::const_iterator IterRanges = RangeEntries.cbegin();
   LVRangeEntry RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0);
-  EXPECT_EQ(RangeEntry.upper(), 0x3a);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0u);
+  EXPECT_EQ(RangeEntry.upper(), 0x3au);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "test.cpp");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0x0b);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0x0bu);
 
   ++IterRanges;
   RangeEntry = *IterRanges;
-  EXPECT_EQ(RangeEntry.lower(), 0x1c);
-  EXPECT_EQ(RangeEntry.upper(), 0x2f);
-  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0);
+  EXPECT_EQ(RangeEntry.lower(), 0x1cu);
+  EXPECT_EQ(RangeEntry.upper(), 0x2fu);
+  EXPECT_EQ(RangeEntry.scope()->getLineNumber(), 0u);
   EXPECT_EQ(RangeEntry.scope()->getName(), "foo::?");
-  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0x71);
+  EXPECT_EQ(RangeEntry.scope()->getOffset(), 0x71u);
 
   const LVPublicNames &PublicNames = CompileUnit->getPublicNames();
-  ASSERT_EQ(PublicNames.size(), 1);
+  ASSERT_EQ(PublicNames.size(), 1u);
   LVPublicNames::const_iterator IterNames = PublicNames.cbegin();
   LVScope *Function = (*IterNames).first;
   EXPECT_EQ(Function->getName(), "foo");
-  EXPECT_EQ(Function->getLineNumber(), 2);
+  EXPECT_EQ(Function->getLineNumber(), 2u);
   LVNameInfo NameInfo = (*IterNames).second;
-  EXPECT_EQ(NameInfo.first, 0);
-  EXPECT_EQ(NameInfo.second, 0x3a);
+  EXPECT_EQ(NameInfo.first, 0u);
+  EXPECT_EQ(NameInfo.second, 0x3au);
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Function->getLines();
   EXPECT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x12);
+  ASSERT_EQ(Lines->size(), 0x12u);
 }
 
 // Check the logical elements selection.
@@ -132,7 +132,7 @@ void checkElementSelection(LVReader *Reader) {
   std::map<LVOffset, LVElement *> MapElements;
   for (LVElement *Element : MatchedElements)
     MapElements[Element->getOffset()] = Element;
-  ASSERT_EQ(MapElements.size(), 0xe);
+  ASSERT_EQ(MapElements.size(), 0xeu);
 
   LVElement *Element = MapElements[0x000000004b]; // 'foo'
   EXPECT_NE(Element, nullptr);
@@ -165,7 +165,7 @@ void checkElementSelection(LVReader *Reader) {
   for (LVScope *Scope : MatchedScopes)
     SetScopes.insert(Scope->getOffset());
   std::set<LVOffset>::iterator Iter;
-  ASSERT_EQ(SetScopes.size(), 3);
+  ASSERT_EQ(SetScopes.size(), 3u);
 
   Iter = SetScopes.find(0x000000000b); // CompileUnit <- 'foo'
   EXPECT_NE(Iter, SetScopes.end());
@@ -183,7 +183,7 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
 
   // Get comparison table.
   LVPassTable PassTable = Compare.getPassTable();
-  ASSERT_EQ(PassTable.size(), 5);
+  ASSERT_EQ(PassTable.size(), 5u);
 
   LVReader *Reader;
   LVElement *Element;
@@ -194,8 +194,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Reference);
-  EXPECT_EQ(Element->getLevel(), 4);
-  EXPECT_EQ(Element->getLineNumber(), 5);
+  EXPECT_EQ(Element->getLevel(), 4u);
+  EXPECT_EQ(Element->getLineNumber(), 5u);
   EXPECT_EQ(Element->getName(), "CONSTANT");
   EXPECT_EQ(Pass, LVComparePass::Missing);
 
@@ -204,8 +204,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Reference);
-  EXPECT_EQ(Element->getLevel(), 3);
-  EXPECT_EQ(Element->getLineNumber(), 4);
+  EXPECT_EQ(Element->getLevel(), 3u);
+  EXPECT_EQ(Element->getLineNumber(), 4u);
   EXPECT_EQ(Element->getName(), "INTEGER");
   EXPECT_EQ(Pass, LVComparePass::Missing);
 
@@ -214,8 +214,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Reference);
-  EXPECT_EQ(Element->getLevel(), 3);
-  EXPECT_EQ(Element->getLineNumber(), 8);
+  EXPECT_EQ(Element->getLevel(), 3u);
+  EXPECT_EQ(Element->getLineNumber(), 8u);
   EXPECT_EQ(Element->getName(), "");
   EXPECT_EQ(Pass, LVComparePass::Missing);
 
@@ -224,8 +224,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Target);
-  EXPECT_EQ(Element->getLevel(), 4);
-  EXPECT_EQ(Element->getLineNumber(), 5);
+  EXPECT_EQ(Element->getLevel(), 4u);
+  EXPECT_EQ(Element->getLineNumber(), 5u);
   EXPECT_EQ(Element->getName(), "CONSTANT");
   EXPECT_EQ(Pass, LVComparePass::Added);
 
@@ -234,8 +234,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
   EXPECT_NE(Reader, nullptr);
   EXPECT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Target);
-  EXPECT_EQ(Element->getLevel(), 4);
-  EXPECT_EQ(Element->getLineNumber(), 4);
+  EXPECT_EQ(Element->getLevel(), 4u);
+  EXPECT_EQ(Element->getLineNumber(), 4u);
   EXPECT_EQ(Element->getName(), "INTEGER");
   EXPECT_EQ(Pass, LVComparePass::Added);
 }

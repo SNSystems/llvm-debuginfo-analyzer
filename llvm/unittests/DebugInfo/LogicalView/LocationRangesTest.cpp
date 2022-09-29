@@ -262,13 +262,13 @@ void ReaderTestLocations::initElements() {
   Function->addObject(LocationTwo);
   Function->addObject(LocationFive);
   Function->addObject(LocationSix);
-  EXPECT_EQ(Function->rangeCount(), 4);
+  EXPECT_EQ(Function->rangeCount(), 4u);
 
   // Add ranges to NestedScope.
   // NestedScope: LocationThree, LocationFour
   NestedScope->addObject(LocationThree);
   NestedScope->addObject(LocationFour);
-  EXPECT_EQ(NestedScope->rangeCount(), 2);
+  EXPECT_EQ(NestedScope->rangeCount(), 2u);
 
   // Get all ranges.
   LVRange Ranges;
@@ -303,14 +303,14 @@ void ReaderTestLocations::initElements() {
   LVLocation *Location;
   LVLocations Locations;
   Parameter->getLocations(Locations);
-  ASSERT_EQ(Locations.size(), 1);
+  ASSERT_EQ(Locations.size(), 1u);
   Location = Locations[0];
   EXPECT_EQ(Location->getLowerAddress(), LineOne->getAddress());
   EXPECT_EQ(Location->getUpperAddress(), LineSix->getAddress());
 
   Locations.clear();
   LocalVariable->getLocations(Locations);
-  ASSERT_EQ(Locations.size(), 2);
+  ASSERT_EQ(Locations.size(), 2u);
   Location = Locations[0];
   EXPECT_EQ(Location->getLowerAddress(), LineTwo->getAddress());
   EXPECT_EQ(Location->getUpperAddress(), LineSix->getAddress());
@@ -320,7 +320,7 @@ void ReaderTestLocations::initElements() {
 
   Locations.clear();
   NestedVariable->getLocations(Locations);
-  ASSERT_EQ(Locations.size(), 1);
+  ASSERT_EQ(Locations.size(), 1u);
   Location = Locations[0];
   EXPECT_EQ(Location->getLowerAddress(), LineThree->getAddress());
   EXPECT_EQ(Location->getUpperAddress(), LineFour->getAddress());

@@ -300,7 +300,7 @@ void compareReadersViews(ReaderTestCompare *ReferenceReader,
 
   // Get comparison table.
   LVPassTable PassTable = Compare.getPassTable();
-  ASSERT_EQ(PassTable.size(), 5);
+  ASSERT_EQ(PassTable.size(), 5u);
 
   LVReader *Reader;
   LVElement *Element;
@@ -346,7 +346,7 @@ void compareReadersElements(ReaderTestCompare *ReferenceReader,
 
   // Get comparison table.
   LVPassTable PassTable = Compare.getPassTable();
-  ASSERT_EQ(PassTable.size(), 7);
+  ASSERT_EQ(PassTable.size(), 7u);
 
   LVReader *Reader;
   LVElement *Element;

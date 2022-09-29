@@ -108,7 +108,7 @@ void ReaderTestElements::createElements() {
   Error Err = createScopes();
   ASSERT_THAT_ERROR(std::move(Err), Succeeded());
   Root = getScopesRoot();
-  EXPECT_NE(Root, nullptr);
+  ASSERT_NE(Root, nullptr);
 
   // Create the logical types.
   IntegerType = create<LVType>();
@@ -182,10 +182,10 @@ void ReaderTestElements::addElements() {
   //       TypeDefinitionTwo
 
   add(Root, CompileUnit);
-  EXPECT_EQ(Root->lineCount(), 0);
-  EXPECT_EQ(Root->scopeCount(), 1);
-  EXPECT_EQ(Root->symbolCount(), 0);
-  EXPECT_EQ(Root->typeCount(), 0);
+  EXPECT_EQ(Root->lineCount(), 0u);
+  EXPECT_EQ(Root->scopeCount(), 1u);
+  EXPECT_EQ(Root->symbolCount(), 0u);
+  EXPECT_EQ(Root->typeCount(), 0u);
 
   // Add elements to CompileUnit.
   add(CompileUnit, IntegerType);
@@ -195,20 +195,20 @@ void ReaderTestElements::addElements() {
   add(CompileUnit, GlobalVariable);
   add(CompileUnit, GlobalType);
   add(CompileUnit, Namespace);
-  EXPECT_EQ(CompileUnit->lineCount(), 0);
-  EXPECT_EQ(CompileUnit->scopeCount(), 3);
-  EXPECT_EQ(CompileUnit->symbolCount(), 1);
-  EXPECT_EQ(CompileUnit->typeCount(), 3);
+  EXPECT_EQ(CompileUnit->lineCount(), 0u);
+  EXPECT_EQ(CompileUnit->scopeCount(), 3u);
+  EXPECT_EQ(CompileUnit->symbolCount(), 1u);
+  EXPECT_EQ(CompileUnit->typeCount(), 3u);
 
   // Add elements to Namespace.
   add(Namespace, Aggregate);
   add(Namespace, Enumeration);
   add(Namespace, TypeDefinitionOne);
   add(Namespace, TypeDefinitionTwo);
-  EXPECT_EQ(Namespace->lineCount(), 0);
-  EXPECT_EQ(Namespace->scopeCount(), 2);
-  EXPECT_EQ(Namespace->symbolCount(), 0);
-  EXPECT_EQ(Namespace->typeCount(), 2);
+  EXPECT_EQ(Namespace->lineCount(), 0u);
+  EXPECT_EQ(Namespace->scopeCount(), 2u);
+  EXPECT_EQ(Namespace->symbolCount(), 0u);
+  EXPECT_EQ(Namespace->typeCount(), 2u);
 
   // Add elements to Function.
   add(Function, Parameter);
@@ -219,42 +219,42 @@ void ReaderTestElements::addElements() {
   add(Function, TypeImport);
   add(Function, TypeParam);
   add(Function, NestedScope);
-  EXPECT_EQ(Function->lineCount(), 1);
-  EXPECT_EQ(Function->scopeCount(), 2);
-  EXPECT_EQ(Function->symbolCount(), 2);
-  EXPECT_EQ(Function->typeCount(), 3);
+  EXPECT_EQ(Function->lineCount(), 1u);
+  EXPECT_EQ(Function->scopeCount(), 2u);
+  EXPECT_EQ(Function->symbolCount(), 2u);
+  EXPECT_EQ(Function->typeCount(), 3u);
 
   // Add elements to NestedScope.
   add(NestedScope, NestedVariable);
   add(NestedScope, NestedType);
   add(NestedScope, NestedLine);
-  EXPECT_EQ(NestedScope->lineCount(), 1);
-  EXPECT_EQ(NestedScope->scopeCount(), 0);
-  EXPECT_EQ(NestedScope->symbolCount(), 1);
-  EXPECT_EQ(NestedScope->typeCount(), 1);
+  EXPECT_EQ(NestedScope->lineCount(), 1u);
+  EXPECT_EQ(NestedScope->scopeCount(), 0u);
+  EXPECT_EQ(NestedScope->symbolCount(), 1u);
+  EXPECT_EQ(NestedScope->typeCount(), 1u);
 
   // Add elements to Enumeration.
   add(Enumeration, EnumeratorOne);
   add(Enumeration, EnumeratorTwo);
-  EXPECT_EQ(Enumeration->lineCount(), 0);
-  EXPECT_EQ(Enumeration->scopeCount(), 0);
-  EXPECT_EQ(Enumeration->symbolCount(), 0);
-  EXPECT_EQ(Enumeration->typeCount(), 2);
+  EXPECT_EQ(Enumeration->lineCount(), 0u);
+  EXPECT_EQ(Enumeration->scopeCount(), 0u);
+  EXPECT_EQ(Enumeration->symbolCount(), 0u);
+  EXPECT_EQ(Enumeration->typeCount(), 2u);
 
   // Add elements to Aggregate.
   add(Aggregate, ClassMember);
   add(Aggregate, ClassFunction);
-  EXPECT_EQ(Aggregate->lineCount(), 0);
-  EXPECT_EQ(Aggregate->scopeCount(), 1);
-  EXPECT_EQ(Aggregate->symbolCount(), 1);
-  EXPECT_EQ(Aggregate->typeCount(), 0);
+  EXPECT_EQ(Aggregate->lineCount(), 0u);
+  EXPECT_EQ(Aggregate->scopeCount(), 1u);
+  EXPECT_EQ(Aggregate->symbolCount(), 1u);
+  EXPECT_EQ(Aggregate->typeCount(), 0u);
 
   // Add elements to Array.
   add(Array, TypeSubrange);
-  EXPECT_EQ(Array->lineCount(), 0);
-  EXPECT_EQ(Array->scopeCount(), 0);
-  EXPECT_EQ(Array->symbolCount(), 0);
-  EXPECT_EQ(Array->typeCount(), 1);
+  EXPECT_EQ(Array->lineCount(), 0u);
+  EXPECT_EQ(Array->scopeCount(), 0u);
+  EXPECT_EQ(Array->symbolCount(), 0u);
+  EXPECT_EQ(Array->typeCount(), 1u);
 }
 
 // Set initial values to logical elements.
@@ -297,8 +297,8 @@ void ReaderTestElements::initElements() {
   TypeSubrange->setBounds(20, 25);
   std::pair<unsigned, unsigned> Pair;
   Pair = TypeSubrange->getBounds();
-  EXPECT_EQ(Pair.first, 20);
-  EXPECT_EQ(Pair.second, 25);
+  EXPECT_EQ(Pair.first, 20u);
+  EXPECT_EQ(Pair.second, 25u);
 
   set(TypeParam, "INTEGER", 0x1090, 1090, UnsignedType);
   TypeParam->setValue("10");
