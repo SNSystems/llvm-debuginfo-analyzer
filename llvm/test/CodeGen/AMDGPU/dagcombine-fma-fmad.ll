@@ -4,16 +4,8 @@
 define amdgpu_ps float @_amdgpu_ps_main() #0 {
 ; GCN-LABEL: _amdgpu_ps_main:
 ; GCN:       ; %bb.0: ; %.entry
-; GCN-NEXT:    s_mov_b32 s0, 0
-; GCN-NEXT:    v_mov_b32_e32 v4, 0
-; GCN-NEXT:    s_mov_b32 s1, s0
-; GCN-NEXT:    s_mov_b32 s2, s0
-; GCN-NEXT:    s_mov_b32 s3, s0
-; GCN-NEXT:    s_mov_b32 s4, s0
-; GCN-NEXT:    s_mov_b32 s5, s0
-; GCN-NEXT:    s_mov_b32 s6, s0
-; GCN-NEXT:    s_mov_b32 s7, s0
 ; GCN-NEXT:    image_sample v[0:1], v[0:1], s[0:7], s[0:3] dmask:0x3 dim:SQ_RSRC_IMG_2D
+; GCN-NEXT:    v_mov_b32_e32 v4, 0
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    s_clause 0x1
 ; GCN-NEXT:    image_sample v2, v[0:1], s[0:7], s[0:3] dmask:0x4 dim:SQ_RSRC_IMG_2D
@@ -226,6 +218,22 @@ define float @fmac_sequence_innermost_fmul_swapped_operands(float %a, float %b, 
   %t3 = fmul fast float %e, %f
   %t4 = fadd fast float %t2, %t3
   %t5 = fadd fast float %g, %t4
+  ret float %t5
+}
+
+define amdgpu_ps float @fmac_sequence_innermost_fmul_sgpr(float inreg %a, float inreg %b, float inreg %c, float inreg %d, float inreg %e, float inreg %f, float %g) #0 {
+; GCN-LABEL: fmac_sequence_innermost_fmul_sgpr:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    v_mac_f32_e64 v0, s2, s3
+; GCN-NEXT:    v_fmac_f32_e64 v0, s0, s1
+; GCN-NEXT:    v_fmac_f32_e64 v0, s4, s5
+; GCN-NEXT:    ; return to shader part epilog
+  %t0 = fmul fast float %a, %b
+  %t1 = fmul fast float %c, %d
+  %t2 = fadd fast float %t0, %t1
+  %t3 = fmul fast float %e, %f
+  %t4 = fadd fast float %t2, %t3
+  %t5 = fadd fast float %t4, %g
   ret float %t5
 }
 
