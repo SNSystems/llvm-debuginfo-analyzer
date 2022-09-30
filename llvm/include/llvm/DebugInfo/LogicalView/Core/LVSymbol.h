@@ -100,7 +100,7 @@ public:
     setHasReference();
   }
   void setReference(LVElement *Element) override {
-    assert((!Element || dyn_cast<LVSymbol>(Element)) && "Invalid element");
+    assert((!Element || isa<LVSymbol>(Element)) && "Invalid element");
     setReference(static_cast<LVSymbol *>(Element));
   }
 
