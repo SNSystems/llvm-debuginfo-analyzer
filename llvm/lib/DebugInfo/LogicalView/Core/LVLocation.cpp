@@ -620,10 +620,11 @@ void LVLocationSymbol::printRawExtra(raw_ostream &OS, bool Full) const {
 
 // Print location (formatted version).
 void LVLocation::print(LVLocations *Locations, raw_ostream &OS, bool Full) {
-  assert(Locations && "Locations must not be nullptr");
+  if (!Locations || Locations->empty())
+    return;
+
   // Print the symbol coverage.
-  if (Locations && !Locations->empty() && options().getAttributeCoverage()) {
-    assert(!Locations->empty() && "Locations must have at least one element");
+  if (options().getAttributeCoverage()) {
     // The location entries are contained within a symbol. Get a location,
     // to access basic information about indentation, parent, etc.
     LVLocation *Location = Locations->front();
@@ -643,7 +644,7 @@ void LVLocation::print(LVLocations *Locations, raw_ostream &OS, bool Full) {
   }
 
   // Print the symbol location, including the missing entries.
-  if (Locations && getReader().doPrintLocation(/*Location=*/nullptr))
+  if (getReader().doPrintLocation(/*Location=*/nullptr))
     for (const LVLocation *Location : *Locations)
       Location->print(OS, Full);
 }

@@ -197,7 +197,7 @@ void LVSymbol::calculateCoverage() {
       // For symbols representing the inlined function parameters and its
       // variables, get the outer most parent that contains their location
       // lower address.
-      // The symbol can have a set of non-continuos locations. We are using
+      // The symbol can have a set of non-contiguous locations. We are using
       // only the first location entry to get the outermost parent.
       // If no scope contains the location, assume its enclosing parent.
       LVScope *Scope =
@@ -441,8 +441,7 @@ void LVSymbol::printExtra(raw_ostream &OS, bool Full) const {
     if (LVSymbol *Reference = getReference())
       Reference->printReference(OS, Full, const_cast<LVSymbol *>(this));
 
-    if (Locations)
-      // Print location information.
-      LVLocation::print(Locations, OS, Full);
+    // Print location information.
+    LVLocation::print(Locations, OS, Full);
   }
 }
