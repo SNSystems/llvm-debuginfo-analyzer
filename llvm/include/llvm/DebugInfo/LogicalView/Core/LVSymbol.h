@@ -159,7 +159,6 @@ public:
   void resolveName() override;
   void resolveReferences() override;
 
-public:
   static LVSymbolDispatch &getDispatch() { return Dispatch; }
 
 public:

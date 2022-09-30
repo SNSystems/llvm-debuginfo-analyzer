@@ -553,7 +553,6 @@ class LVPatterns final {
 public:
   static LVPatterns *getPatterns();
 
-public:
   LVPatterns() {
     ElementDispatch = LVElement::getDispatch();
     LineDispatch = LVLine::getDispatch();
@@ -631,7 +630,6 @@ public:
   void addGenericPatterns(StringSet<> &Patterns);
   void addOffsetPatterns(const LVOffsetSet &Patterns);
 
-public:
   // Conditions to print an object.
   bool printElement(const LVLine *Line) const;
   bool printObject(const LVLocation *Location) const;
