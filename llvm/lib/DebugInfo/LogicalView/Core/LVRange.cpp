@@ -22,7 +22,7 @@ using namespace llvm::logicalview;
 void LVRange::startSearch() {
   RangesTree.clear();
 
-  LLVM_DEBUG({ dbgs() << "\nRanges Tree:\n"; });
+  LLVM_DEBUG({ dbgs() << "\nRanges Tree entries:\n"; });
 
   // Traverse the ranges and store them into the interval tree.
   for (LVRangeEntry &RangeEntry : RangeEntries) {
@@ -73,7 +73,7 @@ void LVRange::addEntry(LVScope *Scope) {
     for (const LVLocation *Location : *Locations) {
       LVAddress LowPC = Location->getLowerAddress();
       LVAddress HighPC = Location->getUpperAddress();
-      if (!findEntry(LowPC, HighPC))
+      if (!hasEntry(LowPC, HighPC))
         // Add the pair of addresses.
         addEntry(Scope, LowPC, HighPC);
     }
@@ -114,8 +114,8 @@ LVScope *LVRange::getEntry(LVAddress LowerAddress,
   return nullptr;
 }
 
-// Find the associated Scope for the given ranges values.
-bool LVRange::findEntry(LVAddress LowerAddress, LVAddress UpperAddress) const {
+// True if the range addresses contain the pair [LowerAddress, UpperAddress].
+bool LVRange::hasEntry(LVAddress LowerAddress, LVAddress UpperAddress) const {
   for (const LVRangeEntry &RangeEntry : RangeEntries)
     if (LowerAddress == RangeEntry.lower() &&
         UpperAddress == RangeEntry.upper())

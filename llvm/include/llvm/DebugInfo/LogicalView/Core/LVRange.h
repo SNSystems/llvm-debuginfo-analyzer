@@ -45,7 +45,7 @@ public:
 };
 
 // Class to represent a list of range addresses associated with a
-// scope; the addresses are stored in ascending order.
+// scope; the addresses are stored in ascending order and can overlap.
 using LVRangeEntries = std::vector<LVRangeEntry>;
 
 class LVRange final : public LVObject {
@@ -70,7 +70,7 @@ public:
   void addEntry(LVScope *Scope);
   LVScope *getEntry(LVAddress Address) const;
   LVScope *getEntry(LVAddress LowerAddress, LVAddress UpperAddress) const;
-  bool findEntry(LVAddress Low, LVAddress High) const;
+  bool hasEntry(LVAddress Low, LVAddress High) const;
   LVAddress getLower() const { return Lower; }
   LVAddress getUpper() const { return Upper; }
 
