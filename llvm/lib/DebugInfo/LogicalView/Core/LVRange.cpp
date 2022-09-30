@@ -127,7 +127,15 @@ bool LVRange::hasEntry(LVAddress LowerAddress, LVAddress UpperAddress) const {
 void LVRange::sort() {
   auto CompareRangeEntry = [](const LVRangeEntry &lhs,
                               const LVRangeEntry &rhs) -> bool {
-    return (lhs.lower() < rhs.lower());
+    if (lhs.lower() < rhs.lower())
+      return true;
+
+    // If the lower address is the same, use the upper address value in
+    // order to put first the smallest interval.
+    if (lhs.lower() == rhs.lower())
+      return lhs.upper() < rhs.upper();
+
+    return false;
   };
 
   // Sort the ranges using low address and range size.
