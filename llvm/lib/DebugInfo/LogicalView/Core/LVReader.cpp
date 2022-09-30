@@ -51,11 +51,12 @@ void checkIntegrityScopesTree(LVScope *Root) {
         for (const auto &Entry : *Set)
           AddElement(Entry, Parent);
     };
-    if (const LVScopes *Scopes = Parent->getScopes())
+    if (const LVScopes *Scopes = Parent->getScopes()) {
       for (LVScope *Scope : *Scopes) {
         AddElement(Scope, Parent);
         TraverseScope(Scope);
       }
+    }
     Traverse(Parent->getSymbols());
     Traverse(Parent->getTypes());
     Traverse(Parent->getLines());
