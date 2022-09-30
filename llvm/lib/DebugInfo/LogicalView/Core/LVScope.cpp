@@ -822,8 +822,9 @@ void LVScope::getRanges(LVRange &RangeList) {
 LVScope *LVScope::outermostParent(LVAddress Address) {
   LVScope *Parent = this;
   while (Parent) {
-    if (Ranges)
-      for (const LVLocation *Location : *Ranges)
+    const LVLocations *ParentRanges = Parent->getRanges();
+    if (ParentRanges)
+      for (const LVLocation *Location : *ParentRanges)
         if (Location->getLowerAddress() <= Address)
           return Parent;
     Parent = Parent->getParentScope();
