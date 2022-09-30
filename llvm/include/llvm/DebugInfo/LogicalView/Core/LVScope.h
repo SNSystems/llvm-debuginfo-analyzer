@@ -135,10 +135,7 @@ protected:
   void resolveTemplate();
   void printEncodedArgs(raw_ostream &OS, bool Full) const;
 
-  void printActiveRanges(raw_ostream &OS, bool Full = true);
-  void printActiveRanges(raw_ostream &OS, bool Full = true) const {
-    (const_cast<LVScope *>(this))->printActiveRanges(OS, Full);
-  }
+  void printActiveRanges(raw_ostream &OS, bool Full = true) const;
   virtual void printSizes(raw_ostream &OS) const {}
   virtual void printSummary(raw_ostream &OS) const {}
 

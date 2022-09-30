@@ -998,7 +998,7 @@ void LVScope::report(LVComparePass Pass) {
   getComparator().pop();
 }
 
-void LVScope::printActiveRanges(raw_ostream &OS, bool Full) {
+void LVScope::printActiveRanges(raw_ostream &OS, bool Full) const {
   if (options().getPrintFormatting() && options().getAttributeRange() &&
       Ranges) {
     for (const LVLocation *Location : *Ranges)
