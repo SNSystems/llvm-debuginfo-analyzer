@@ -238,12 +238,6 @@ public:
   size_t symbolCount() const { return Symbols ? Symbols->size() : 0; }
   size_t typeCount() const { return Types ? Types->size() : 0; }
 
-  // Calculate coverage factor.
-  void CalculateCoverageFactor() {
-    float CoveragePercentage = 0;
-    LVLocation::calculateCoverage(Ranges, CoverageFactor, CoveragePercentage);
-  }
-
   // Find containing parent for the given address.
   LVScope *outermostParent(LVAddress Address);
 
