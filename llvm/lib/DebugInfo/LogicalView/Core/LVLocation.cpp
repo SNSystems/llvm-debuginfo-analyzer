@@ -349,7 +349,7 @@ std::string LVOperation::getOperandsCodeViewInfo() {
   raw_string_ostream Stream(String);
 
   // Get original CodeView operation code.
-  uint16_t OperationCode = updateOperationCode(Opcode);
+  uint16_t OperationCode = getCodeViewOperationCode(Opcode);
 
   switch (OperationCode) {
   // Operands: [Offset, 0].

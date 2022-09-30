@@ -287,7 +287,7 @@ inline std::string createAlternativePath(StringRef To, StringRef From) {
 // to a uint8_t value in order to fit the 'OpCode' used for the logical
 // debug location operations.
 // Return the original CodeView enum value.
-inline uint16_t updateOperationCode(uint8_t Code) { return 0x1100 | Code; }
+inline uint16_t getCodeViewOperationCode(uint8_t Code) { return 0x1100 | Code; }
 
 } // end namespace logicalview
 } // end namespace llvm
