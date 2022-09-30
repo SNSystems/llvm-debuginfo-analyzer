@@ -763,7 +763,10 @@ void LVScope::traverseParentsAndChildren(LVObjectGetFunction GetFunction,
     TraverseChildren(this);
 }
 
-// Get all the locations associated with symbols.
+// Traverse the symbol location ranges and for each range:
+// - Apply the 'ValidLocation' validation criteria.
+// - Add any failed range to the 'LocationList'.
+// - Calculate location coverage.
 void LVScope::getLocations(LVLocations &LocationList,
                            LVValidLocation ValidLocation, bool RecordInvalid) {
   // Traverse scopes and symbols.
@@ -775,7 +778,10 @@ void LVScope::getLocations(LVLocations &LocationList,
       Scope->getLocations(LocationList, ValidLocation, RecordInvalid);
 }
 
-// Get all the ranges associated with scopes.
+// Traverse the scope ranges and for each range:
+// - Apply the 'ValidLocation' validation criteria.
+// - Add any failed range to the 'LocationList'.
+// - Calculate location coverage.
 void LVScope::getRanges(LVLocations &LocationList,
                         LVValidLocation ValidLocation, bool RecordInvalid) {
   // Ignore discarded or stripped scopes (functions).
