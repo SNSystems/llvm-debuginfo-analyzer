@@ -172,7 +172,6 @@ public:
   PROPERTY(Property, OffsetFromTypeIndex);
   PROPERTY(Property, IsAnonymous);
 
-public:
   bool isNamed() const override { return NameIndex != 0; }
   bool isTyped() const override { return ElementType != nullptr; }
   bool isFiled() const override { return FilenameIndex != 0; }
@@ -362,7 +361,6 @@ public:
   // Report the element as missing or added during comparison.
   virtual void report(LVComparePass Pass) {}
 
-public:
   static LVElementDispatch &getDispatch() { return Dispatch; }
 };
 

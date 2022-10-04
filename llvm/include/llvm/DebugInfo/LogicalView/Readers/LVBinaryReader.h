@@ -167,7 +167,6 @@ public:
       delete Entry.second;
   }
 
-public:
   void addInlineeLines(LVScope *Scope, LVLines &Lines) {
     LVLines *InlineeLines = new LVLines();
     *InlineeLines = std::move(Lines);
@@ -180,7 +179,6 @@ public:
     return ImageBaseAddress + (Segment * VirtualAddress) + Offset + Addendum;
   }
 
-public:
   void addToSymbolTable(StringRef Name, LVScope *Function,
                         LVSectionIndex SectionIndex = 0);
   void addToSymbolTable(StringRef Name, LVAddress Address,
@@ -197,7 +195,6 @@ public:
                  : DotTextSectionIndex;
   }
 
-public:
   void print(raw_ostream &OS) const;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)

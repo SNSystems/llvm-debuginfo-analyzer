@@ -196,7 +196,6 @@ public:
   PROPERTY(Property, HasRanges);
   PROPERTY(Property, AddedMissing);
 
-public:
   bool isCompileUnit() const override { return getIsCompileUnit(); }
   bool isRoot() const override { return getIsRoot(); }
 
@@ -282,7 +281,6 @@ public:
 
   void resolveElements();
 
-public:
   // Iterate through the 'References' set and check that all its elements
   // are present in the 'Targets' set. For a missing element, mark its
   // parents as missing.
@@ -301,10 +299,8 @@ public:
   static bool equals(const LVScopes *References, const LVScopes *Targets);
   void report(LVComparePass Pass) override;
 
-public:
   static LVScopeDispatch &getDispatch() { return Dispatch; }
 
-public:
   void print(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override;
   virtual void printWarnings(raw_ostream &OS, bool Full = true) const {}
@@ -602,7 +598,6 @@ public:
   // Returns true if 'current' scope is equal to the given 'scope'.
   bool equals(const LVScope *Scope) const override;
 
-public:
   void print(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override;
   void printWarnings(raw_ostream &OS, bool Full = true) const override;

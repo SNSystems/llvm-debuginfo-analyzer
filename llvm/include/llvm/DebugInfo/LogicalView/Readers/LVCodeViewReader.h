@@ -221,7 +221,6 @@ public:
 
   bool isSystemEntry(LVElement *Element, StringRef Name) const override;
 
-public:
   void print(raw_ostream &OS) const;
   void printRecords(raw_ostream &OS) const override {
     LogicalVisitor.printRecords(OS);

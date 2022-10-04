@@ -39,7 +39,6 @@ public:
   LVStringPool(LVStringPool &&other) = delete;
   ~LVStringPool() = default;
 
-public:
   bool isValidIndex(size_t Index) const { return Index != BadIndex; }
 
   // Return number of strings in the pool. The empty string is allocated
@@ -78,7 +77,6 @@ public:
     return Instance;
   }
 
-public:
   void print(raw_ostream &OS) const {
     if (!Entries.empty()) {
       OS << "\nString Pool:\n";

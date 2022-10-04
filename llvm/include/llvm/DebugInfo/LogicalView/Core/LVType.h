@@ -93,7 +93,6 @@ public:
 
   PROPERTY(Property, IsSubrangeCount);
 
-public:
   const char *kind() const override;
 
   // Follow a chain of references given by DW_AT_abstract_origin and/or
@@ -113,10 +112,8 @@ public:
   void resolveName() override;
   void resolveReferences() override;
 
-public:
   static LVTypeDispatch &getDispatch() { return Dispatch; }
 
-public:
   static bool parametersMatch(const LVTypes *References,
                               const LVTypes *Targets);
 
@@ -134,7 +131,6 @@ public:
   static bool equals(const LVTypes *References, const LVTypes *Targets);
   void report(LVComparePass Pass) override;
 
-public:
   void print(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 

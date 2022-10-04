@@ -164,20 +164,6 @@ class LVObject {
     LVSymbol *Symbol;
   } Parent = {nullptr};
 
-protected:
-  // Get a string representation for the given number and discriminator.
-  std::string lineAsString(uint32_t LineNumber, LVHalf Discriminator,
-                           bool ShowZero) const;
-
-  // Get a string representation for the given number.
-  std::string referenceAsString(uint32_t LineNumber, bool Spaces) const;
-
-  // Print the Filename or Pathname.
-  // Empty implementation for those objects that do not have any user
-  // source file references, such as debug locations.
-  virtual void printFileIndex(raw_ostream &OS, bool Full = true) const {}
-
-private:
   // We do not support any object duplication, as they are created by parsing
   // the debug information. There is only the case where we need a very basic
   // object, to manipulate its offset, line number and scope level. Allow the
@@ -194,6 +180,32 @@ private:
     TagAttrOpcode = Object.TagAttrOpcode;
     Parent = Object.Parent;
   }
+
+#ifndef NDEBUG
+  // This is an internal ID used for debugging logical elements. It is used
+  // for cases where an unique offset within the binary input file is not
+  // available.
+  static uint64_t GID;
+  uint64_t ID = 0;
+
+  void incID() {
+    ++GID;
+    ID = GID;
+  }
+#endif
+
+protected:
+  // Get a string representation for the given number and discriminator.
+  std::string lineAsString(uint32_t LineNumber, LVHalf Discriminator,
+                           bool ShowZero) const;
+
+  // Get a string representation for the given number.
+  std::string referenceAsString(uint32_t LineNumber, bool Spaces) const;
+
+  // Print the Filename or Pathname.
+  // Empty implementation for those objects that do not have any user
+  // source file references, such as debug locations.
+  virtual void printFileIndex(raw_ostream &OS, bool Full = true) const {}
 
 public:
   LVObject() {
@@ -224,14 +236,12 @@ public:
   PROPERTY(Property, IsReferenced);
   PROPERTY(Property, HasCodeViewLocation);
 
-public:
   // True if the scope has been named or typed or with line number.
   virtual bool isNamed() const { return false; }
   virtual bool isTyped() const { return false; }
   virtual bool isFiled() const { return false; }
   bool isLined() const { return LineNumber != 0; }
 
-public:
   // DWARF tag, attribute or expression opcode.
   dwarf::Tag getTag() const { return TagAttrOpcode.Tag; }
   void setTag(dwarf::Tag Tag) { TagAttrOpcode.Tag = Tag; }
@@ -283,7 +293,6 @@ public:
 
   virtual const char *kind() const { return nullptr; }
 
-public:
   std::string indentAsString() const;
   std::string indentAsString(LVLevel Level) const;
 
@@ -297,7 +306,6 @@ public:
   }
   std::string lineNumberAsStringStripped(bool ShowZero = false) const;
 
-public:
   // This function prints the logical view to an output stream.
   // Split: Prints the compilation unit view to a file.
   // Match: Prints the object only if it satisfies the patterns collected
@@ -316,7 +324,6 @@ public:
   // Mark branch as missing (current element and parents).
   void markBranchAsMissing();
 
-public:
   // Prints the common information for an object (name, type, etc).
   virtual void print(raw_ostream &OS, bool Full = true) const;
   // Prints additional information for an object, depending on its kind
@@ -327,21 +334,6 @@ public:
   virtual void dump() const { print(dbgs()); }
 #endif
 
-#ifndef NDEBUG
-private:
-  // This is an internal ID used for debugging logical elements. It is used
-  // for cases where an unique offset within the binary input file is not
-  // available.
-  static uint64_t GID;
-  uint64_t ID = 0;
-
-  void incID() {
-    ++GID;
-    ID = GID;
-  }
-#endif
-
-public:
   uint64_t getID() const {
     return
 #ifndef NDEBUG

@@ -89,7 +89,6 @@ public:
   }
   void deleteReader(LVReader *Reader) { delete Reader; }
 
-public:
   void print(raw_ostream &OS) const;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)

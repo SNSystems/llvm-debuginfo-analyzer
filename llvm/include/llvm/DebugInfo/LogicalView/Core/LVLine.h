@@ -69,7 +69,6 @@ public:
   KIND(LVLineKind, IsAlwaysStepInto);
   KIND(LVLineKind, IsNeverStepInto);
 
-public:
   const char *kind() const override;
 
   // Use the offset to store the line address.
@@ -85,10 +84,8 @@ public:
     return lineAsString(getLineNumber(), getDiscriminator(), ShowZero);
   }
 
-public:
   static LVLineDispatch &getDispatch() { return Dispatch; }
 
-public:
   // Iterate through the 'References' set and check that all its elements
   // are present in the 'Targets' set. For a missing element, mark its
   // parents as missing.
@@ -100,7 +97,6 @@ public:
   static bool equals(const LVLines *References, const LVLines *Targets);
   void report(LVComparePass Pass) override;
 
-public:
   void print(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override {}
 

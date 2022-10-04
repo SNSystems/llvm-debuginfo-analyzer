@@ -59,7 +59,6 @@ public:
   LVCompare &operator=(const LVCompare &) = delete;
   ~LVCompare() = default;
 
-public:
   static LVCompare &getInstance();
 
   // Scopes stack used during the missing/added reporting.
@@ -74,7 +73,6 @@ public:
   }
   LVPassTable getPassTable() const { return PassTable; }
 
-public:
   void printItem(LVElement *Element, LVComparePass Pass);
   void print(raw_ostream &OS) const;
 

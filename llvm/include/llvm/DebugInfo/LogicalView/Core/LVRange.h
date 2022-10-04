@@ -30,12 +30,10 @@ class LVRangeEntry final {
 public:
   using RangeType = LVAddress;
 
-public:
   LVRangeEntry() = delete;
   LVRangeEntry(LVAddress LowerAddress, LVAddress UpperAddress, LVScope *Scope)
       : Lower(LowerAddress), Upper(UpperAddress), Scope(Scope) {}
 
-public:
   RangeType lower() const { return Lower; }
   RangeType upper() const { return Upper; }
   LVAddressRange addressRange() const {
@@ -65,7 +63,6 @@ public:
   LVRange &operator=(const LVRange &) = delete;
   ~LVRange() = default;
 
-public:
   void addEntry(LVScope *Scope, LVAddress LowerAddress, LVAddress UpperAddress);
   void addEntry(LVScope *Scope);
   LVScope *getEntry(LVAddress Address) const;
@@ -87,7 +84,6 @@ public:
   void startSearch();
   void endSearch() {}
 
-public:
   void print(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override {}
 

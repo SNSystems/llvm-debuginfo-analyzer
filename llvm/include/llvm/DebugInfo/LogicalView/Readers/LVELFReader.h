@@ -133,7 +133,6 @@ public:
   LVELFReader &operator=(const LVELFReader &) = delete;
   ~LVELFReader() = default;
 
-public:
   LVAddress getCUBaseAddress() const { return CUBaseAddress; }
   void setCUBaseAddress(LVAddress Address) { CUBaseAddress = Address; }
   LVAddress getCUHighAddress() const { return CUHighAddress; }
@@ -145,7 +144,6 @@ public:
 
   std::string getRegisterName(LVSmall Opcode, uint64_t Operands[2]) override;
 
-public:
   void print(raw_ostream &OS) const;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)

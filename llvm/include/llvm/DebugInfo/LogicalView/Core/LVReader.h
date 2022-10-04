@@ -40,7 +40,6 @@ public:
   LVSplitContext &operator=(const LVSplitContext &) = delete;
   ~LVSplitContext() = default;
 
-public:
   Error createSplitFolder(StringRef Where);
   std::error_code open(std::string Name, std::string Extension,
                        raw_ostream &OS);
@@ -129,7 +128,6 @@ public:
   bool isBinaryTypeELF() const { return BinaryType == LVBinaryType::ELF; }
   bool isBinaryTypeCOFF() const { return BinaryType == LVBinaryType::COFF; }
 
-public:
   LVScopeCompileUnit *getCompileUnit() const { return CompileUnit; }
   void setCompileUnit(LVScope *Scope) {
     assert(Scope && Scope->isCompileUnit() && "Scope is not a compile unit");
@@ -142,7 +140,6 @@ public:
     return CompileUnit->getCPUType();
   }
 
-public:
   // Access to the scopes root.
   LVScopeRoot *getScopesRoot() const { return Root; }
 
@@ -189,7 +186,6 @@ public:
   const LVSymbols &getSymbols() const { return Symbols; }
   const LVTypes &getTypes() const { return Types; }
 
-public:
   // Conditions to print an object.
   bool doPrintLine(const LVLine *Line) const {
     return patterns().printElement(Line);
@@ -207,11 +203,9 @@ public:
     return patterns().printElement(Type);
   }
 
-public:
   static LVReader &getInstance();
   static void setInstance(LVReader *Reader);
 
-public:
   void print(raw_ostream &OS) const;
   virtual void printRecords(raw_ostream &OS) const {}
 

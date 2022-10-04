@@ -85,6 +85,10 @@ public:
 };
 
 class LVSymbolVisitorDelegate final : public SymbolVisitorDelegate {
+  LVCodeViewReader *Reader = nullptr;
+  const llvm::object::coff_section *CoffSection;
+  StringRef SectionContents;
+
 public:
   LVSymbolVisitorDelegate(LVCodeViewReader *Reader,
                           const llvm::object::SectionRef &Section,
@@ -111,11 +115,6 @@ public:
 
   StringRef getFileNameForFileOffset(uint32_t FileOffset) override;
   DebugStringTableSubsectionRef getStringTable() override;
-
-private:
-  LVCodeViewReader *Reader = nullptr;
-  const llvm::object::coff_section *CoffSection;
-  StringRef SectionContents;
 };
 
 class LVElement;
@@ -346,7 +345,6 @@ public:
     CompileUnitName = std::move(Name);
   }
 
-public:
   LVElement *getElement(uint32_t StreamIdx, TypeIndex TI,
                         LVScope *Parent = nullptr);
   LVShared *getShared() { return Shared; }
@@ -369,7 +367,6 @@ public:
 
   void printRecords(raw_ostream &OS) const;
 
-public:
   Error visitUnknownType(CVType &Record, TypeIndex TI);
   Error visitKnownRecord(CVType &Record, ArgListRecord &Args, TypeIndex TI,
                          LVElement *Element);

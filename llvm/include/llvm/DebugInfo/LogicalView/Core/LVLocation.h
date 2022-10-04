@@ -52,7 +52,6 @@ public:
   std::string getOperandsDWARFInfo();
   std::string getOperandsCodeViewInfo();
 
-public:
   void print(raw_ostream &OS, bool Full = true) const;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -124,7 +123,6 @@ public:
   PROPERTY(Property, IsInvalidUpper);
   PROPERTY(Property, IsCallSite);
 
-public:
   const char *kind() const override;
   // Mark the locations that have only DW_OP_fbreg as stack offset based.
   virtual void updateKind() {}
@@ -159,7 +157,6 @@ public:
   virtual void addObject(LVSmall Opcode, LVUnsigned Operand1,
                          LVUnsigned Operand2) {}
 
-public:
   static void print(LVLocations *Locations, raw_ostream &OS, bool Full = true);
   void printInterval(raw_ostream &OS, bool Full = true) const;
   void printRaw(raw_ostream &OS, bool Full = true) const;
@@ -185,13 +182,11 @@ public:
   LVLocationSymbol &operator=(const LVLocationSymbol &) = delete;
   ~LVLocationSymbol() { delete Entries; };
 
-public:
   void addObject(LVAddress LowPC, LVAddress HighPC, LVUnsigned SectionOffset,
                  uint64_t LocDescOffset) override;
   void addObject(LVSmall Opcode, LVUnsigned Operand1,
                  LVUnsigned Operand2) override;
 
-public:
   void printRawExtra(raw_ostream &OS, bool Full = true) const override;
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };

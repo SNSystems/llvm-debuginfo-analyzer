@@ -293,12 +293,10 @@ public:
     return IndexChanged;
   }
 
-public:
   // Access to command line options, pattern and printing information.
   static LVOptions *getOptions();
   static void setOptions(LVOptions *Options);
 
-public:
   LVOptions() = default;
   LVOptions(const LVOptions &) = default;
   LVOptions &operator=(const LVOptions &) = default;
@@ -313,7 +311,6 @@ public:
   void resolveDependencies();
   size_t indentationSize() const { return IndentationSize; }
 
-public:
   LVAttribute Attribute;
   LVCompare Compare;
   LVOutput Output;
@@ -324,7 +321,6 @@ public:
   LVInternal Internal;
   LVGeneral General;
 
-public:
   // --attribute.
   ATTRIBUTE_OPTION(All);
   ATTRIBUTE_OPTION(Argument);
@@ -439,7 +435,6 @@ public:
   // General shortcuts to some combinations.
   BOOL_FUNCTION(General, CollectRanges);
 
-public:
   void print(raw_ostream &OS) const;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -625,7 +620,6 @@ public:
 
   void addPatterns(StringSet<> &Patterns, LVMatchInfo &Filters);
 
-public:
   // Add generic and offset patterns info.
   void addGenericPatterns(StringSet<> &Patterns);
   void addOffsetPatterns(const LVOffsetSet &Patterns);
@@ -637,7 +631,6 @@ public:
   bool printElement(const LVSymbol *Symbol) const;
   bool printElement(const LVType *Type) const;
 
-public:
   void print(raw_ostream &OS) const;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
