@@ -22,7 +22,68 @@ using namespace llvm::logicalview;
 
 namespace {
 
-class ReaderTestLocations : public LVReader {
+class ReaderTest : public LVReader {
+protected:
+  void add(LVScope *Parent, LVElement *Element);
+  template <typename T> T *create() {
+    T *Element = new (std::nothrow) T();
+    EXPECT_NE(Element, nullptr);
+    return Element;
+  }
+  void set(LVElement *Element, StringRef Name, LVOffset Offset,
+           uint32_t LineNumber = 0, LVElement *Type = nullptr);
+  void set(LVLocation *Location, LVLine *LowerLine, LVLine *UpperLine,
+           LVAddress LowerAddress, LVAddress UpperAddress);
+  void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
+
+public:
+  ReaderTest(ScopedPrinter &W) : LVReader("", "", W) { setInstance(this); }
+
+  Error createScopes() { return LVReader::createScopes(); }
+};
+
+// Helper function to add a logical element to a given scope.
+void ReaderTest::add(LVScope *Parent, LVElement *Child) {
+  Parent->addElement(Child);
+  EXPECT_EQ(Child->getParent(), Parent);
+  EXPECT_EQ(Child->getLevel(), Parent->getLevel() + 1);
+}
+
+// Helper function to set the initial values for a given logical element.
+void ReaderTest::set(LVElement *Element, StringRef Name, LVOffset Offset,
+                     uint32_t LineNumber, LVElement *Type) {
+  Element->setName(Name);
+  Element->setOffset(Offset);
+  Element->setLineNumber(LineNumber);
+  Element->setType(Type);
+  EXPECT_EQ(Element->getName(), Name);
+  EXPECT_EQ(Element->getOffset(), Offset);
+  EXPECT_EQ(Element->getLineNumber(), LineNumber);
+  EXPECT_EQ(Element->getType(), Type);
+}
+
+// Helper function to set the initial values for a given logical location.
+void ReaderTest::set(LVLocation *Location, LVLine *LowerLine, LVLine *UpperLine,
+                     LVAddress LowerAddress, LVAddress UpperAddress) {
+  Location->setLowerLine(LowerLine);
+  Location->setUpperLine(UpperLine);
+  Location->setLowerAddress(LowerAddress);
+  Location->setUpperAddress(UpperAddress);
+  EXPECT_EQ(Location->getLowerLine(), LowerLine);
+  EXPECT_EQ(Location->getUpperLine(), UpperLine);
+  EXPECT_EQ(Location->getLowerAddress(), LowerAddress);
+  EXPECT_EQ(Location->getUpperAddress(), UpperAddress);
+}
+
+// Helper function to add a logical location to a logical symbol.
+void ReaderTest::add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine) {
+  dwarf::Attribute Attr = dwarf::DW_AT_location;
+
+  Symbol->addLocation(Attr, LowerLine->getAddress(), UpperLine->getAddress(),
+                      /*SectionOffset=*/0, /*LocDesOffset=*/0);
+}
+
+class ReaderTestLocations : public ReaderTest {
   // Types.
   LVType *IntegerType = nullptr;
 
@@ -51,74 +112,13 @@ class ReaderTestLocations : public LVReader {
   LVLocation *LocationFive = nullptr;
   LVLocation *LocationSix = nullptr;
 
-protected:
-  void add(LVScope *Parent, LVElement *Element);
-  template <typename T> T *create() {
-    T *Element = new (std::nothrow) T();
-    EXPECT_NE(Element, nullptr);
-    return Element;
-  }
-  void set(LVElement *Element, StringRef Name, LVOffset Offset,
-           uint32_t LineNumber = 0, LVElement *Type = nullptr);
-  void set(LVLocation *Location, LVLine *LowerLine, LVLine *UpperLine,
-           LVAddress LowerAddress, LVAddress UpperAddress);
-  void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
-
 public:
-  ReaderTestLocations(ScopedPrinter &W) : LVReader("", "", W) {
-    setInstance(this);
-  }
-
-  Error createScopes() { return LVReader::createScopes(); }
+  ReaderTestLocations(ScopedPrinter &W) : ReaderTest(W) {}
 
   void createElements();
   void addElements();
   void initElements();
 };
-
-// Helper function to add a logical element to a given scope.
-void ReaderTestLocations::add(LVScope *Parent, LVElement *Child) {
-  Parent->addElement(Child);
-  EXPECT_EQ(Child->getParent(), Parent);
-  EXPECT_EQ(Child->getLevel(), Parent->getLevel() + 1);
-}
-
-// Helper function to set the initial values for a given logical element.
-void ReaderTestLocations::set(LVElement *Element, StringRef Name,
-                              LVOffset Offset, uint32_t LineNumber,
-                              LVElement *Type) {
-  Element->setName(Name);
-  Element->setOffset(Offset);
-  Element->setLineNumber(LineNumber);
-  Element->setType(Type);
-  EXPECT_EQ(Element->getName(), Name);
-  EXPECT_EQ(Element->getOffset(), Offset);
-  EXPECT_EQ(Element->getLineNumber(), LineNumber);
-  EXPECT_EQ(Element->getType(), Type);
-}
-
-// Helper function to set the initial values for a given logical location.
-void ReaderTestLocations::set(LVLocation *Location, LVLine *LowerLine,
-                              LVLine *UpperLine, LVAddress LowerAddress,
-                              LVAddress UpperAddress) {
-  Location->setLowerLine(LowerLine);
-  Location->setUpperLine(UpperLine);
-  Location->setLowerAddress(LowerAddress);
-  Location->setUpperAddress(UpperAddress);
-  EXPECT_EQ(Location->getLowerLine(), LowerLine);
-  EXPECT_EQ(Location->getUpperLine(), UpperLine);
-  EXPECT_EQ(Location->getLowerAddress(), LowerAddress);
-  EXPECT_EQ(Location->getUpperAddress(), UpperAddress);
-}
-
-// Helper function to add a logical location to a logical symbol.
-void ReaderTestLocations::add(LVSymbol *Symbol, LVLine *LowerLine,
-                              LVLine *UpperLine) {
-  dwarf::Attribute Attr = dwarf::DW_AT_location;
-
-  Symbol->addLocation(Attr, LowerLine->getAddress(), UpperLine->getAddress(),
-                      /*SectionOffset=*/0, /*LocDesOffset=*/0);
-}
 
 // Create the logical elements.
 void ReaderTestLocations::createElements() {
@@ -326,6 +326,230 @@ void ReaderTestLocations::initElements() {
   EXPECT_EQ(Location->getUpperAddress(), LineFour->getAddress());
 }
 
+class ReaderTestCoverage : public ReaderTest {
+  // Types.
+  LVType *IntegerType = nullptr;
+
+  // Scopes.
+  LVScopeFunction *Function = nullptr;
+  LVScopeFunctionInlined *InlinedFunction = nullptr;
+
+  // Symbols.
+  LVSymbol *Variable = nullptr;
+  LVSymbol *Parameter = nullptr;
+
+  // Lines.
+  LVLine *LineOne = nullptr;
+  LVLine *LineTwo = nullptr;
+  LVLine *LineThree = nullptr;
+  LVLine *LineFour = nullptr;
+  LVLine *LineFive = nullptr;
+  LVLine *LineSix = nullptr;
+
+  // Locations.
+  LVLocation *LocationOne = nullptr;
+  LVLocation *LocationTwo = nullptr;
+  LVLocation *LocationThree = nullptr;
+  LVLocation *LocationFour = nullptr;
+  LVLocation *LocationFive = nullptr;
+  LVLocation *LocationSix = nullptr;
+
+public:
+  ReaderTestCoverage(ScopedPrinter &W) : ReaderTest(W) {}
+
+  void createElements();
+  void addElements();
+  void initElements();
+};
+
+// Create the logical elements.
+void ReaderTestCoverage::createElements() {
+  // Create scope root.
+  Error Err = createScopes();
+  ASSERT_THAT_ERROR(std::move(Err), Succeeded());
+  Root = getScopesRoot();
+  EXPECT_NE(Root, nullptr);
+
+  // Create the logical types.
+  IntegerType = create<LVType>();
+
+  // Create the logical scopes.
+  CompileUnit = create<LVScopeCompileUnit>();
+  Function = create<LVScopeFunction>();
+  InlinedFunction = create<LVScopeFunctionInlined>();
+
+  // Create the logical symbols.
+  Variable = create<LVSymbol>();
+  Parameter = create<LVSymbol>();
+
+  // Create the logical lines.
+  LineOne = create<LVLine>();
+  LineTwo = create<LVLine>();
+  LineThree = create<LVLine>();
+  LineFour = create<LVLine>();
+  LineFive = create<LVLine>();
+  LineSix = create<LVLine>();
+
+  // Create the logical locations.
+  LocationOne = create<LVLocation>();
+  LocationTwo = create<LVLocation>();
+  LocationThree = create<LVLocation>();
+  LocationFour = create<LVLocation>();
+  LocationFive = create<LVLocation>();
+  LocationSix = create<LVLocation>();
+}
+
+// Create the logical view adding the created logical elements.
+void ReaderTestCoverage::addElements() {
+  setCompileUnit(CompileUnit);
+
+  // Root
+  //   CompileUnit
+  //     IntegerType
+  //     Function
+  //       Ranges
+  //         [LineOne, LineOne]
+  //         [LineTwo, LineSix]
+  //         [LineSix, LineSix]
+  //       LineOne
+  //       LineTwo
+  //       InlinedFunction
+  //         Ranges
+  //           [LineFive, LineFive]
+  //         Parameter
+  //           Location
+  //             [LineThree, LineThree]
+  //         Variable
+  //           Location
+  //             [LineFour, LineFive]
+  //             [LineFive, LineSix]
+  //         LineThree
+  //         LineFour
+  //         LineFive
+  //       LineSix
+
+  // Add elements to Root.
+  add(Root, CompileUnit);
+
+  // Add elements to CompileUnit.
+  add(CompileUnit, IntegerType);
+  add(CompileUnit, Function);
+
+  // Add elements to Function.
+  add(Function, InlinedFunction);
+  add(Function, LineOne);
+  add(Function, LineTwo);
+  add(Function, LineSix);
+
+  // Add elements to function InlinedFunction.
+  add(InlinedFunction, Parameter);
+  add(InlinedFunction, Variable);
+  add(InlinedFunction, LineThree);
+  add(InlinedFunction, LineFour);
+  add(InlinedFunction, LineFive);
+}
+
+// Set initial values to logical elements.
+void ReaderTestCoverage::initElements() {
+  // Types.
+  set(IntegerType, "int", 0x1000);
+
+  // Scopes.
+  set(CompileUnit, "foo.cpp", 0x2000);
+  set(Function, "foo", 0x2500, 100, IntegerType);
+  set(InlinedFunction, "InlinedFunction", 0x3000, 300);
+
+  // Symbols.
+  set(Parameter, "Parameter", 0x3100, 310, IntegerType);
+  set(Variable, "Variable", 0x3200, 320, IntegerType);
+
+  // Lines.
+  set(LineOne, "", 0x5000, 100);
+  set(LineTwo, "", 0x5200, 200);
+  set(LineThree, "", 0x5400, 300);
+  set(LineFour, "", 0x5600, 400);
+  set(LineFive, "", 0x5800, 500);
+  set(LineSix, "", 0x6000, 600);
+
+  // Locations.
+  set(LocationOne, LineOne, LineOne, 0x5000, 0x5199);
+  EXPECT_STREQ(LocationOne->getIntervalInfo().c_str(),
+               " Lines 100:100 [0x0000005000:0x0000005199]");
+
+  set(LocationTwo, LineTwo, LineSix, 0x5200, 0x6100);
+  EXPECT_STREQ(LocationTwo->getIntervalInfo().c_str(),
+               " Lines 200:600 [0x0000005200:0x0000006100]");
+
+  set(LocationThree, LineThree, LineFive, 0x5400, 0x5800);
+  EXPECT_STREQ(LocationThree->getIntervalInfo().c_str(),
+               " Lines 300:500 [0x0000005400:0x0000005800]");
+
+  set(LocationFour, LineFour, LineFour, 0x5600, 0x5700);
+  EXPECT_STREQ(LocationFour->getIntervalInfo().c_str(),
+               " Lines 400:400 [0x0000005600:0x0000005700]");
+
+  set(LocationFive, LineFive, LineFive, 0x5800, 0x5900);
+  EXPECT_STREQ(LocationFive->getIntervalInfo().c_str(),
+               " Lines 500:500 [0x0000005800:0x0000005900]");
+
+  set(LocationSix, LineSix, LineSix, 0x6000, 0x6100);
+  EXPECT_STREQ(LocationSix->getIntervalInfo().c_str(),
+               " Lines 600:600 [0x0000006000:0x0000006100]");
+
+  // Add ranges to Function.
+  // Function: LocationOne, LocationTwo, LocationSix
+  Function->addObject(LocationOne);
+  Function->addObject(LocationTwo);
+  Function->addObject(LocationSix);
+  EXPECT_EQ(Function->rangeCount(), 3u);
+
+  // Add ranges to Inlined.
+  // Inlined: LocationFive
+  InlinedFunction->addObject(LocationFive);
+  EXPECT_EQ(InlinedFunction->rangeCount(), 1u);
+
+  // Add locations to symbols.
+  // Parameter: [LineThree, LineThree]
+  // Variable:  [LineFour, LineFive], [LineFive, LineSix]
+  add(Parameter, LineThree, LineThree);
+  add(Variable, LineFour, LineFive);
+  add(Variable, LineFive, LineSix);
+
+  CompileUnit->processRangeLocationCoverage();
+
+  LVLocation *Location;
+  LVLocations Locations;
+  Parameter->getLocations(Locations);
+  ASSERT_EQ(Locations.size(), 1u);
+  Location = Locations[0];
+  EXPECT_EQ(Location->getLowerAddress(), LineThree->getAddress());
+  EXPECT_EQ(Location->getUpperAddress(), LineThree->getAddress());
+
+  Locations.clear();
+  Variable->getLocations(Locations);
+  ASSERT_EQ(Locations.size(), 2u);
+  Location = Locations[0];
+  EXPECT_EQ(Location->getLowerAddress(), LineFour->getAddress());
+  EXPECT_EQ(Location->getUpperAddress(), LineFive->getAddress());
+  Location = Locations[1];
+  EXPECT_EQ(Location->getLowerAddress(), LineFive->getAddress());
+  EXPECT_EQ(Location->getUpperAddress(), LineSix->getAddress());
+
+  // Test the changes done to 'LVScope::outermostParent' to use the
+  // ranges allocated int the current scope during the scopes traversal.
+  // These are the pre-conditions for the symbol:
+  // - Its parent must be an inlined function.
+  // - Have more than one location description.
+
+  // Before the changes: Parameter: CoveragePercentage = 100.00
+  // After the changes:  Parameter: CoveragePercentage = 100.00
+  EXPECT_FLOAT_EQ(Parameter->getCoveragePercentage(), 100.00);
+
+  // Before the changes: Variable: CoveragePercentage = 1000.00
+  // After the changes:  Variable: CoveragePercentage = 56.83
+  EXPECT_FLOAT_EQ(Variable->getCoveragePercentage(), 56.83);
+}
+
 TEST(LogicalViewTest, LocationRanges) {
   ScopedPrinter W(outs());
   ReaderTestLocations Reader(W);
@@ -333,6 +557,24 @@ TEST(LogicalViewTest, LocationRanges) {
   // Reader options.
   LVOptions ReaderOptions;
   ReaderOptions.setAttributeOffset();
+  ReaderOptions.setPrintAll();
+  ReaderOptions.resolveDependencies();
+  options().setOptions(&ReaderOptions);
+
+  Reader.createElements();
+  Reader.addElements();
+  Reader.initElements();
+}
+
+TEST(LogicalViewTest, LocationCoverage) {
+  ScopedPrinter W(outs());
+  ReaderTestCoverage Reader(W);
+
+  // Reader options.
+  LVOptions ReaderOptions;
+  ReaderOptions.setAttributeOffset();
+  ReaderOptions.setAttributeRange();
+  ReaderOptions.setAttributeLocation();
   ReaderOptions.setPrintAll();
   ReaderOptions.resolveDependencies();
   options().setOptions(&ReaderOptions);
