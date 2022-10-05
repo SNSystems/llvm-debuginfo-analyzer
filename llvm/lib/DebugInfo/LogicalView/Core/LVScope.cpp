@@ -1339,7 +1339,7 @@ void LVScopeCompileUnit::increment(LVType *Type) {
 
 // A new element has been added to the scopes tree. Take the following steps:
 // Increase the added element counters, for printing summary.
-// Notify the Reader if element comparison.
+// During comparison notify the Reader of the new element.
 void LVScopeCompileUnit::addedElement(LVLine *Line) {
   increment(Line);
   getReader().notifyAddedElement(Line);
