@@ -303,7 +303,9 @@ public:
   // given 'Targets'.
   static bool equals(const LVScopes *References, const LVScopes *Targets);
 
-  virtual LVScope *equals(const LVScopes *Scopes) const;
+  // For the given 'Scopes' returns a scope that is logically equal
+  // to the current scope; otherwise 'nullptr'.
+  virtual LVScope *findEqualScope(const LVScopes *Scopes) const;
 
   // Report the current scope as missing or added during comparison.
   void report(LVComparePass Pass) override;
@@ -351,7 +353,9 @@ public:
   // Returns true if current scope is logically equal to the given 'Scope'.
   bool equals(const LVScope *Scope) const override;
 
-  LVScope *equals(const LVScopes *Scopes) const override;
+  // For the given 'Scopes' returns a scope that is logically equal
+  // to the current scope; otherwise 'nullptr'.
+  LVScope *findEqualScope(const LVScopes *Scopes) const override;
 
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };
@@ -688,7 +692,9 @@ public:
   // Returns true if current scope is logically equal to the given 'Scope'.
   bool equals(const LVScope *Scope) const override;
 
-  LVScope *equals(const LVScopes *Scopes) const override;
+  // For the given 'Scopes' returns a scope that is logically equal
+  // to the current scope; otherwise 'nullptr'.
+  LVScope *findEqualScope(const LVScopes *Scopes) const override;
 
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };
@@ -729,7 +735,9 @@ public:
   // Returns true if current scope is logically equal to the given 'Scope'.
   bool equals(const LVScope *Scope) const override;
 
-  LVScope *equals(const LVScopes *Scopes) const override;
+  // For the given 'Scopes' returns a scope that is logically equal
+  // to the current scope; otherwise 'nullptr'.
+  LVScope *findEqualScope(const LVScopes *Scopes) const override;
 
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };
@@ -768,7 +776,9 @@ public:
   // Returns true if current scope is logically equal to the given 'Scope'.
   bool equals(const LVScope *Scope) const override;
 
-  LVScope *equals(const LVScopes *Scopes) const override;
+  // For the given 'Scopes' returns a scope that is logically equal
+  // to the current scope; otherwise 'nullptr'.
+  LVScope *findEqualScope(const LVScopes *Scopes) const override;
 
   void printExtra(raw_ostream &OS, bool Full = true) const override;
 };

@@ -863,7 +863,7 @@ LVScope *LVScope::findIn(const LVScopes *Targets) const {
     if (!Candidates.empty())
       return (Candidates.size() == 1)
                  ? (equals(Candidates[0]) ? Candidates[0] : nullptr)
-                 : equals(&Candidates);
+                 : findEqualScope(&Candidates);
   }
   return nullptr;
 }
@@ -964,7 +964,7 @@ bool LVScope::equals(const LVScope *Scope) const {
   return true;
 }
 
-LVScope *LVScope::equals(const LVScopes *Scopes) const {
+LVScope *LVScope::findEqualScope(const LVScopes *Scopes) const {
   assert(Scopes && "Scopes must not be nullptr");
   for (LVScope *Scope : *Scopes)
     if (equals(Scope))
@@ -1060,7 +1060,7 @@ bool LVScopeAggregate::equals(const LVScope *Scope) const {
   return true;
 }
 
-LVScope *LVScopeAggregate::equals(const LVScopes *Scopes) const {
+LVScope *LVScopeAggregate::findEqualScope(const LVScopes *Scopes) const {
   assert(Scopes && "Scopes must not be nullptr");
   for (LVScope *Scope : *Scopes)
     if (equals(Scope))
@@ -1862,7 +1862,7 @@ bool LVScopeFunction::equals(const LVScope *Scope) const {
   return true;
 }
 
-LVScope *LVScopeFunction::equals(const LVScopes *Scopes) const {
+LVScope *LVScopeFunction::findEqualScope(const LVScopes *Scopes) const {
   assert(Scopes && "Scopes must not be nullptr");
   // Go through candidates and try to find a best match.
   for (LVScope *Scope : *Scopes)
@@ -1934,8 +1934,8 @@ bool LVScopeFunctionInlined::equals(const LVScope *Scope) const {
   return true;
 }
 
-LVScope *LVScopeFunctionInlined::equals(const LVScopes *Scopes) const {
-  return LVScopeFunction::equals(Scopes);
+LVScope *LVScopeFunctionInlined::findEqualScope(const LVScopes *Scopes) const {
+  return LVScopeFunction::findEqualScope(Scopes);
 }
 
 void LVScopeFunctionInlined::printExtra(raw_ostream &OS, bool Full) const {
@@ -1997,7 +1997,7 @@ bool LVScopeNamespace::equals(const LVScope *Scope) const {
   return true;
 }
 
-LVScope *LVScopeNamespace::equals(const LVScopes *Scopes) const {
+LVScope *LVScopeNamespace::findEqualScope(const LVScopes *Scopes) const {
   assert(Scopes && "Scopes must not be nullptr");
   // Go through candidates and try to find a best match.
   for (LVScope *Scope : *Scopes)
