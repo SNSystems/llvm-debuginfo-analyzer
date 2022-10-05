@@ -1054,7 +1054,7 @@ bool LVScopeAggregate::equals(const LVScope *Scope) const {
     return false;
 
   if (!isNamed() && !Scope->isNamed())
-    // Compare full name.
+    // In the case of unnamed union/structure/class compare the file name.
     if (getFilenameIndex() != Scope->getFilenameIndex())
       return false;
 
