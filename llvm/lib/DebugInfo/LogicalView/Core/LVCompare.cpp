@@ -20,6 +20,8 @@ using namespace llvm::logicalview;
 
 #define DEBUG_TYPE "Compare"
 
+namespace {
+
 enum class LVCompareItem { Scope, Symbol, Type, Line, Total };
 enum class LVCompareIndex { Header, Expected, Missing, Added };
 using LVCompareEntry = std::tuple<const char *, unsigned, unsigned, unsigned>;
@@ -46,21 +48,6 @@ constexpr unsigned getAdded() {
 }
 
 LVCompare *CurrentComparator = nullptr;
-LVCompare &LVCompare::getInstance() {
-  static LVCompare DefaultComparator(outs());
-  return CurrentComparator ? *CurrentComparator : DefaultComparator;
-}
-void LVCompare::setInstance(LVCompare *Comparator) {
-  CurrentComparator = Comparator;
-}
-
-LVCompare::LVCompare(raw_ostream &OS) : OS(OS) {
-  PrintLines = options().getPrintLines();
-  PrintSymbols = options().getPrintSymbols();
-  PrintTypes = options().getPrintTypes();
-  PrintScopes =
-      options().getPrintScopes() || PrintLines || PrintSymbols || PrintTypes;
-}
 
 void zeroResults() {
   // In case the same reader instance is used.
@@ -107,6 +94,25 @@ void updateMissingOrAdded(LVElement *Element, LVComparePass Pass) {
     ++std::get<getAdded()>(IterTotal->second);
     ++std::get<getAdded()>(Iter->second);
   }
+}
+
+} // namespace
+
+LVCompare &LVCompare::getInstance() {
+  static LVCompare DefaultComparator(outs());
+  return CurrentComparator ? *CurrentComparator : DefaultComparator;
+}
+
+void LVCompare::setInstance(LVCompare *Comparator) {
+  CurrentComparator = Comparator;
+}
+
+LVCompare::LVCompare(raw_ostream &OS) : OS(OS) {
+  PrintLines = options().getPrintLines();
+  PrintSymbols = options().getPrintSymbols();
+  PrintTypes = options().getPrintTypes();
+  PrintScopes =
+      options().getPrintScopes() || PrintLines || PrintSymbols || PrintTypes;
 }
 
 Error LVCompare::execute(LVReader *ReferenceReader, LVReader *TargetReader) {
