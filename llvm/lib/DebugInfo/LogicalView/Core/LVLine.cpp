@@ -68,31 +68,52 @@ std::string LVLine::noLineAsString(bool ShowZero) const {
 
 void LVLine::markMissingParents(const LVLines *References,
                                 const LVLines *Targets) {
-  if (References && Targets)
-    for (LVLine *Reference : *References)
-      if (!Reference->findIn(Targets))
-        Reference->markBranchAsMissing();
+  if (!(References && Targets))
+    return;
+
+  LLVM_DEBUG({
+    dbgs() << "\n[LVLine::markMissingParents]\n";
+    for (const LVLine *Reference : *References)
+      dbgs() << "References: "
+             << "Kind = " << formattedKind(Reference->kind()) << ", "
+             << "Line = " << Reference->getLineNumber() << "\n";
+    for (const LVLine *Target : *Targets)
+      dbgs() << "Targets   : "
+             << "Kind = " << formattedKind(Target->kind()) << ", "
+             << "Line = " << Target->getLineNumber() << "\n";
+  });
+
+  for (LVLine *Reference : *References) {
+    LLVM_DEBUG({
+      dbgs() << "Search Reference: Line = " << Reference->getLineNumber()
+             << "\n";
+    });
+    if (!Reference->findIn(Targets))
+      Reference->markBranchAsMissing();
+  }
 }
 
 LVLine *LVLine::findIn(const LVLines *Targets) const {
-  if (Targets) {
-    LLVM_DEBUG({
-      dbgs() << "\n[LVLine::findIn]\n"
-             << "Reference: "
-             << "Level = " << getLevel() << ", "
-             << "Kind = " << formattedKind(kind()) << ", "
-             << "Line = " << getLineNumber() << "\n";
-      for (const LVLine *Target : *Targets)
-        dbgs() << "Target   : "
-               << "Level = " << Target->getLevel() << ", "
-               << "Kind = " << formattedKind(Target->kind()) << ", "
-               << "Line = " << Target->getLineNumber() << "\n";
-    });
+  if (!Targets)
+    return nullptr;
 
-    for (LVLine *Line : *Targets)
-      if (equals(Line))
-        return Line;
-  }
+  LLVM_DEBUG({
+    dbgs() << "\n[LVLine::findIn]\n"
+           << "Reference: "
+           << "Level = " << getLevel() << ", "
+           << "Kind = " << formattedKind(kind()) << ", "
+           << "Line = " << getLineNumber() << "\n";
+    for (const LVLine *Target : *Targets)
+      dbgs() << "Target   : "
+             << "Level = " << Target->getLevel() << ", "
+             << "Kind = " << formattedKind(Target->kind()) << ", "
+             << "Line = " << Target->getLineNumber() << "\n";
+  });
+
+  for (LVLine *Line : *Targets)
+    if (equals(Line))
+      return Line;
+
   return nullptr;
 }
 

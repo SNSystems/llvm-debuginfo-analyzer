@@ -833,38 +833,39 @@ LVScope *LVScope::outermostParent(LVAddress Address) {
 }
 
 LVScope *LVScope::findIn(const LVScopes *Targets) const {
-  if (Targets) {
-    // In the case of overloaded functions, sometimes the DWARF used to
-    // describe them, does not give suficient information. Try to find a
-    // perfect match or mark them as possible conflicts.
-    LVScopes Candidates;
-    for (LVScope *Target : *Targets)
-      if (LVScope::equals(Target))
-        Candidates.push_back(Target);
+  if (!Targets)
+    return nullptr;
 
-    LLVM_DEBUG({
-      if (!Candidates.empty()) {
-        dbgs() << "\n[LVScope::findIn]\n"
-               << "Reference: "
-               << "Offset = " << hexSquareString(getOffset()) << ", "
-               << "Level = " << getLevel() << ", "
-               << "Kind = " << formattedKind(kind()) << ", "
-               << "Name = " << formattedName(getName()) << "\n";
-        for (const LVScope *Candidate : Candidates)
-          dbgs() << "Candidate: "
-                 << "Offset = " << hexSquareString(Candidate->getOffset())
-                 << ", "
-                 << "Level = " << Candidate->getLevel() << ", "
-                 << "Kind = " << formattedKind(Candidate->kind()) << ", "
-                 << "Name = " << formattedName(Candidate->getName()) << "\n";
-      }
-    });
+  // In the case of overloaded functions, sometimes the DWARF used to
+  // describe them, does not give suficient information. Try to find a
+  // perfect match or mark them as possible conflicts.
+  LVScopes Candidates;
+  for (LVScope *Target : *Targets)
+    if (LVScope::equals(Target))
+      Candidates.push_back(Target);
 
-    if (!Candidates.empty())
-      return (Candidates.size() == 1)
-                 ? (equals(Candidates[0]) ? Candidates[0] : nullptr)
-                 : findEqualScope(&Candidates);
-  }
+  LLVM_DEBUG({
+    if (!Candidates.empty()) {
+      dbgs() << "\n[LVScope::findIn]\n"
+             << "Reference: "
+             << "Offset = " << hexSquareString(getOffset()) << ", "
+             << "Level = " << getLevel() << ", "
+             << "Kind = " << formattedKind(kind()) << ", "
+             << "Name = " << formattedName(getName()) << "\n";
+      for (const LVScope *Candidate : Candidates)
+        dbgs() << "Candidate: "
+               << "Offset = " << hexSquareString(Candidate->getOffset()) << ", "
+               << "Level = " << Candidate->getLevel() << ", "
+               << "Kind = " << formattedKind(Candidate->kind()) << ", "
+               << "Name = " << formattedName(Candidate->getName()) << "\n";
+    }
+  });
+
+  if (!Candidates.empty())
+    return (Candidates.size() == 1)
+               ? (equals(Candidates[0]) ? Candidates[0] : nullptr)
+               : findEqualScope(&Candidates);
+
   return nullptr;
 }
 
@@ -906,53 +907,53 @@ void LVScope::markMissingParents(const LVScope *Target, bool TraverseChildren) {
 void LVScope::markMissingParents(const LVScopes *References,
                                  const LVScopes *Targets,
                                  bool TraverseChildren) {
-  LLVM_DEBUG({
-    if (References && Targets) {
-      dbgs() << "\n[LVScope::markMissingParents]\n";
-      for (const LVScope *Reference : *References)
-        dbgs() << "References: "
-               << "Offset = " << hexSquareString(Reference->getOffset()) << ", "
-               << "Level = " << Reference->getLevel() << ", "
-               << "Kind = " << formattedKind(Reference->kind()) << ", "
-               << "Name = " << formattedName(Reference->getName()) << "\n";
-      for (const LVScope *Target : *Targets)
-        dbgs() << "Targets   : "
-               << "Offset = " << hexSquareString(Target->getOffset()) << ", "
-               << "Level = " << Target->getLevel() << ", "
-               << "Kind = " << formattedKind(Target->kind()) << ", "
-               << "Name = " << formattedName(Target->getName()) << "\n";
-    }
-  });
-  if (References && Targets)
-    for (LVScope *Reference : *References) {
-      // Don't process 'Block' scopes, as we can't identify them.
-      if (Reference->getIsBlock() || Reference->getIsGeneratedName())
-        continue;
+  if (!(References && Targets))
+    return;
 
+  LLVM_DEBUG({
+    dbgs() << "\n[LVScope::markMissingParents]\n";
+    for (const LVScope *Reference : *References)
+      dbgs() << "References: "
+             << "Offset = " << hexSquareString(Reference->getOffset()) << ", "
+             << "Level = " << Reference->getLevel() << ", "
+             << "Kind = " << formattedKind(Reference->kind()) << ", "
+             << "Name = " << formattedName(Reference->getName()) << "\n";
+    for (const LVScope *Target : *Targets)
+      dbgs() << "Targets   : "
+             << "Offset = " << hexSquareString(Target->getOffset()) << ", "
+             << "Level = " << Target->getLevel() << ", "
+             << "Kind = " << formattedKind(Target->kind()) << ", "
+             << "Name = " << formattedName(Target->getName()) << "\n";
+  });
+
+  for (LVScope *Reference : *References) {
+    // Don't process 'Block' scopes, as we can't identify them.
+    if (Reference->getIsBlock() || Reference->getIsGeneratedName())
+      continue;
+
+    LLVM_DEBUG({
+      dbgs() << "\nSearch Reference: "
+             << "Offset = " << hexSquareString(Reference->getOffset()) << " "
+             << "Name = " << formattedName(Reference->getName()) << "\n";
+    });
+    LVScope *Target = Reference->findIn(Targets);
+    if (Target) {
       LLVM_DEBUG({
-        dbgs() << "\nSearch Reference: "
+        dbgs() << "\nFound Target: "
+               << "Offset = " << hexSquareString(Target->getOffset()) << " "
+               << "Name = " << formattedName(Target->getName()) << "\n";
+      });
+      if (TraverseChildren)
+        Reference->markMissingParents(Target, TraverseChildren);
+    } else {
+      LLVM_DEBUG({
+        dbgs() << "Missing Reference: "
                << "Offset = " << hexSquareString(Reference->getOffset()) << " "
                << "Name = " << formattedName(Reference->getName()) << "\n";
       });
-      LVScope *Target = Reference->findIn(Targets);
-      if (Target) {
-        LLVM_DEBUG({
-          dbgs() << "\nFound Target: "
-                 << "Offset = " << hexSquareString(Target->getOffset()) << " "
-                 << "Name = " << formattedName(Target->getName()) << "\n";
-        });
-        if (TraverseChildren)
-          Reference->markMissingParents(Target, TraverseChildren);
-      } else {
-        LLVM_DEBUG({
-          dbgs() << "Missing Reference: "
-                 << "Offset = " << hexSquareString(Reference->getOffset())
-                 << " "
-                 << "Name = " << formattedName(Reference->getName()) << "\n";
-        });
-        Reference->markBranchAsMissing();
-      }
+      Reference->markBranchAsMissing();
     }
+  }
 }
 
 bool LVScope::equals(const LVScope *Scope) const {

@@ -172,49 +172,52 @@ StringRef LVType::resolveReferencesChain() {
 
 void LVType::markMissingParents(const LVTypes *References,
                                 const LVTypes *Targets) {
+  if (!(References && Targets))
+    return;
+
   LLVM_DEBUG({
-    if (References && Targets) {
-      dbgs() << "\n[LVType::markMissingParents]\n";
-      for (const LVType *Reference : *References)
-        dbgs() << "References: "
-               << "Kind = " << formattedKind(Reference->kind()) << ", "
-               << "Name = " << formattedName(Reference->getName()) << "\n";
-      for (const LVType *Target : *Targets)
-        dbgs() << "Targets   : "
-               << "Kind = " << formattedKind(Target->kind()) << ", "
-               << "Name = " << formattedName(Target->getName()) << "\n";
-    }
+    dbgs() << "\n[LVType::markMissingParents]\n";
+    for (const LVType *Reference : *References)
+      dbgs() << "References: "
+             << "Kind = " << formattedKind(Reference->kind()) << ", "
+             << "Name = " << formattedName(Reference->getName()) << "\n";
+    for (const LVType *Target : *Targets)
+      dbgs() << "Targets   : "
+             << "Kind = " << formattedKind(Target->kind()) << ", "
+             << "Name = " << formattedName(Target->getName()) << "\n";
   });
-  if (References && Targets)
-    for (LVType *Reference : *References) {
-      LLVM_DEBUG({
-        dbgs() << "Search Reference: Name = "
-               << formattedName(Reference->getName()) << "\n";
-      });
-      if (!Reference->findIn(Targets))
-        Reference->markBranchAsMissing();
-    }
+
+  for (LVType *Reference : *References) {
+    LLVM_DEBUG({
+      dbgs() << "Search Reference: Name = "
+             << formattedName(Reference->getName()) << "\n";
+    });
+    if (!Reference->findIn(Targets))
+      Reference->markBranchAsMissing();
+  }
 }
 
 LVType *LVType::findIn(const LVTypes *Targets) const {
-  if (Targets) {
-    LLVM_DEBUG({
-      dbgs() << "\n[LVType::findIn]\n"
-             << "Reference: "
-             << "Level = " << getLevel() << ", "
-             << "Kind = " << formattedKind(kind()) << ", "
-             << "Name = " << formattedName(getName()) << "\n";
-      for (const LVType *Target : *Targets)
-        dbgs() << "Target   : "
-               << "Level = " << Target->getLevel() << ", "
-               << "Kind = " << formattedKind(Target->kind()) << ", "
-               << "Name = " << formattedName(Target->getName()) << "\n";
-    });
+  if (!Targets)
+    return nullptr;
 
-    for (LVType *Target : *Targets)
-      if (equals(Target))
-        return Target;
-  }
+  LLVM_DEBUG({
+    dbgs() << "\n[LVType::findIn]\n"
+           << "Reference: "
+           << "Level = " << getLevel() << ", "
+           << "Kind = " << formattedKind(kind()) << ", "
+           << "Name = " << formattedName(getName()) << "\n";
+    for (const LVType *Target : *Targets)
+      dbgs() << "Target   : "
+             << "Level = " << Target->getLevel() << ", "
+             << "Kind = " << formattedKind(Target->kind()) << ", "
+             << "Name = " << formattedName(Target->getName()) << "\n";
+  });
+
+  for (LVType *Target : *Targets)
+    if (equals(Target))
+      return Target;
+
   return nullptr;
 }
 
