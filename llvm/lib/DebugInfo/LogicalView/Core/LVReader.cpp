@@ -26,7 +26,7 @@ using namespace llvm::logicalview;
 // Detect elements that are inserted more than once at different scopes,
 // causing a crash on the reader destruction, as the element is already
 // deleted from other scope. Helper for CodeView reader.
-void checkIntegrityScopesTree(LVScope *Root) {
+bool checkIntegrityScopesTree(LVScope *Root) {
   using LVDuplicateEntry = std::tuple<LVElement *, LVScope *, LVScope *>;
   using LVDuplicate = std::vector<LVDuplicateEntry>;
   LVDuplicate Duplicate;
@@ -40,7 +40,7 @@ void checkIntegrityScopesTree(LVScope *Root) {
     if (Iter == Integrity.end())
       Integrity.emplace(Element, Scope);
     else
-      // We found a duplicated.
+      // We found a duplicate.
       Duplicate.emplace_back(Element, Scope, Iter->second);
   };
 
@@ -64,6 +64,7 @@ void checkIntegrityScopesTree(LVScope *Root) {
 
   // Start traversing the scopes root and print any duplicates.
   TraverseScope(Root);
+  bool PassIntegrity = true;
   if (Duplicate.size()) {
     std::stable_sort(begin(Duplicate), end(Duplicate),
                      [](const auto &l, const auto &r) {
@@ -101,8 +102,9 @@ void checkIntegrityScopesTree(LVScope *Root) {
       PrintElement(Second);
       dbgs() << formatv("{0}\n", fmt_repeat('-', 72));
     }
-    exit(0);
+    PassIntegrity = false;
   }
+  return PassIntegrity;
 }
 
 //===----------------------------------------------------------------------===//
@@ -234,8 +236,9 @@ Error LVReader::doLoad() {
   if (Error Err = createScopes())
     return Err;
 
-  if (options().getInternalIntegrity())
-    checkIntegrityScopesTree(Root);
+  if (options().getInternalIntegrity() && !checkIntegrityScopesTree(Root))
+    return llvm::make_error<StringError>("Duplicated elements in Scopes Tree",
+                                         inconvertibleErrorCode());
 
   // Calculate symbol coverage and detect invalid debug locations and ranges.
   Root->processRangeInformation();
