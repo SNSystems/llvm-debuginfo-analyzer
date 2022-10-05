@@ -25,6 +25,8 @@ def AArch64_restore_za : SDNode<"AArch64ISD::RESTORE_ZA", SDTypeProfile<0, 3,
 
 def AArch64ObscureCopy : SDNode<"AArch64ISD::OBSCURE_COPY", SDTypeProfile<1, 1, []>, []>;
 
+def AArch64ObscureCopy : SDNode<"AArch64ISD::OBSCURE_COPY", SDTypeProfile<1, 1, []>, []>;
+
 //===----------------------------------------------------------------------===//
 // Add vector elements horizontally or vertically to ZA tile.
 //===----------------------------------------------------------------------===//
