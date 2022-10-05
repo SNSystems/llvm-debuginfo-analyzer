@@ -306,7 +306,6 @@ void LVSymbol::markMissingParents(const LVSymbols *References,
     }
 }
 
-// Find the 'current' symbol in the 'Targets' symbol set.
 LVSymbol *LVSymbol::findIn(const LVSymbols *Targets) const {
   if (Targets) {
     LLVM_DEBUG({

@@ -63,7 +63,7 @@ class LVSymbol final : public LVElement {
   LVAutoLocations::iterator addLocationGap(LVAutoLocations::iterator Pos,
                                            LVAddress LowPC, LVAddress HighPC);
 
-  // Find the 'current' symbol in the 'Targets'.
+  // Find the current symbol in the given 'Targets'.
   LVSymbol *findIn(const LVSymbols *Targets) const;
 
 public:
@@ -171,9 +171,14 @@ public:
   static void markMissingParents(const LVSymbols *References,
                                  const LVSymbols *Targets);
 
-  // Returns true if 'current' type is equal to the given 'type'.
+  // Returns true if current type is logically equal to the given 'Symbol'.
   bool equals(const LVSymbol *Symbol) const;
+
+  // Returns true if the given 'References' are logically equal to the
+  // given 'Targets'.
   static bool equals(const LVSymbols *References, const LVSymbols *Targets);
+
+  // Report the current symbol as missing or added during comparison.
   void report(LVComparePass Pass) override;
 
   void print(raw_ostream &OS, bool Full = true) const override;

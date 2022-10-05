@@ -355,10 +355,10 @@ public:
 
   bool referenceMatch(const LVElement *Element) const;
 
-  // Performs a set of tests to identify if the current Element is equal
-  // to the one supplied. Returns true if they are equal. False otherwise.
+  // Returns true if current element is logically equal to the given 'Element'.
   bool equals(const LVElement *Element) const;
-  // Report the element as missing or added during comparison.
+
+  // Report the current element as missing or added during comparison.
   virtual void report(LVComparePass Pass) {}
 
   static LVElementDispatch &getDispatch() { return Dispatch; }

@@ -196,7 +196,6 @@ void LVType::markMissingParents(const LVTypes *References,
     }
 }
 
-// Find the 'current' type in the 'Targets' type set.
 LVType *LVType::findIn(const LVTypes *Targets) const {
   if (Targets) {
     LLVM_DEBUG({

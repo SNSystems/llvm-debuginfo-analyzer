@@ -32,8 +32,8 @@ class LVCompare final {
   // As the comparison is performed twice (by exchanging the reference
   // and target readers) the element missing/added status does specify
   // the comparison pass.
-  // By recording the missing/added elements along with its pass, it
-  // allow to check which elements were missing/added during each pass.
+  // By recording each missing/added elements along with its pass, it
+  // allows checking which elements were missing/added during each pass.
   LVPassTable PassTable;
 
   // Reader used on the LHS of the comparison.

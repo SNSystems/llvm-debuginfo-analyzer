@@ -42,7 +42,7 @@ class LVLine : public LVElement {
   LVProperties<LVLineKind> Kinds;
   static LVLineDispatch Dispatch;
 
-  // Find the 'current' line in the 'Targets' set.
+  // Find the current line in the given 'Targets'.
   LVLine *findIn(const LVLines *Targets) const;
 
 public:
@@ -92,9 +92,14 @@ public:
   static void markMissingParents(const LVLines *References,
                                  const LVLines *Targets);
 
-  // Returns true if 'current' line is equal to the given 'Line'.
+  // Returns true if current line is logically equal to the given 'Line'.
   virtual bool equals(const LVLine *Line) const;
+
+  // Returns true if the given 'References' are logically equal to the
+  // given 'Targets'.
   static bool equals(const LVLines *References, const LVLines *Targets);
+
+  // Report the current line as missing or added during comparison.
   void report(LVComparePass Pass) override;
 
   void print(raw_ostream &OS, bool Full = true) const override;
@@ -128,7 +133,7 @@ public:
     setIsDiscriminator();
   }
 
-  // Returns true if 'current' line is equal to the given 'line'.
+  // Returns true if current line is logically equal to the given 'Line'.
   bool equals(const LVLine *Line) const override;
 
   void printExtra(raw_ostream &OS, bool Full = true) const override;
@@ -147,7 +152,7 @@ public:
     return std::string(8, ' ');
   };
 
-  // Returns true if 'current' line is equal to the given 'line'.
+  // Returns true if current line is logically equal to the given 'Line'.
   bool equals(const LVLine *Line) const override;
 
   void printExtra(raw_ostream &OS, bool Full = true) const override;

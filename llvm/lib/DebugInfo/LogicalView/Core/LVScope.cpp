@@ -832,7 +832,6 @@ LVScope *LVScope::outermostParent(LVAddress Address) {
   return Parent;
 }
 
-// Find the 'current' scope in the 'Targets' scope set.
 LVScope *LVScope::findIn(const LVScopes *Targets) const {
   if (Targets) {
     // In the case of overloaded functions, sometimes the DWARF used to
@@ -869,7 +868,6 @@ LVScope *LVScope::findIn(const LVScopes *Targets) const {
   return nullptr;
 }
 
-// Returns true if 'current' scope is equal to the given 'scope'.
 bool LVScope::equalNumberOfChildren(const LVScope *Scope) const {
   // Same number of children. Take into account which elements are requested
   // to be included in the comparison.
