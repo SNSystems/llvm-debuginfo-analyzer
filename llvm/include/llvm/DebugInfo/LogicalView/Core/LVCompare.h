@@ -71,7 +71,7 @@ public:
   void addPassEntry(LVReader *Reader, LVElement *Element, LVComparePass Pass) {
     PassTable.emplace_back(Reader, Element, Pass);
   }
-  const LVPassTable &getPassTable() const { return PassTable; }
+  const LVPassTable &getPassTable() const & { return PassTable; }
 
   void printItem(LVElement *Element, LVComparePass Pass);
   void print(raw_ostream &OS) const;
