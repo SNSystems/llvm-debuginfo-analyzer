@@ -324,7 +324,7 @@ LVBinaryReader::getSection(LVScope *Scope, LVAddress Address,
     return std::make_pair(Section.getAddress(), Section);
   }
 
-  // Ensure a valid starting address for the public name's.
+  // Ensure a valid starting address for the public names.
   LVSectionAddresses::const_iterator Iter =
       SectionAddresses.upper_bound(Address);
   if (Iter == SectionAddresses.begin()) {
@@ -399,9 +399,9 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
   if (!SectionContentsOrErr)
     return SectionOrErr.takeError();
 
-  // There are cases where the section size is smaller that the [LowPC,HighPC]
-  // range; it causes to decode invalid addresses. The recorded size in the
-  // logical scope is one less that the real size.
+  // There are cases where the section size is smaller than the [LowPC,HighPC]
+  // range; it causes us to decode invalid addresses. The recorded size in the
+  // logical scope is one less than the real size.
   LLVM_DEBUG({
     dbgs() << " Size: " << hexValue(Size)
            << ", Section Size: " << hexValue(Section.getSize()) << "\n";
@@ -465,7 +465,8 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
                << ") " << hexValue((uint64_t)Address) << ": " << Stream.str()
                << "\n";
       });
-      // The 'processLines()' function will move each created logical line
+      // Here we add logical lines to the Instructions. Later on,
+      // the 'processLines()' function will move each created logical line
       // to its enclosing logical scope, using the debug ranges information
       // and they will be released when its scope parent is deleted.
       LVLineAssembler *Line = new LVLineAssembler();
@@ -564,7 +565,7 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
   // the logical line representing the debug line record is followed by the
   // line(s) representing the disassembled instructions, whose addresses are
   // equal or greater that the line address and less than the address of the
-  // next line record.
+  // next debug line record.
   LLVM_DEBUG({
     size_t Index = 1;
     size_t PerLine = 4;
@@ -675,7 +676,7 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
     }
   });
 
-  // This compilation unit does not have line records. Traverse its scopes
+  // If this compilation unit does not have line records, traverse its scopes
   // and take any collected instruction lines as the working set in order
   // to move them to their associated scope.
   if (DebugLines->empty()) {

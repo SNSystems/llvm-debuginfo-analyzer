@@ -37,7 +37,7 @@ using PdbOrObj = PointerUnion<object::ObjectFile *, pdb::PDBFile *>;
 //   view representation containing scopes, symbols, types and lines.
 // - Prints and compares the logical views.
 //
-// The supported binary formats are: ELF, MacOS and CodeView.
+// The supported binary formats are: ELF, Mach-O and CodeView.
 class LVReaderHandler {
   ArgVector &Objects;
   ScopedPrinter &W;

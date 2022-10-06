@@ -36,7 +36,9 @@ LVElement *LVELFReader::createElement(dwarf::Tag Tag) {
 
   if (!options().getPrintSymbols()) {
     switch (Tag) {
-    // Symbols.
+    // As the command line options did not specify a request to print
+    // logical symbols (--print=symbols or --print=all or --print=elements),
+    // skip its creation.
     case dwarf::DW_TAG_formal_parameter:
     case dwarf::DW_TAG_unspecified_parameters:
     case dwarf::DW_TAG_member:
@@ -45,7 +47,7 @@ LVElement *LVELFReader::createElement(dwarf::Tag Tag) {
     case dwarf::DW_TAG_constant:
     case dwarf::DW_TAG_call_site_parameter:
     case dwarf::DW_TAG_GNU_call_site_parameter:
-      return CurrentSymbol;
+      return nullptr;
     default:
       break;
     }
@@ -590,7 +592,7 @@ LVScope *LVELFReader::processOneDie(const DWARFDie &InputDIE, LVScope *Parent,
     ProcessAttributes(DIE, DebugInfoData);
 
     // If the input DIE is for a compile unit, process its attributes in
-    // the case of split DWARF, to overrite any common attribute values.
+    // the case of split DWARF, to override any common attribute values.
     if (SkeletonDie.isValid()) {
       DWARFDataExtractor DebugInfoData =
           InputDIE.getDwarfUnit()->getDebugInfoExtractor();
@@ -726,7 +728,8 @@ void LVELFReader::createLineAndFileRecords(
   if ((options().getAttributeRange() || options().getPrintLines()) &&
       Lines->Rows.size())
     for (const DWARFDebugLine::Row &Row : Lines->Rows) {
-      // The 'processLines()' function will move each created logical line
+      // Here we collect logical debug lines in CULines. Later on,
+      // the 'processLines()' function will move each created logical line
       // to its enclosing logical scope, using the debug ranges information
       // and they will be released when its scope parent is deleted.
       LVLineDebug *Line = new LVLineDebug();
@@ -756,10 +759,10 @@ void LVELFReader::createLineAndFileRecords(
 }
 
 std::string LVELFReader::getRegisterName(LVSmall Opcode, uint64_t Operands[2]) {
-  // The 'prettyPrintRegisterOp' function uses the DWARFUnit to access the
-  // offset and tag name. At this point we are operating on a logical view
+  // The 'prettyPrintRegisterOp' function uses the DWARFUnit to support
+  // DW_OP_regval_type. At this point we are operating on a logical view
   // item, with no access to the underlying DWARF data used by LLVM.
-  // It does not support DW_OP_regval_type.
+  // We do not support DW_OP_regval_type here.
   if (Opcode == dwarf::DW_OP_regval_type)
     return {};
   if ((Opcode >= dwarf::DW_OP_breg0 && Opcode <= dwarf::DW_OP_breg31) ||
@@ -1212,8 +1215,8 @@ void LVELFReader::mapRangeAddress(const ObjectFile &Obj) {
     uint32_t Flags = *FlagsOrErr;
 
     // Mark the symbol as 'comdat' in any of the following cases:
-    // - Symbol has the SF_Weak or
-    // - Symbol section index different of the DotTextSectionIndex.
+    // - Symbol has the SF_Weak flag or
+    // - Symbol section index different from the DotTextSectionIndex.
     LVSectionIndex SectionIndex = Section->getIndex();
     bool IsComdat =
         (Flags & SymbolRef::SF_Weak) || (SectionIndex != DotTextSectionIndex);
