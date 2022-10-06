@@ -81,7 +81,7 @@ void checkElementPropertiesClangCodeview(LVReader *Reader) {
   EXPECT_EQ(Function->rangeCount(), 1u);
 
   const LVLocations *Ranges = Function->getRanges();
-  EXPECT_NE(Ranges, nullptr);
+  ASSERT_NE(Ranges, nullptr);
   ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
@@ -121,7 +121,7 @@ void checkElementPropertiesClangCodeview(LVReader *Reader) {
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
-  EXPECT_NE(Lines, nullptr);
+  ASSERT_NE(Lines, nullptr);
   ASSERT_EQ(Lines->size(), 0x10u);
 }
 
@@ -147,7 +147,7 @@ void checkElementPropertiesMsvcCodeview(LVReader *Reader) {
   EXPECT_EQ(Function->rangeCount(), 1u);
 
   const LVLocations *Ranges = Function->getRanges();
-  EXPECT_NE(Ranges, nullptr);
+  ASSERT_NE(Ranges, nullptr);
   ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
@@ -187,7 +187,7 @@ void checkElementPropertiesMsvcCodeview(LVReader *Reader) {
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
-  EXPECT_NE(Lines, nullptr);
+  ASSERT_NE(Lines, nullptr);
   ASSERT_EQ(Lines->size(), 0x0eu);
 }
 
@@ -213,7 +213,7 @@ void checkElementPropertiesMsvcCodeviewPdb(LVReader *Reader) {
   EXPECT_EQ(Function->rangeCount(), 1u);
 
   const LVLocations *Ranges = Function->getRanges();
-  EXPECT_NE(Ranges, nullptr);
+  ASSERT_NE(Ranges, nullptr);
   ASSERT_EQ(Ranges->size(), 1u);
   LVLocations::const_iterator IterLocation = Ranges->begin();
   LVLocation *Location = (*IterLocation);
@@ -253,7 +253,7 @@ void checkElementPropertiesMsvcCodeviewPdb(LVReader *Reader) {
 
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
-  EXPECT_NE(Lines, nullptr);
+  ASSERT_NE(Lines, nullptr);
   ASSERT_EQ(Lines->size(), 0x0eu);
 }
 
@@ -281,7 +281,7 @@ void checkElementSelection(LVReader *Reader, std::vector<SelectionInfo> &Data,
     // Get matched element.
     EXPECT_NE(Iter, MapElements.end());
     LVElement *Element = Iter->second;
-    EXPECT_NE(Element, nullptr);
+    ASSERT_NE(Element, nullptr);
     EXPECT_NE(Element->getName().find(Entry.Name), StringRef::npos);
     EXPECT_EQ((Element->*Entry.Function)(), 1u);
     ++Iter;
@@ -320,8 +320,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
 
   // Reference: Missing TypeDefinition 'INTEGER'
   std::tie(Reader, Element, Pass) = PassTable[0];
-  EXPECT_NE(Reader, nullptr);
-  EXPECT_NE(Element, nullptr);
+  ASSERT_NE(Reader, nullptr);
+  ASSERT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Reference);
   EXPECT_EQ(Element->getLevel(), 3u);
   EXPECT_EQ(Element->getLineNumber(), 0u);
@@ -330,8 +330,8 @@ void checkElementComparison(LVReader *Reference, LVReader *Target) {
 
   // Target: Added TypeDefinition 'INTEGER'
   std::tie(Reader, Element, Pass) = PassTable[1];
-  EXPECT_NE(Reader, nullptr);
-  EXPECT_NE(Element, nullptr);
+  ASSERT_NE(Reader, nullptr);
+  ASSERT_NE(Element, nullptr);
   EXPECT_EQ(Reader, Target);
   EXPECT_EQ(Element->getLevel(), 4u);
   EXPECT_EQ(Element->getLineNumber(), 0u);
