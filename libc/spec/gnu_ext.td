@@ -1,3 +1,7 @@
+def CpuSetT : NamedType<"cpu_set_t">;
+def CpuSetPtr : PtrType<CpuSetT>;
+def ConstCpuSetPtr : ConstType<CpuSetPtr>;
+
 def GnuExtensions : StandardSpec<"GNUExtensions"> {
   NamedType CookieIOFunctionsT = NamedType<"cookie_io_functions_t">;
   HeaderSpec CType = HeaderSpec<
@@ -28,7 +32,26 @@ def GnuExtensions : StandardSpec<"GNUExtensions"> {
         FunctionSpec<"exp10f", RetValSpec<FloatType>, [ArgSpec<FloatType>]>,
       ]
   >;
-  
+ 
+  HeaderSpec Sched = HeaderSpec<
+      "sched.h",
+      [], // Macros
+      [PidT, SizeTType, CpuSetT], // Types
+      [], // Enumerations
+      [
+        FunctionSpec<
+            "sched_getaffinity",
+            RetValSpec<IntType>,
+            [ArgSpec<PidT>, ArgSpec<SizeTType>, ArgSpec<CpuSetPtr>]
+        >,
+        FunctionSpec<
+            "sched_setaffinity",
+            RetValSpec<IntType>,
+            [ArgSpec<PidT>, ArgSpec<SizeTType>, ArgSpec<ConstCpuSetPtr>]
+        >,
+      ]
+  >;
+ 
   HeaderSpec String = HeaderSpec<
       "string.h",
       [], // Macros
@@ -164,6 +187,7 @@ def GnuExtensions : StandardSpec<"GNUExtensions"> {
     FEnv,
     Math,
     PThread,
+    Sched,
     SendFile,
     StdIO,
     String,

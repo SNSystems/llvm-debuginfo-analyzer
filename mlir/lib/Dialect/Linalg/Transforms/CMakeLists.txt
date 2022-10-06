@@ -15,7 +15,6 @@ add_mlir_dialect_library(MLIRLinalgTransforms
   Generalization.cpp
   Hoisting.cpp
   HoistPadding.cpp
-  InitTensorToAllocTensor.cpp
   InlineScalarOperands.cpp
   Interchange.cpp
   Loops.cpp
@@ -40,9 +39,9 @@ add_mlir_dialect_library(MLIRLinalgTransforms
   MLIRAffineDialect
   MLIRAffineUtils
   MLIRAnalysis
-  MLIRArithmeticDialect
-  MLIRArithmeticTransforms
-  MLIRArithmeticUtils
+  MLIRArithDialect
+  MLIRArithTransforms
+  MLIRArithUtils
   MLIRBufferizationDialect
   MLIRBufferizationTransforms
   MLIRComplexDialect

@@ -13,8 +13,8 @@
 
 #include "mlir/Dialect/Vector/IR/VectorOps.h"
 
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
-#include "mlir/Dialect/Arithmetic/Utils/Utils.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Arith/Utils/Utils.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Utils/IndexingUtils.h"
@@ -307,6 +307,50 @@ LogicalResult MultiDimReductionOp::verify() {
                          << getSourceVectorType();
 
   return success();
+}
+
+namespace {
+// Only unit dimensions that are being reduced are folded. If the dimension is
+// unit, but not reduced, it is not folded, thereby keeping the output type the
+// same. If not all dimensions which are reduced are of unit dimension, this
+// transformation does nothing. This is just a generalization of
+// ElideSingleElementReduction for ReduceOp.
+struct ElideUnitDimsInMultiDimReduction
+    : public OpRewritePattern<MultiDimReductionOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MultiDimReductionOp reductionOp,
+                                PatternRewriter &rewriter) const override {
+    ArrayRef<int64_t> shape = reductionOp.getSourceVectorType().getShape();
+    for (auto dim : enumerate(shape)) {
+      if (reductionOp.isReducedDim(dim.index()) && dim.value() != 1)
+        return failure();
+    }
+    Location loc = reductionOp.getLoc();
+    Value acc = reductionOp.getAcc();
+    Value cast;
+    if (reductionOp.getDestType().isa<VectorType>()) {
+      cast = rewriter.create<vector::ShapeCastOp>(
+          loc, reductionOp.getDestType(), reductionOp.getSource());
+    } else {
+      // This means we are reducing all the dimensions, and all reduction
+      // dimensions are of size 1. So a simple extraction would do.
+      cast = rewriter.create<vector::ExtractOp>(
+          loc, reductionOp.getDestType(), reductionOp.getSource(),
+          rewriter.getI64ArrayAttr(SmallVector<int64_t>(shape.size(), 0)));
+    }
+
+    Value result = vector::makeArithReduction(rewriter, loc,
+                                              reductionOp.getKind(), acc, cast);
+    rewriter.replaceOp(reductionOp, result);
+    return success();
+  }
+};
+} // namespace
+
+void MultiDimReductionOp::getCanonicalizationPatterns(
+    RewritePatternSet &results, MLIRContext *context) {
+  results.add<ElideUnitDimsInMultiDimReduction>(context);
 }
 
 //===----------------------------------------------------------------------===//
@@ -3167,6 +3211,21 @@ void TransferReadOp::getEffects(
                          SideEffects::DefaultResource::get());
 }
 
+/// Returns true if all rank reduced in the given `extractOp` happen in leading
+/// dimensions earlier than last `trailingRank` dimensions.
+static bool areAllRankReducedLeadingDim(tensor::ExtractSliceOp extractOp,
+                                        unsigned trailingRank) {
+  // If no ranks are reduced at all, it's a degenerated case; always true.
+  if (extractOp.getSourceType().getRank() == extractOp.getType().getRank())
+    return true;
+
+  RankedTensorType inferredType = extractOp.inferResultType(
+      extractOp.getSourceType(), extractOp.getMixedOffsets(),
+      extractOp.getMixedSizes(), extractOp.getMixedStrides());
+  return extractOp.getType().getShape().take_back(trailingRank) ==
+         inferredType.getShape().take_back(trailingRank);
+}
+
 namespace {
 /// Fold transfer_reads of a tensor.extract_slice op. E.g.:
 ///
@@ -3221,18 +3280,11 @@ public:
     // ```
     // For this, check the trailing `vectorRank` dims of the extract_slice
     // result tensor match the trailing dims of the inferred result tensor.
+    if (!areAllRankReducedLeadingDim(extractOp, extractOp.getType().getRank()))
+      return failure();
+
     int64_t rankReduced =
         extractOp.getSourceType().getRank() - extractOp.getType().getRank();
-    int64_t vectorRank = xferOp.getVectorType().getRank();
-    RankedTensorType inferredDestTensorType =
-        tensor::ExtractSliceOp::inferResultType(
-            extractOp.getSourceType(), extractOp.getMixedOffsets(),
-            extractOp.getMixedSizes(), extractOp.getMixedStrides());
-    auto actualDestTensorShape = extractOp.getType().getShape();
-    if (rankReduced > 0 &&
-        actualDestTensorShape.take_back(vectorRank) !=
-            inferredDestTensorType.getShape().take_back(vectorRank))
-      return failure();
 
     SmallVector<Value> newIndices;
     // In case this is a rank-reducing ExtractSliceOp, copy rank-reduced

@@ -28,7 +28,7 @@ using namespace llvm::ELF;
 using namespace lld;
 using namespace lld::elf;
 
-std::unique_ptr<SymbolTable> elf::symtab;
+SymbolTable elf::symtab;
 
 void SymbolTable::wrap(Symbol *sym, Symbol *real, Symbol *wrap) {
   // Redirect __real_foo to the original foo and foo to the original __wrap_foo.
@@ -91,7 +91,6 @@ Symbol *SymbolTable::insert(StringRef name) {
   memset(sym, 0, sizeof(Symbol));
   sym->setName(name);
   sym->partition = 1;
-  sym->auxIdx = -1;
   sym->verdefIndex = -1;
   sym->versionId = VER_NDX_GLOBAL;
   if (pos != StringRef::npos)

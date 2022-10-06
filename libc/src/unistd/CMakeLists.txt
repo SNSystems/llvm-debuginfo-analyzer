@@ -52,6 +52,13 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
+  fork
+  ALIAS
+  DEPENDS
+    .${LIBC_TARGET_OS}.fork
+)
+
+add_entrypoint_object(
   fsync
   ALIAS
   DEPENDS
@@ -168,6 +175,13 @@ add_entrypoint_object(
   ALIAS
   DEPENDS
     .${LIBC_TARGET_OS}.symlinkat
+)
+
+add_entrypoint_object(
+  __llvm_libc_syscall
+  ALIAS
+  DEPENDS
+    .${LIBC_TARGET_OS}.__llvm_libc_syscall
 )
 
 add_entrypoint_object(

@@ -172,7 +172,10 @@ Bug Fixes
 - The template arguments of a variable template being accessed as a
   member will now be represented in the AST.
 - Fix incorrect handling of inline builtins with asm labels.
-
+- Finished implementing C++ DR2565, which results in a requirement becoming
+  not satisfied in the event of an instantiation failures in a requires expression's
+  parameter list. We previously handled this correctly in a constraint evaluation
+  context, but not in a requires clause evaluated as a boolean.
 
 Improvements to Clang's diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -226,6 +229,8 @@ Improvements to Clang's diagnostics
   doesn't generate strange cascading errors, particularly in cases where a
   subsuming constraint fails, which would result in a less-specific overload to
   be selected.
+- Add a fix-it hint for the ``-Wdefaulted-function-deleted`` warning to
+  explicitly delete the function.
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------
@@ -242,6 +247,21 @@ Non-comprehensive list of changes in this release
 - Unicode support has been updated to support Unicode 15.0.
   New unicode codepoints are supported as appropriate in diagnostics,
   C and C++ identifiers, and escape sequences.
+- Clang now supports loading multiple configuration files. The files from
+  default configuration paths are loaded first, unless ``--no-default-config``
+  option is used. All files explicitly specified using ``--config=`` option
+  are loaded afterwards.
+- When loading default configuration files, clang now unconditionally uses
+  the real target triple (respecting options such as ``--target=`` and ``-m32``)
+  rather than the executable prefix. The respective configuration files are
+  also loaded when clang is called via an executable without a prefix (e.g.
+  plain ``clang``).
+- Default configuration paths were partially changed. Clang now attempts to load
+  ``<triple>-<driver>.cfg`` first, and falls back to loading both
+  ``<driver>.cfg`` and ``<triple>.cfg`` if the former is not found. `Triple`
+  is the target triple and `driver` first tries the canonical name
+  for the driver (respecting ``--driver-mode=``), and then the name found
+  in the executable.
 
 New Compiler Flags
 ------------------
@@ -257,12 +277,20 @@ New Compiler Flags
   `::operator new(size_­t, std::aligned_val_t, nothrow_­t)` if there is
   `get_­return_­object_­on_­allocation_­failure`. We feel this is more consistent
   with the intention.
+- Added ``--no-default-config`` to disable automatically loading configuration
+  files using default paths.
 
 Deprecated Compiler Flags
 -------------------------
+- ``-enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang``
+  has been deprecated. The flag will be removed in Clang 18.
+  ``-ftrivial-auto-var-init=zero`` is now available unconditionally, to be
+  compatible with GCC.
 
 Modified Compiler Flags
 -----------------------
+- Clang now permits specifying ``--config=`` multiple times, to load multiple
+  configuration files.
 
 Removed Compiler Flags
 -------------------------
@@ -340,7 +368,9 @@ C2x Feature Support
 C++ Language Changes in Clang
 -----------------------------
 - Implemented DR692, DR1395 and DR1432. Use the ``-fclang-abi-compat=15`` option
-  to get the old partial ordering behavior regarding packs.
+  to get the old partial ordering behavior regarding packs. Note that the fix for
+  DR1432 is speculative that there is no wording or even resolution for this issue.
+  A speculative fix for DR1432 is needed because it fixes regressions caused by DR692.
 - Clang's default C++/ObjC++ standard is now ``gnu++17`` instead of ``gnu++14``.
   This means Clang will by default accept code using features from C++17 and
   conforming GNU extensions. Projects incompatible with C++17 can add
@@ -349,7 +379,7 @@ C++ Language Changes in Clang
 C++20 Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
 - Support capturing structured bindings in lambdas
-  (`P1091R3 <https://wg21.link/p1091r3>`_ and `P1381R1 <https://wg21.link/P1381R1>`).
+  (`P1091R3 <https://wg21.link/p1091r3>`_ and `P1381R1 <https://wg21.link/P1381R1>`_).
   This fixes issues `Issue 52720 <https://github.com/llvm/llvm-project/issues/52720>`_,
   `Issue 54300 <https://github.com/llvm/llvm-project/issues/54300>`_,
   `Issue 54301 <https://github.com/llvm/llvm-project/issues/54301>`_,
@@ -390,6 +420,7 @@ C++2b Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
 
 - Support label at end of compound statement (`P2324 <https://wg21.link/p2324r2>`_).
+- Implemented `P1169R4: static operator() <https://wg21.link/P1169R4>`_.
 
 CUDA/HIP Language Changes in Clang
 ----------------------------------
@@ -430,6 +461,14 @@ DWARF Support in Clang
 
 Arm and AArch64 Support in Clang
 --------------------------------
+
+- The target(..) function attributes for AArch64 now accept:
+
+  * ``"arch=<arch>"`` strings, that specify the architecture for a function as per the ``-march`` option.
+  * ``"cpu=<cpu>"`` strings, that specify the cpu for a function as per the ``-mcpu`` option.
+  * ``"tune=<cpu>"`` strings, that specify the tune cpu for a function as per ``-mtune``.
+  * ``"+<feature>"``, ``"+no<feature>"`` enables/disables the specific feature, for compatibility with GCC target attributes.
+  * ``"<feature>"``, ``"no-<feature>"`` enabled/disables the specific feature, for backward compatibility with previous releases.
 - ``-march`` values for targeting armv2, armv2A, armv3 and armv3M have been removed.
   Their presence gave the impression that Clang can correctly generate code for
   them, which it cannot.

@@ -18,6 +18,7 @@
 
 namespace mlir {
 class ConversionTarget;
+class ModuleOp;
 class TypeConverter;
 namespace func {
 class FuncOp;
@@ -30,9 +31,8 @@ namespace mlir {
 #include "mlir/Dialect/Shape/Transforms/Passes.h.inc"
 
 /// Creates an instance of the ShapeToShapeLowering pass that legalizes Shape
-/// dialect to be convertible to Arithmetic. For example, `shape.num_elements`
-/// get transformed to `shape.reduce`, which can be lowered to SCF and
-/// Arithmetic.
+/// dialect to be convertible to Arith. For example, `shape.num_elements` get
+/// transformed to `shape.reduce`, which can be lowered to SCF and Arith.
 std::unique_ptr<Pass> createShapeToShapeLowering();
 
 /// Collects a set of patterns to rewrite ops within the Shape dialect.
@@ -53,6 +53,10 @@ std::unique_ptr<OperationPass<func::FuncOp>> createRemoveShapeConstraintsPass();
 // bufferization happens, as they are intended to be bufferized at the std
 // level.
 std::unique_ptr<OperationPass<func::FuncOp>> createShapeBufferizePass();
+
+/// Outline the shape computation part by adding shape.func and populate
+/// conrresponding mapping infomation into ShapeMappingAnalysis.
+std::unique_ptr<OperationPass<ModuleOp>> createOutlineShapeComputationPass();
 
 //===----------------------------------------------------------------------===//
 // Registration

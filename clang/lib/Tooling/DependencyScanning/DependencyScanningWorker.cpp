@@ -191,7 +191,6 @@ public:
     ScanInstance.getFrontendOpts().UseGlobalModuleIndex = false;
     ScanInstance.getFrontendOpts().ModulesShareFileManager = false;
 
-    FileMgr->getFileSystemOpts().WorkingDir = std::string(WorkingDirectory);
     ScanInstance.setFileManager(FileMgr);
     ScanInstance.createSourceManager(*FileMgr);
 
@@ -270,8 +269,6 @@ public:
       Action = std::make_unique<ReadPCHAndPreprocessAction>();
 
     const bool Result = ScanInstance.ExecuteAction(*Action);
-    if (!DepFS)
-      FileMgr->clearStatCache();
 
     if (Result)
       setLastCC1Arguments(std::move(OriginalInvocation));
@@ -336,23 +333,25 @@ DependencyScanningWorker::DependencyScanningWorker(
   if (Service.getMode() == ScanningMode::DependencyDirectivesScan)
     DepFS = new DependencyScanningWorkerFilesystem(Service.getSharedCache(),
                                                    RealFS);
-  if (Service.canReuseFileManager())
-    Files = new FileManager(FileSystemOptions(), RealFS);
 }
 
-static llvm::Error
-runWithDiags(DiagnosticOptions *DiagOpts,
-             llvm::function_ref<bool(DiagnosticConsumer &, DiagnosticOptions &)>
-                 BodyShouldSucceed) {
+llvm::Error DependencyScanningWorker::computeDependencies(
+    StringRef WorkingDirectory, const std::vector<std::string> &CommandLine,
+    DependencyConsumer &Consumer, llvm::Optional<StringRef> ModuleName) {
+  std::vector<const char *> CLI;
+  for (const std::string &Arg : CommandLine)
+    CLI.push_back(Arg.c_str());
+  auto DiagOpts = CreateAndPopulateDiagOpts(CLI);
   sanitizeDiagOpts(*DiagOpts);
 
   // Capture the emitted diagnostics and report them to the client
   // in the case of a failure.
   std::string DiagnosticOutput;
   llvm::raw_string_ostream DiagnosticsOS(DiagnosticOutput);
-  TextDiagnosticPrinter DiagPrinter(DiagnosticsOS, DiagOpts);
+  TextDiagnosticPrinter DiagPrinter(DiagnosticsOS, DiagOpts.release());
 
-  if (BodyShouldSucceed(DiagPrinter, *DiagOpts))
+  if (computeDependencies(WorkingDirectory, CommandLine, Consumer, DiagPrinter,
+                          ModuleName))
     return llvm::Error::success();
   return llvm::make_error<llvm::StringError>(DiagnosticsOS.str(),
                                              llvm::inconvertibleErrorCode());
@@ -370,12 +369,6 @@ static bool forEachDriverJob(
   for (const std::string &Arg : Args)
     Argv.push_back(Arg.c_str());
 
-  // The "input file not found" diagnostics from the driver are useful.
-  // The driver is only aware of the VFS working directory, but some clients
-  // change this at the FileManager level instead.
-  // In this case the checks have false positives, so skip them.
-  if (!FM.getFileSystemOpts().WorkingDir.empty())
-    Driver->setCheckInputsExist(false);
   const std::unique_ptr<driver::Compilation> Compilation(
       Driver->BuildCompilation(llvm::makeArrayRef(Argv)));
   if (!Compilation)
@@ -388,16 +381,16 @@ static bool forEachDriverJob(
   return true;
 }
 
-llvm::Error DependencyScanningWorker::computeDependencies(
+bool DependencyScanningWorker::computeDependencies(
     StringRef WorkingDirectory, const std::vector<std::string> &CommandLine,
-    DependencyConsumer &Consumer, llvm::Optional<StringRef> ModuleName) {
+    DependencyConsumer &Consumer, DiagnosticConsumer &DC,
+    llvm::Optional<StringRef> ModuleName) {
   // Reset what might have been modified in the previous worker invocation.
   RealFS->setCurrentWorkingDirectory(WorkingDirectory);
-  if (Files)
-    Files->setVirtualFileSystem(RealFS);
 
-  llvm::IntrusiveRefCntPtr<FileManager> CurrentFiles =
-      Files ? Files : new FileManager(FileSystemOptions(), RealFS);
+  FileSystemOptions FSOpts;
+  FSOpts.WorkingDir = WorkingDirectory.str();
+  auto FileMgr = llvm::makeIntrusiveRefCnt<FileManager>(FSOpts, RealFS);
 
   Optional<std::vector<std::string>> ModifiedCommandLine;
   if (ModuleName) {
@@ -413,60 +406,57 @@ llvm::Error DependencyScanningWorker::computeDependencies(
   llvm::transform(CommandLine, FinalCCommandLine.begin(),
                   [](const std::string &Str) { return Str.c_str(); });
 
-  return runWithDiags(
-      CreateAndPopulateDiagOpts(FinalCCommandLine).release(),
-      [&](DiagnosticConsumer &DC, DiagnosticOptions &DiagOpts) {
-        IntrusiveRefCntPtr<DiagnosticsEngine> Diags =
-            CompilerInstance::createDiagnostics(&DiagOpts, &DC, false);
-        // Although `Diagnostics` are used only for command-line parsing, the
-        // custom `DiagConsumer` might expect a `SourceManager` to be present.
-        SourceManager SrcMgr(*Diags, *CurrentFiles);
-        Diags->setSourceManager(&SrcMgr);
-        // DisableFree is modified by Tooling for running
-        // in-process; preserve the original value, which is
-        // always true for a driver invocation.
-        bool DisableFree = true;
-        DependencyScanningAction Action(WorkingDirectory, Consumer, DepFS,
-                                        Format, OptimizeArgs, EagerLoadModules,
-                                        DisableFree, ModuleName);
-        bool Success = forEachDriverJob(
-            FinalCommandLine, *Diags, *CurrentFiles,
-            [&](const driver::Command &Cmd) {
-              if (StringRef(Cmd.getCreator().getName()) != "clang") {
-                // Non-clang command. Just pass through to the dependency
-                // consumer.
-                Consumer.handleBuildCommand(
-                    {Cmd.getExecutable(),
-                     {Cmd.getArguments().begin(), Cmd.getArguments().end()}});
-                return true;
-              }
+  auto DiagOpts = CreateAndPopulateDiagOpts(FinalCCommandLine);
+  sanitizeDiagOpts(*DiagOpts);
+  IntrusiveRefCntPtr<DiagnosticsEngine> Diags =
+      CompilerInstance::createDiagnostics(DiagOpts.release(), &DC,
+                                          /*ShouldOwnClient=*/false);
 
-              std::vector<std::string> Argv;
-              Argv.push_back(Cmd.getExecutable());
-              Argv.insert(Argv.end(), Cmd.getArguments().begin(),
-                          Cmd.getArguments().end());
-
-              // Create an invocation that uses the underlying file
-              // system to ensure that any file system requests that
-              // are made by the driver do not go through the
-              // dependency scanning filesystem.
-              ToolInvocation Invocation(std::move(Argv), &Action,
-                                        &*CurrentFiles, PCHContainerOps);
-              Invocation.setDiagnosticConsumer(Diags->getClient());
-              Invocation.setDiagnosticOptions(&Diags->getDiagnosticOptions());
-              if (!Invocation.run())
-                return false;
-
-              std::vector<std::string> Args = Action.takeLastCC1Arguments();
-              Consumer.handleBuildCommand(
-                  {Cmd.getExecutable(), std::move(Args)});
-              return true;
-            });
-
-        if (Success && !Action.hasScanned()) {
-          Diags->Report(diag::err_fe_expected_compiler_job)
-              << llvm::join(FinalCommandLine, " ");
+  // Although `Diagnostics` are used only for command-line parsing, the
+  // custom `DiagConsumer` might expect a `SourceManager` to be present.
+  SourceManager SrcMgr(*Diags, *FileMgr);
+  Diags->setSourceManager(&SrcMgr);
+  // DisableFree is modified by Tooling for running
+  // in-process; preserve the original value, which is
+  // always true for a driver invocation.
+  bool DisableFree = true;
+  DependencyScanningAction Action(WorkingDirectory, Consumer, DepFS, Format,
+                                  OptimizeArgs, EagerLoadModules, DisableFree,
+                                  ModuleName);
+  bool Success = forEachDriverJob(
+      FinalCommandLine, *Diags, *FileMgr, [&](const driver::Command &Cmd) {
+        if (StringRef(Cmd.getCreator().getName()) != "clang") {
+          // Non-clang command. Just pass through to the dependency
+          // consumer.
+          Consumer.handleBuildCommand(
+              {Cmd.getExecutable(),
+               {Cmd.getArguments().begin(), Cmd.getArguments().end()}});
+          return true;
         }
-        return Success && Action.hasScanned();
+
+        std::vector<std::string> Argv;
+        Argv.push_back(Cmd.getExecutable());
+        Argv.insert(Argv.end(), Cmd.getArguments().begin(),
+                    Cmd.getArguments().end());
+
+        // Create an invocation that uses the underlying file
+        // system to ensure that any file system requests that
+        // are made by the driver do not go through the
+        // dependency scanning filesystem.
+        ToolInvocation Invocation(std::move(Argv), &Action, &*FileMgr,
+                                  PCHContainerOps);
+        Invocation.setDiagnosticConsumer(Diags->getClient());
+        Invocation.setDiagnosticOptions(&Diags->getDiagnosticOptions());
+        if (!Invocation.run())
+          return false;
+
+        std::vector<std::string> Args = Action.takeLastCC1Arguments();
+        Consumer.handleBuildCommand({Cmd.getExecutable(), std::move(Args)});
+        return true;
       });
+
+  if (Success && !Action.hasScanned())
+    Diags->Report(diag::err_fe_expected_compiler_job)
+        << llvm::join(FinalCommandLine, " ");
+  return Success && Action.hasScanned();
 }

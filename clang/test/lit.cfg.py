@@ -63,8 +63,6 @@ tools = [
     'clang-tblgen', 'clang-scan-deps', 'opt', 'llvm-ifs', 'yaml2obj', 'clang-linker-wrapper',
     ToolSubst('%clang_extdef_map', command=FindTool(
         'clang-extdef-mapping'), unresolved='ignore'),
-    ToolSubst('%clang_dxc', command=config.clang,
-        extra_args=['--driver-mode=dxc']),
 ]
 
 if config.clang_examples:
@@ -127,9 +125,6 @@ if config.has_plugins and config.llvm_plugin_ext:
 
 if config.clang_default_pie_on_linux:
     config.available_features.add('default-pie-on-linux')
-
-if config.clang_enable_opaque_pointers:
-    config.available_features.add('enable-opaque-pointers')
 
 if config.clang_default_std_cxx != '':
     config.available_features.add('default-std-cxx')
@@ -286,3 +281,8 @@ elif platform.system() == 'AIX':
 
 if 'system-aix' in config.available_features:
         config.substitutions.append(('llvm-nm', 'env OBJECT_MODE=any llvm-nm'))
+
+# It is not realistically possible to account for all options that could
+# possibly be present in system and user configuration files, so disable
+# default configs for the test runs.
+config.environment["CLANG_NO_DEFAULT_CONFIG"] = "1"

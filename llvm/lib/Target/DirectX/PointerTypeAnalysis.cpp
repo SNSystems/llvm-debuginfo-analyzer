@@ -54,9 +54,10 @@ Type *classifyPointerType(const Value *V, PointerTypeMap &Map) {
       // HLSL doesn't support pointers, so it is unlikely to get more than one
       // or two levels of indirection in the IR. Because of this, recursion is
       // pretty safe.
-      if (NewPointeeTy->isOpaquePointerTy())
-        return TypedPointerType::get(classifyPointerType(User, Map),
-                                     V->getType()->getPointerAddressSpace());
+      if (NewPointeeTy->isOpaquePointerTy()) {
+        PointeeTy = classifyPointerType(User, Map);
+        break;
+      }
       if (!PointeeTy)
         PointeeTy = NewPointeeTy;
       else if (PointeeTy != NewPointeeTy)

@@ -22,6 +22,10 @@ set(TARGET_LIBC_ENTRYPOINTS
     libc.src.fcntl.open
     libc.src.fcntl.openat
 
+    # sched.h entrypoints
+    libc.src.sched.sched_getaffinity
+    libc.src.sched.sched_setaffinity
+
     # string.h entrypoints
     libc.src.string.bcmp
     libc.src.string.bzero
@@ -78,6 +82,8 @@ set(TARGET_LIBC_ENTRYPOINTS
     libc.src.stdlib.llabs
     libc.src.stdlib.lldiv
     libc.src.stdlib.qsort
+    libc.src.stdlib.rand
+    libc.src.stdlib.srand
     libc.src.stdlib.strtod
     libc.src.stdlib.strtof
     libc.src.stdlib.strtol
@@ -124,6 +130,11 @@ set(TARGET_LIBC_ENTRYPOINTS
 
     # sys/utsname.h entrypoints
     libc.src.sys.utsname.uname
+
+    # sys/wait.h entrypoints
+    libc.src.sys.wait.wait
+    libc.src.sys.wait.wait4
+    libc.src.sys.wait.waitpid
 
     # unistd.h entrypoints
     libc.src.unistd.access
@@ -324,6 +335,9 @@ if(LLVM_LIBC_FULL_BUILD)
     libc.src.pthread.pthread_once
     libc.src.pthread.pthread_setspecific
 
+    # sched.h entrypoints
+    libc.src.sched.__sched_getcpucount
+
     # stdio.h entrypoints
     libc.src.stdio.clearerr
     libc.src.stdio.clearerr_unlocked
@@ -351,20 +365,20 @@ if(LLVM_LIBC_FULL_BUILD)
 
     # stdlib.h entrypoints
     libc.src.stdlib._Exit
+    libc.src.stdlib.abort
     libc.src.stdlib.atexit
     libc.src.stdlib.exit
     libc.src.stdlib.getenv
 
     # signal.h entrypoints
-    # TODO: Enable signal.h entrypoints after fixing signal.h
-    # libc.src.signal.raise
-    # libc.src.signal.sigaction
-    # libc.src.signal.sigdelset
-    # libc.src.signal.sigaddset
-    # libc.src.signal.sigemptyset
-    # libc.src.signal.sigprocmask
-    # libc.src.signal.sigfillset
-    # libc.src.signal.signal
+    libc.src.signal.raise
+    libc.src.signal.sigaction
+    libc.src.signal.sigdelset
+    libc.src.signal.sigaddset
+    libc.src.signal.sigemptyset
+    libc.src.signal.sigprocmask
+    libc.src.signal.sigfillset
+    libc.src.signal.signal
 
     # threads.h entrypoints
     libc.src.threads.call_once
@@ -395,6 +409,11 @@ if(LLVM_LIBC_FULL_BUILD)
     libc.src.time.gmtime_r
     libc.src.time.mktime
     libc.src.time.nanosleep
+    libc.src.time.clock_gettime
+
+    # unistd.h entrypoints
+    libc.src.unistd.fork
+    libc.src.unistd.__llvm_libc_syscall
   )
 endif()
 

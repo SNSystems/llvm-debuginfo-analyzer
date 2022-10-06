@@ -13,7 +13,7 @@
 #include "CodegenUtils.h"
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -195,7 +195,7 @@ static bool findAffine(Merger &merger, unsigned tensor, AffineExpr a,
 static bool findSparseAnnotations(Merger &merger, linalg::GenericOp op) {
   bool annotated = false;
   for (OpOperand *t : op.getInputAndOutputOperands()) {
-    auto map = op.getTiedIndexingMap(t);
+    auto map = op.getMatchingIndexingMap(t);
     auto enc = getSparseTensorEncoding(t->get().getType());
     if (enc)
       annotated = true;
@@ -214,7 +214,7 @@ static bool findSparseAnnotations(Merger &merger, linalg::GenericOp op) {
 /// as we use adj matrix for the graph.
 /// The sorted result will put the first Reduction iterator to the
 /// latest possible index.
-static bool topSortOptimal(unsigned n, ArrayRef<Attribute> iteratorTypes,
+static bool topSortOptimal(unsigned n, ArrayRef<StringRef> iteratorTypes,
                            std::vector<unsigned> &topSort,
                            std::vector<unsigned> &inDegree,
                            std::vector<std::vector<bool>> &adjM) {
@@ -289,14 +289,14 @@ static bool computeIterationGraph(Merger &merger, linalg::GenericOp op,
   unsigned n = op.getNumLoops();
   std::vector<std::vector<bool>> adjM(n, std::vector<bool>(n, false));
   std::vector<unsigned> inDegree(n, 0); // in-degree of each node.
-  auto iteratorTypes = op.iterator_types().getValue();
+  auto iteratorTypes = op.getIteratorTypesArray();
   // Iterate over the indexing maps of every tensor in the tensor expression.
   for (OpOperand *t : op.getInputAndOutputOperands()) {
     // Skip tensor during cycle resolution.
     if (t == skip)
       continue;
     // Get map and encoding.
-    auto map = op.getTiedIndexingMap(t);
+    auto map = op.getMatchingIndexingMap(t);
     auto enc = getSparseTensorEncoding(t->get().getType());
     assert(map.getNumDims() == n);
     // Skip dense tensor constraints when not requested.
@@ -338,7 +338,7 @@ static bool computeIterationGraph(Merger &merger, linalg::GenericOp op,
 
 /// Returns true if tensor materializes uninitialized into the computation.
 static bool isMaterializing(Value val) {
-  return val.getDefiningOp<linalg::InitTensorOp>() ||
+  return val.getDefiningOp<tensor::EmptyOp>() ||
          val.getDefiningOp<bufferization::AllocTensorOp>();
 }
 
@@ -361,7 +361,7 @@ static bool isAdmissibleTensorExp(Merger &merger, linalg::GenericOp op,
   // An all-dense annotated "sparse" output tensor becomes a linearized random
   // access 1-dim memref. Also admissible since insertions cannot occur.
   bool allDense = true;
-  auto iteratorTypes = op.iterator_types().getValue();
+  auto iteratorTypes = op.getIteratorTypesArray();
   unsigned numLoops = iteratorTypes.size();
   for (unsigned i = 0; i < numLoops; i++)
     if (merger.isDimLevelType(tensor, i, DimLvlType::kCompressed) ||
@@ -542,7 +542,7 @@ static void genBuffers(Merger &merger, CodeGen &codegen, OpBuilder &builder,
   for (OpOperand *t : op.getInputAndOutputOperands()) {
     unsigned tensor = t->getOperandNumber();
     auto shape = op.getShape(t);
-    auto map = op.getTiedIndexingMap(t);
+    auto map = op.getMatchingIndexingMap(t);
     auto enc = getSparseTensorEncoding(t->get().getType());
     // Scan all dimensions of current tensor.
     args.clear();
@@ -721,7 +721,7 @@ static Value genAffine(CodeGen &codegen, OpBuilder &builder, AffineExpr a,
 
 /// Generates index for load/store on sparse tensor.
 static Value genIndex(CodeGen &codegen, linalg::GenericOp op, OpOperand *t) {
-  auto map = op.getTiedIndexingMap(t);
+  auto map = op.getMatchingIndexingMap(t);
   auto enc = getSparseTensorEncoding(t->get().getType());
   AffineExpr a = map.getResult(toOrigDim(enc, map.getNumResults() - 1));
   assert(a.getKind() == AffineExprKind::DimId);
@@ -734,7 +734,7 @@ static Value genSubscript(CodeGen &codegen, OpBuilder &builder,
                           linalg::GenericOp op, OpOperand *t,
                           SmallVector<Value, 4> &args) {
   unsigned tensor = t->getOperandNumber();
-  auto map = op.getTiedIndexingMap(t);
+  auto map = op.getMatchingIndexingMap(t);
   auto enc = getSparseTensorEncoding(t->get().getType());
   unsigned rank = map.getNumResults();
   if (enc) {
@@ -878,6 +878,15 @@ static void genTensorStore(Merger &merger, CodeGen &codegen, OpBuilder &builder,
       // Only unary and binary are allowed to return uninitialized rhs
       // to indicate missing output.
       assert(merger.exp(exp).kind == kUnary || merger.exp(exp).kind == kBinary);
+    } else if (merger.exp(exp).kind == kSelect) {
+      scf::IfOp ifOp = builder.create<scf::IfOp>(loc, rhs);
+      builder.setInsertionPointToStart(&ifOp.getThenRegion().front());
+      // Existing value was preserved to be used here.
+      assert(merger.exp(exp).val);
+      Value v0 = merger.exp(exp).val;
+      genInsertionStore(codegen, builder, op, t, v0);
+      merger.exp(exp).val = Value();
+      builder.setInsertionPointAfter(ifOp);
     } else {
       genInsertionStore(codegen, builder, op, t, rhs);
     }
@@ -1037,8 +1046,14 @@ static Value genExp(Merger &merger, CodeGen &codegen, RewriterBase &rewriter,
   if (ee && (merger.exp(exp).kind == Kind::kUnary ||
              merger.exp(exp).kind == Kind::kBinary ||
              merger.exp(exp).kind == Kind::kBinaryBranch ||
-             merger.exp(exp).kind == Kind::kReduce))
+             merger.exp(exp).kind == Kind::kReduce ||
+             merger.exp(exp).kind == Kind::kSelect))
     ee = relinkBranch(codegen, rewriter, ee.getParentBlock(), ee, ldx);
+
+  if (merger.exp(exp).kind == kSelect) {
+    assert(!merger.exp(exp).val);
+    merger.exp(exp).val = v0; // Preserve value for later use.
+  }
 
   if (merger.exp(exp).kind == Kind::kReduce) {
     assert(codegen.redCustom != -1u);
@@ -1079,7 +1094,7 @@ static void genInvariants(Merger &merger, CodeGen &codegen, OpBuilder &builder,
     // Inspect tensor indices.
     bool atLevel = ldx == -1u;
     OpOperand *t = op.getInputAndOutputOperands()[merger.exp(exp).tensor];
-    auto map = op.getTiedIndexingMap(t);
+    auto map = op.getMatchingIndexingMap(t);
     auto enc = getSparseTensorEncoding(t->get().getType());
     for (unsigned d = 0, rank = map.getNumResults(); d < rank; d++) {
       AffineExpr a = map.getResult(toOrigDim(enc, d));
@@ -1275,7 +1290,7 @@ static bool denseUnitStrides(Merger &merger, linalg::GenericOp op,
                              unsigned idx) {
   for (OpOperand *t : op.getInputAndOutputOperands()) {
     if (!getSparseTensorEncoding(t->get().getType())) {
-      auto map = op.getTiedIndexingMap(t);
+      auto map = op.getMatchingIndexingMap(t);
       for (unsigned d = 0, rank = map.getNumResults(); d < rank; d++) {
         AffineExpr a = map.getResult(d);
         // Report non-unit stride if innermost index appears at an outer
@@ -1299,7 +1314,7 @@ static Operation *genFor(Merger &merger, CodeGen &codegen, OpBuilder &builder,
   unsigned fb = indices.find_first();
   unsigned tensor = merger.tensor(fb);
   assert(idx == merger.index(fb));
-  auto iteratorTypes = op.iterator_types().getValue();
+  auto iteratorTypes = op.getIteratorTypesArray();
   bool isReduction = linalg::isReductionIterator(iteratorTypes[idx]);
   bool isSparse = merger.isDimLevelType(fb, DimLvlType::kCompressed) ||
                   merger.isDimLevelType(fb, DimLvlType::kSingleton);
@@ -1839,7 +1854,8 @@ public:
                                 PatternRewriter &rewriter) const override {
     // Detects sparse annotations and translate the per-dimension sparsity
     // information for all tensors to loop indices in the kernel.
-    assert(op.getNumOutputs() == 1);
+    if (op.getNumOutputs() != 1)
+      return failure();
     unsigned numTensors = op.getNumInputsAndOutputs();
     unsigned numLoops = op.iterator_types().getValue().size();
     Merger merger(numTensors, numLoops);
@@ -1920,8 +1936,10 @@ private:
       auto srcTp = tval.getType().cast<RankedTensorType>();
       auto dstEnc = SparseTensorEncodingAttr::get(
           op->getContext(), srcEnc.getDimLevelType(),
-          permute(getContext(), op.getTiedIndexingMap(t), topSort), // new order
-          srcEnc.getPointerBitWidth(), srcEnc.getIndexBitWidth());
+          permute(getContext(), op.getMatchingIndexingMap(t),
+                  topSort), // new order
+          srcEnc.getHigherOrdering(), srcEnc.getPointerBitWidth(),
+          srcEnc.getIndexBitWidth());
       auto dstTp = RankedTensorType::get(srcTp.getShape(),
                                          srcTp.getElementType(), dstEnc);
       auto convert = rewriter.create<ConvertOp>(tval.getLoc(), dstTp, tval);

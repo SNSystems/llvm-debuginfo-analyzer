@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/SparseTensor/Utils/Merger.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Complex/IR/Complex.h"
 #include "mlir/Dialect/Math/IR/Math.h"
 #include "mlir/Dialect/SparseTensor/IR/SparseTensor.h"
@@ -78,6 +78,7 @@ TensorExp::TensorExp(Kind k, unsigned x, unsigned y, Value v, Operation *o)
     children.e1 = y;
     break;
   case kBinaryBranch:
+  case kSelect:
     assert(x != -1u && y == -1u && !v && o);
     children.e0 = x;
     children.e1 = y;
@@ -212,7 +213,7 @@ unsigned Merger::takeCombi(Kind kind, unsigned s0, unsigned s1, Operation *orig,
 }
 
 unsigned Merger::mapSet(Kind kind, unsigned s0, Value v, Operation *op) {
-  assert(kAbsF <= kind && kind <= kUnary);
+  assert(kAbsF <= kind && kind <= kSelect);
   unsigned s = addSet();
   for (unsigned p : latSets[s0]) {
     unsigned e = addExp(kind, latPoints[p].exp, v, op);
@@ -261,15 +262,24 @@ BitVector Merger::simplifyCond(unsigned s0, unsigned p0) {
       break;
     }
   }
-  // Now apply the two basic rules.
+
   BitVector simple = latPoints[p0].bits;
   bool reset = isSingleton && hasAnySparse(simple);
+  unsigned offset = 0;
+  if (!reset)
+    // Starts resetting from a dense dimension, so that the first bit (if kept)
+    // is not undefined dimension type.
+    for (unsigned b = 0, be = simple.size(); b < be; b++)
+      if (simple[b] && isDimLevelType(b, DimLvlType::kDense))
+        offset = b;
+
+  // Now apply the two basic rules.
   for (unsigned b = 0, be = simple.size(); b < be; b++) {
-    if (simple[b] &&
-        (!isDimLevelType(b, DimLvlType::kCompressed) &&
-         !isDimLevelType(b, DimLvlType::kSingleton))) {
+    unsigned i = (offset + b) % be;
+    if (simple[i] && (!isDimLevelType(i, DimLvlType::kCompressed) &&
+                      !isDimLevelType(i, DimLvlType::kSingleton))) {
       if (reset)
-        simple.reset(b);
+        simple.reset(i);
       reset = true;
     }
   }
@@ -338,6 +348,7 @@ bool Merger::isSingleCondition(unsigned t, unsigned e) const {
     return isSingleCondition(t, tensorExps[e].children.e0);
   case kBinaryBranch:
   case kUnary:
+  case kSelect:
     return false;
   // Binary operations.
   case kDivF: // note: x / c only
@@ -449,6 +460,8 @@ static const char *kindToOpSymbol(Kind kind) {
     return "binary_branch";
   case kUnary:
     return "unary";
+  case kSelect:
+    return "select";
   // Binary operations.
   case kMulF:
   case kMulC:
@@ -537,6 +550,7 @@ void Merger::dumpExp(unsigned e) const {
   case kBitCast:
   case kBinaryBranch:
   case kUnary:
+  case kSelect:
     llvm::dbgs() << kindToOpSymbol(tensorExps[e].kind) << " ";
     dumpExp(tensorExps[e].children.e0);
     break;
@@ -684,6 +698,7 @@ unsigned Merger::buildLattices(unsigned e, unsigned i) {
     return mapSet(kind, buildLattices(tensorExps[e].children.e0, i),
                   tensorExps[e].val);
   case kBinaryBranch:
+  case kSelect:
     // The left or right half of a binary operation which has already
     // been split into separate operations for each region.
     return mapSet(kind, buildLattices(tensorExps[e].children.e0, i), Value(),
@@ -978,6 +993,10 @@ Optional<unsigned> Merger::buildTensorExp(linalg::GenericOp op, Value v) {
             isAdmissableBranch(unop, unop.getAbsentRegion()))
           return addExp(kUnary, e, Value(), def);
       }
+      if (auto selop = dyn_cast<sparse_tensor::SelectOp>(def)) {
+        if (isAdmissableBranch(selop, selop.getRegion()))
+          return addExp(kSelect, e, Value(), def);
+      }
     }
   }
   // Construct binary operations if subexpressions can be built.
@@ -1228,6 +1247,9 @@ Value Merger::buildExp(RewriterBase &rewriter, Location loc, unsigned e,
                          *tensorExps[e].op->getBlock()->getParent(), {v0});
   case kUnary:
     return buildUnaryPresent(rewriter, loc, tensorExps[e].op, v0);
+  case kSelect:
+    return insertYieldOp(rewriter, loc,
+                         cast<SelectOp>(tensorExps[e].op).getRegion(), {v0});
   case kBinary:
     return buildBinaryOverlap(rewriter, loc, tensorExps[e].op, v0, v1);
   case kReduce: {

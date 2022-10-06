@@ -3050,7 +3050,7 @@ def warn_unsupported_branch_protection_spec : Warning<
   "unsupported branch protection specification '%0'">, InGroup<BranchProtection>;
 
 def warn_unsupported_target_attribute
-    : Warning<"%select{unsupported|duplicate|unknown}0%select{| architecture|"
+    : Warning<"%select{unsupported|duplicate|unknown}0%select{| CPU|"
               " tune CPU}1 '%2' in the '%select{target|target_clones}3' "
               "attribute string; '%select{target|target_clones}3' "
               "attribute ignored">,
@@ -5235,6 +5235,8 @@ def note_template_exception_spec_instantiation_here : Note<
   "in instantiation of exception specification for %0 requested here">;
 def note_template_requirement_instantiation_here : Note<
   "in instantiation of requirement here">;
+def note_template_requirement_params_instantiation_here : Note<
+  "in instantiation of requirement parameters here">;
 def warn_var_template_missing : Warning<"instantiation of variable %q0 "
   "required here, but no definition is available">,
   InGroup<UndefinedVarTemplate>;
@@ -9087,6 +9089,11 @@ def err_operator_overload_needs_class_or_enum : Error<
   "or enumeration type">;
 
 def err_operator_overload_variadic : Error<"overloaded %0 cannot be variadic">;
+def ext_operator_overload_static : ExtWarn<
+  "declaring overloaded %0 as 'static' is a C++2b extension">,
+  InGroup<CXXPre2bCompat>, DefaultIgnore;
+def err_call_operator_overload_static : ExtWarn<
+  "declaring overloaded %0 as 'static' is a C++2b extension">, InGroup<CXX2b>;
 def err_operator_overload_static : Error<
   "overloaded %0 cannot be a static member function">;
 def err_operator_overload_default_arg : Error<
@@ -9254,6 +9261,8 @@ def err_incorrect_defaulted_consteval : Error<
 def warn_defaulted_method_deleted : Warning<
   "explicitly defaulted %sub{select_special_member_kind}0 is implicitly "
   "deleted">, InGroup<DefaultedFunctionDeleted>;
+def note_replace_equals_default_to_delete : Note<
+  "replace 'default' with 'delete'">;
 def err_out_of_line_default_deletes : Error<
   "defaulting this %sub{select_special_member_kind}0 "
   "would delete it after its first declaration">;

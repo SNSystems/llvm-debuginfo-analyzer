@@ -509,6 +509,14 @@ void tools::addLTOOptions(const ToolChain &ToolChain, const ArgList &Args,
     CmdArgs.push_back(Args.MakeArgString(Plugin));
   }
 
+  // Note, this solution is far from perfect, better to encode it into IR
+  // metadata, but this may not be worth it, since it looks like aranges is on
+  // the way out.
+  if (Args.hasArg(options::OPT_gdwarf_aranges)) {
+    CmdArgs.push_back(
+        Args.MakeArgString("--plugin-opt=-generate-arange-section"));
+  }
+
   // Try to pass driver level flags relevant to LTO code generation down to
   // the plugin.
 
@@ -549,9 +557,6 @@ void tools::addLTOOptions(const ToolChain &ToolChain, const ArgList &Args,
   if (!Parallelism.empty())
     CmdArgs.push_back(
         Args.MakeArgString("-plugin-opt=jobs=" + Twine(Parallelism)));
-
-  if (!CLANG_ENABLE_OPAQUE_POINTERS_INTERNAL)
-    CmdArgs.push_back(Args.MakeArgString("-plugin-opt=no-opaque-pointers"));
 
   // If an explicit debugger tuning argument appeared, pass it along.
   if (Arg *A = Args.getLastArg(options::OPT_gTune_Group,

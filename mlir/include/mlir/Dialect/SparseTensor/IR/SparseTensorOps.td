@@ -240,7 +240,7 @@ def SparseTensor_InsertOp : SparseTensor_Op<"insert",
 def SparseTensor_PushBackOp : SparseTensor_Op<"push_back", []>,
     Arguments<(ins StridedMemRefRankOf<[Index], [1]>:$bufferSizes,
                StridedMemRefRankOf<[AnyType], [1]>:$inBuffer,
-               AnyType:$value, IndexAttr:$idx)>,
+               AnyType:$value, IndexAttr:$idx, UnitAttr:$inbounds)>,
     Results<(outs StridedMemRefRankOf<[AnyType], [1]>:$outBuffer)>  {
   string summary = "Pushes a value to the back of a given buffer";
   string description = [{
@@ -249,6 +249,11 @@ def SparseTensor_PushBackOp : SparseTensor_Op<"push_back", []>,
     capacity of the buffer is recorded in the memref type of `inBuffer `. If the
     current buffer is full, then `inBuffer.realloc` is called before pushing the
     data to the buffer. This is similar to std::vector push_back.
+
+    The `inbounds` attribute tells the compiler that the insertion won't go
+    beyond the current storage buffer. This allows the compiler to not generate
+    the code for capacity check and reallocation. The typical usage will be for
+    "dynamic" sparse tensors for which a capacity can be set beforehand.
 
     The operation returns an SSA value for the memref. Referencing the memref
     through the old SSA value after this operation is undefined behavior.
@@ -259,9 +264,14 @@ def SparseTensor_PushBackOp : SparseTensor_Op<"push_back", []>,
     %r = sparse_tensor.push_back %bufferSizes, %buffer, %val {idx = 0 : index}
       : memref<?xindex>, memref<?xf64>, f64 -> memref<?xf64>
     ```
+
+    ```mlir
+    %r = sparse_tensor.push_back inbounds %bufferSizes, %buffer, %val
+      {idx = 0 : index} : memref<?xindex>, memref<?xf64>, f64 -> memref<?xf64>
+    ```
   }];
-  let assemblyFormat = "$bufferSizes `,` $inBuffer `,` $value"
-                       " attr-dict `:` type($bufferSizes) `,`"
+  let assemblyFormat = "(`inbounds` $inbounds^)? $bufferSizes `,` $inBuffer"
+                       " `,` $value attr-dict `:` type($bufferSizes) `,`"
                        " type($inBuffer) `,` type($value) `to`"
                        " type($outBuffer)";
 }
@@ -405,7 +415,8 @@ def SparseTensor_SortOp : SparseTensor_Op<"sort", [AttrSizedOperandSegments]>,
     // and then use NonemptyVariadic<...>:$xs here.
     Arguments<(ins Index:$n,
                Variadic<StridedMemRefRankOf<[AnyInteger, Index], [1]>>:$xs,
-               Variadic<StridedMemRefRankOf<[AnyType], [1]>>:$ys)>  {
+               Variadic<StridedMemRefRankOf<[AnyType], [1]>>:$ys,
+               UnitAttr:$stable)>  {
   string summary = "Sorts the arrays in xs and ys lexicographically on the "
                    "integral values found in the xs list";
   string description = [{
@@ -427,6 +438,9 @@ def SparseTensor_SortOp : SparseTensor_Op<"sort", [AttrSizedOperandSegments]>,
     is undefined if this condition is not met. The operator requires at least
     one buffer in `xs` while `ys` can be empty.
 
+    The `stable` attribute indicates whether a stable sorting algorithm should
+    be used to implement the operator.
+
     Note that this operation is "impure" in the sense that its behavior is
     solely defined by side-effects and not SSA values. The semantics may be
     refined over time as our sparse abstractions evolve.
@@ -437,10 +451,15 @@ def SparseTensor_SortOp : SparseTensor_Op<"sort", [AttrSizedOperandSegments]>,
     sparse_tensor.sort %n, %x1, %x2 jointly y1, %y2
       : memref<?xindex>, memref<?xindex> jointly memref<?xindex>, memref<?xf32>
     ```
-  }];
-  let assemblyFormat = "$n `,` $xs (`jointly` $ys^)? attr-dict"
-                       "`:` type($xs) (`jointly` type($ys)^)?";
 
+    ```mlir
+    sparse_tensor.sort stable %n, %x1, %x2 jointly y1, %y2
+      : memref<?xindex>, memref<?xindex> jointly memref<?xindex>, memref<?xf32>
+    ```
+  }];
+  let assemblyFormat = "(`stable` $stable^)? $n"
+                       "`,`$xs (`jointly` $ys^)? attr-dict"
+                       "`:` type($xs) (`jointly` type($ys)^)?";
   let hasVerifier = 1;
 }
 
@@ -804,6 +823,12 @@ def SparseTensor_ForeachOp : SparseTensor_Op<"foreach",
      }
      ```
   }];
+
+  let builders = [
+    OpBuilder<(
+      ins "Value":$tensor,
+      "function_ref<void(OpBuilder &, Location, ValueRange)>")>
+  ];
 
   let regions = (region AnyRegion:$region);
   let assemblyFormat = "`in` $tensor attr-dict `:` type($tensor)  `do` $region";

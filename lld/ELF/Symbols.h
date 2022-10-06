@@ -18,6 +18,7 @@
 #include "lld/Common/Memory.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Object/ELF.h"
+#include "llvm/Support/Compiler.h"
 #include <tuple>
 
 namespace lld {
@@ -64,7 +65,7 @@ struct SymbolAux {
   uint32_t tlsGdIdx = -1;
 };
 
-extern SmallVector<SymbolAux, 0> symAux;
+LLVM_LIBRARY_VISIBILITY extern SmallVector<SymbolAux, 0> symAux;
 
 // The base class for real symbol classes.
 class Symbol {
@@ -201,18 +202,10 @@ public:
   // truncated by Symbol::parseSymbolVersion().
   const char *getVersionSuffix() const { return nameData + nameSize; }
 
-  uint32_t getGotIdx() const {
-    return auxIdx == uint32_t(-1) ? uint32_t(-1) : symAux[auxIdx].gotIdx;
-  }
-  uint32_t getPltIdx() const {
-    return auxIdx == uint32_t(-1) ? uint32_t(-1) : symAux[auxIdx].pltIdx;
-  }
-  uint32_t getTlsDescIdx() const {
-    return auxIdx == uint32_t(-1) ? uint32_t(-1) : symAux[auxIdx].tlsDescIdx;
-  }
-  uint32_t getTlsGdIdx() const {
-    return auxIdx == uint32_t(-1) ? uint32_t(-1) : symAux[auxIdx].tlsGdIdx;
-  }
+  uint32_t getGotIdx() const { return symAux[auxIdx].gotIdx; }
+  uint32_t getPltIdx() const { return symAux[auxIdx].pltIdx; }
+  uint32_t getTlsDescIdx() const { return symAux[auxIdx].tlsDescIdx; }
+  uint32_t getTlsGdIdx() const { return symAux[auxIdx].tlsGdIdx; }
 
   bool isInGot() const { return getGotIdx() != uint32_t(-1); }
   bool isInPlt() const { return getPltIdx() != uint32_t(-1); }
@@ -328,7 +321,7 @@ public:
             NEEDS_TLSGD_TO_IE | NEEDS_GOT_DTPREL | NEEDS_TLSIE);
   }
   void allocateAux() {
-    assert(auxIdx == uint32_t(-1));
+    assert(auxIdx == 0);
     auxIdx = symAux.size();
     symAux.emplace_back();
   }
@@ -352,6 +345,7 @@ public:
   }
   void overwrite(Symbol &sym) const {
     Symbol::overwrite(sym, DefinedKind);
+    sym.verdefIndex = -1;
     auto &s = static_cast<Defined &>(sym);
     s.value = value;
     s.size = size;
@@ -548,7 +542,6 @@ template <typename... T> Defined *makeDefined(T &&...args) {
   auto *sym = getSpecificAllocSingleton<SymbolUnion>().Allocate();
   memset(sym, 0, sizeof(Symbol));
   auto &s = *new (reinterpret_cast<Defined *>(sym)) Defined(std::forward<T>(args)...);
-  s.auxIdx = -1;
   return &s;
 }
 

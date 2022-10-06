@@ -28,7 +28,7 @@
 #include "mlir/Dialect/SparseTensor/IR/SparseTensor.h"
 #include "mlir/Dialect/SparseTensor/Transforms/Passes.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
-#include "mlir/ExecutionEngine/SparseTensorUtils.h"
+#include "mlir/ExecutionEngine/SparseTensor/Enums.h"
 #include "mlir/Transforms/DialectConversion.h"
 
 using namespace mlir;
@@ -449,17 +449,18 @@ static bool canUseDirectConversion(
     ArrayRef<SparseTensorEncodingAttr::DimLevelType> dimTypes) {
   bool alreadyCompressed = false;
   for (uint64_t rank = dimTypes.size(), r = 0; r < rank; r++) {
-    switch (dimTypes[r]) {
-    case SparseTensorEncodingAttr::DimLevelType::Compressed:
+    const DimLevelType dlt = dimLevelTypeEncoding(dimTypes[r]);
+    if (isCompressedDLT(dlt)) {
       if (alreadyCompressed)
         return false; // Multiple compressed dimensions not yet supported.
       alreadyCompressed = true;
-      break;
-    case SparseTensorEncodingAttr::DimLevelType::Dense:
+    } else if (isDenseDLT(dlt)) {
       if (alreadyCompressed)
         return false; // Dense after Compressed not yet supported.
-      break;
-    default: // TODO: investigate
+    } else if (isSingletonDLT(dlt)) {
+      // Direct conversion doesn't have any particular problems with
+      // singleton after compressed.
+    } else { // TODO: investigate
       return false;
     }
   }
@@ -475,103 +476,21 @@ static void translateIndices(Location loc, ConversionPatternRewriter &rewriter,
                              ArrayRef<Value> srcShape) {
   unsigned dstRank = dstTp.getRank();
   unsigned srcRank = srcTp.getRank();
-  unsigned start = 0;
-  unsigned i = 0;
-  bool isExpand = srcRank > dstRank;
-  ArrayRef<Value> shape = isExpand ? srcShape : dstShape;
-  // Iterate over reassociation map.
-  for (const auto &map : llvm::enumerate(reassociation)) {
-    // Prepare strides information in dimension slice.
-    Value linear = constantIndex(rewriter, loc, 1);
-    for (unsigned j = start, end = start + map.value().size(); j < end; j++) {
-      linear = rewriter.create<arith::MulIOp>(loc, linear, shape[j]);
-    }
-    // Start collapse.
-    Value idx = constantIndex(rewriter, loc, i++);
-    Value val;
-    if (!isExpand)
-      val = rewriter.create<memref::LoadOp>(loc, srcIdx, idx);
-    // Iterate over dimension slice.
-    for (unsigned j = start, end = start + map.value().size(); j < end; j++) {
-      linear = rewriter.create<arith::DivUIOp>(loc, linear, shape[j]);
-      Value jdx = constantIndex(rewriter, loc, j);
-      if (isExpand) {
-        Value old = rewriter.create<memref::LoadOp>(loc, srcIdx, jdx);
-        Value mul = rewriter.create<arith::MulIOp>(loc, old, linear);
-        val = val ? rewriter.create<arith::AddIOp>(loc, val, mul) : mul;
-      } else {
-        Value old = val;
-        val = rewriter.create<arith::DivUIOp>(loc, val, linear);
-        rewriter.create<memref::StoreOp>(loc, val, dstIdx, jdx);
-        val = rewriter.create<arith::RemUIOp>(loc, old, linear);
-      }
-    }
-    // Finalize expansion.
-    if (isExpand)
-      rewriter.create<memref::StoreOp>(loc, val, dstIdx, idx);
-    start += map.value().size();
-  }
-  // Sanity.
-  assert((isExpand && i == dstRank) || (!isExpand && i == srcRank));
-}
 
-/// Helper method to compute the shape of destination tensor of a reshape
-/// operator. This is only used when operands have dynamic shape. The shape of
-/// the destination is stored into dstShape.
-void genReshapeDstShape(Location loc, ConversionPatternRewriter &rewriter,
-                        SmallVector<Value, 4> &dstShape,
-                        ArrayRef<Value> srcShape,
-                        ArrayRef<int64_t> staticDstShape,
-                        ArrayRef<ReassociationIndices> reassociation) {
-  // Collapse shape.
-  if (reassociation.size() < srcShape.size()) {
-    unsigned start = 0;
-    for (const auto &map : llvm::enumerate(reassociation)) {
-      auto dstDim = constantIndex(rewriter, loc, 1);
-      for (unsigned i = start; i < start + map.value().size(); i++) {
-        dstDim = rewriter.create<arith::MulIOp>(loc, dstDim, srcShape[i]);
-      }
-      dstShape.push_back(dstDim);
-      start = start + map.value().size();
-    }
-    assert(start == srcShape.size());
-    return;
+  SmallVector<Value, 4> srcIndices;
+  for (unsigned i = 0; i < srcRank; i++) {
+    Value idx = rewriter.create<memref::LoadOp>(
+        loc, srcIdx, constantIndex(rewriter, loc, i));
+    srcIndices.push_back(idx);
   }
 
-  // Expand shape.
-  assert(reassociation.size() == srcShape.size());
-  unsigned start = 0;
-  // Expand the i-th dimension in srcShape.
-  for (unsigned i = 0, size = srcShape.size(); i < size; i++) {
-    auto map = reassociation[i];
-    auto srcDim = srcShape[i];
-    // Iterate through dimensions expanded from the i-th dimension.
-    for (unsigned j = start; j < start + map.size(); j++) {
-      // There can be only one dynamic sized dimension among dimensions expanded
-      // from the i-th dimension in srcShape. For example, if srcDim = 8, then
-      // the expanded shape could be <2x?x2>, but not <2x?x?>.
-      if (staticDstShape[j] == ShapedType::kDynamicSize) {
-        // The expanded dimension has dynamic size. We compute the dimension
-        // by dividing srcDim by the product of the static dimensions.
-        int64_t product = 1;
-        for (unsigned k = start; k < start + map.size(); k++) {
-          if (staticDstShape[k] != ShapedType::kDynamicSize) {
-            product *= staticDstShape[k];
-          }
-        }
-        // Compute the dynamic dimension size.
-        Value productVal = constantIndex(rewriter, loc, product);
-        Value dynamicSize =
-            rewriter.create<arith::DivUIOp>(loc, srcDim, productVal);
-        dstShape.push_back(dynamicSize);
-      } else {
-        // The expanded dimension is statically known.
-        dstShape.push_back(constantIndex(rewriter, loc, staticDstShape[j]));
-      }
-    }
-    start = start + map.size();
-  }
-  assert(start == staticDstShape.size());
+  SmallVector<Value, 4> dstIndices;
+  translateIndicesArray(rewriter, loc, reassociation, srcIndices, srcShape,
+                        dstShape, dstIndices);
+
+  for (unsigned i = 0; i < dstRank; i++)
+    rewriter.create<memref::StoreOp>(loc, dstIndices[i], dstIdx,
+                                     constantIndex(rewriter, loc, i));
 }
 
 /// Generate code for a general sparse to sparse reshaping operation.
@@ -607,7 +526,7 @@ genSparse2SparseReshape(ReshapeOp op, typename ReshapeOp::Adaptor adaptor,
          "reshape should not change element type");
   // Start an iterator over the source tensor (in original index order).
   auto noPerm = SparseTensorEncodingAttr::get(
-      op->getContext(), encSrc.getDimLevelType(), AffineMap(),
+      op->getContext(), encSrc.getDimLevelType(), AffineMap(), AffineMap(),
       encSrc.getPointerBitWidth(), encSrc.getIndexBitWidth());
   SmallVector<Value, 4> srcSizes;
   SmallVector<Value, 8> params;
@@ -677,7 +596,7 @@ static void genSparseCOOIterationLoop(
 
   // Start an iterator over the tensor (in original index order).
   auto noPerm = SparseTensorEncodingAttr::get(
-      rewriter.getContext(), enc.getDimLevelType(), AffineMap(),
+      rewriter.getContext(), enc.getDimLevelType(), AffineMap(), AffineMap(),
       enc.getPointerBitWidth(), enc.getIndexBitWidth());
   SmallVector<Value, 4> sizes;
   SmallVector<Value, 8> params;
@@ -939,7 +858,8 @@ public:
         // the correct sparsity information to either of them.
         auto enc = SparseTensorEncodingAttr::get(
             op->getContext(), encDst.getDimLevelType(), encDst.getDimOrdering(),
-            encSrc.getPointerBitWidth(), encSrc.getIndexBitWidth());
+            encDst.getHigherOrdering(), encSrc.getPointerBitWidth(),
+            encSrc.getIndexBitWidth());
         newParams(rewriter, params, loc, stp, enc, Action::kToCOO, sizes, src);
         Value coo = genNewCall(rewriter, loc, params);
         params[3] = constantPointerTypeEncoding(rewriter, loc, encDst);
@@ -971,7 +891,8 @@ public:
           op->getContext(),
           SmallVector<SparseTensorEncodingAttr::DimLevelType>(
               rank, SparseTensorEncodingAttr::DimLevelType::Dense),
-          AffineMap(), encSrc.getPointerBitWidth(), encSrc.getIndexBitWidth());
+          AffineMap(), AffineMap(), encSrc.getPointerBitWidth(),
+          encSrc.getIndexBitWidth());
       SmallVector<Value, 4> sizes;
       SmallVector<Value, 8> params;
       sizesFromPtr(rewriter, sizes, loc, encSrc, srcTensorTp, src);
@@ -1455,7 +1376,7 @@ public:
     SmallVector<Value, 8> params;
     sizesFromPtr(rewriter, sizes, loc, encSrc, srcType, src);
     auto enc = SparseTensorEncodingAttr::get(
-        op->getContext(), encSrc.getDimLevelType(), AffineMap(),
+        op->getContext(), encSrc.getDimLevelType(), AffineMap(), AffineMap(),
         encSrc.getPointerBitWidth(), encSrc.getIndexBitWidth());
     newParams(rewriter, params, loc, srcType, enc, Action::kToCOO, sizes, src);
     Value coo = genNewCall(rewriter, loc, params);
