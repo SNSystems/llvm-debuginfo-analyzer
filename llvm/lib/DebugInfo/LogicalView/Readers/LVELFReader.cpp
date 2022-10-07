@@ -439,8 +439,8 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
 
   case dwarf::DW_AT_ranges:
     if (RangesDataAvailable && options().getGeneralCollectRanges()) {
-      auto GetRanges = [&](const DWARFFormValue &FormValue,
-                           DWARFUnit *U) -> Expected<DWARFAddressRangesVector> {
+      auto GetRanges = [](const DWARFFormValue &FormValue,
+                          DWARFUnit *U) -> Expected<DWARFAddressRangesVector> {
         if (FormValue.getForm() == dwarf::DW_FORM_rnglistx)
           return U->findRnglistFromIndex(*FormValue.getAsSectionOffset());
         return U->findRnglistFromOffset(*FormValue.getAsSectionOffset());
