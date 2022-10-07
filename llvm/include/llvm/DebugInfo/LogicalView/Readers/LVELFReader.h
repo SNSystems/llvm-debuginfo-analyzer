@@ -109,11 +109,13 @@ class LVELFReader final : public LVBinaryReader {
   }
 
   // Get the location information for DW_AT_data_member_location.
-  void getLocationMember(dwarf::Attribute Attr, const DWARFFormValue &FormValue,
-                         const DWARFDie &Die, uint64_t OffsetOnEntry);
-  void getLocationList(dwarf::Attribute Attr, const DWARFFormValue &FormValue,
-                       const DWARFDie &Die, uint64_t OffsetOnEntry,
-                       bool CallSiteLocation = false);
+  void processLocationMember(dwarf::Attribute Attr,
+                             const DWARFFormValue &FormValue,
+                             const DWARFDie &Die, uint64_t OffsetOnEntry);
+  void processLocationList(dwarf::Attribute Attr,
+                           const DWARFFormValue &FormValue, const DWARFDie &Die,
+                           uint64_t OffsetOnEntry,
+                           bool CallSiteLocation = false);
   void updateReference(dwarf::Attribute Attr, const DWARFFormValue &FormValue);
 
   // Get an element given the DIE offset.

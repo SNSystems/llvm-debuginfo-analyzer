@@ -477,7 +477,7 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
   // Get the location list for the symbol.
   case dwarf::DW_AT_data_member_location:
     if (options().getAttributeAnyLocation())
-      getLocationMember(AttrSpec.Attr, FormValue, Die, OffsetOnEntry);
+      processLocationMember(AttrSpec.Attr, FormValue, Die, OffsetOnEntry);
     break;
 
   // Get the location list for the symbol.
@@ -485,7 +485,7 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
   case dwarf::DW_AT_string_length:
   case dwarf::DW_AT_use_location:
     if (options().getAttributeAnyLocation() && CurrentSymbol)
-      getLocationList(AttrSpec.Attr, FormValue, Die, OffsetOnEntry);
+      processLocationList(AttrSpec.Attr, FormValue, Die, OffsetOnEntry);
     break;
 
   case dwarf::DW_AT_call_data_value:
@@ -493,8 +493,8 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
   case dwarf::DW_AT_GNU_call_site_data_value:
   case dwarf::DW_AT_GNU_call_site_value:
     if (options().getAttributeAnyLocation() && CurrentSymbol)
-      getLocationList(AttrSpec.Attr, FormValue, Die, OffsetOnEntry,
-                      /*CallSiteLocation=*/true);
+      processLocationList(AttrSpec.Attr, FormValue, Die, OffsetOnEntry,
+                          /*CallSiteLocation=*/true);
     break;
 
   default:
@@ -862,7 +862,7 @@ Error LVELFReader::createScopes() {
 
     // For the case of GCC (DWARF5), if the entries[0] and [1] are the
     // same, do not perform any adjustment.
-    auto DeductIncrementFileIndex = [&]() -> bool {
+    auto DeduceIncrementFileIndex = [&]() -> bool {
       if (CU->getVersion() < 5)
         // DWARF-4 or earlier -> Don't increment index.
         return false;
@@ -897,7 +897,7 @@ Error LVELFReader::createScopes() {
       return true;
     };
     // The ELF reader expects the indexes as 1-indexed.
-    IncrementFileIndex = DeductIncrementFileIndex();
+    IncrementFileIndex = DeduceIncrementFileIndex();
 
     DWARFDie UnitDie = CU->getUnitDIE();
     SmallString<16> DWOAlternativeLocation;
@@ -958,10 +958,11 @@ Error LVELFReader::createScopes() {
 }
 
 // Get the location information for the associated attribute.
-void LVELFReader::getLocationList(dwarf::Attribute Attr,
-                                  const DWARFFormValue &FormValue,
-                                  const DWARFDie &Die, uint64_t OffsetOnEntry,
-                                  bool CallSiteLocation) {
+void LVELFReader::processLocationList(dwarf::Attribute Attr,
+                                      const DWARFFormValue &FormValue,
+                                      const DWARFDie &Die,
+                                      uint64_t OffsetOnEntry,
+                                      bool CallSiteLocation) {
 
   auto ProcessLocationExpression = [&](const DWARFExpression &Expression) {
     // DW_OP_const_type is variable-length and has 3
@@ -1049,10 +1050,10 @@ void LVELFReader::getLocationList(dwarf::Attribute Attr,
   }
 }
 
-void LVELFReader::getLocationMember(dwarf::Attribute Attr,
-                                    const DWARFFormValue &FormValue,
-                                    const DWARFDie &Die,
-                                    uint64_t OffsetOnEntry) {
+void LVELFReader::processLocationMember(dwarf::Attribute Attr,
+                                        const DWARFFormValue &FormValue,
+                                        const DWARFDie &Die,
+                                        uint64_t OffsetOnEntry) {
   // Check if the value is an integer constant.
   if (FormValue.isFormClass(DWARFFormValue::FC_Constant))
     // Add a record to hold a constant as location.
@@ -1060,7 +1061,7 @@ void LVELFReader::getLocationMember(dwarf::Attribute Attr,
                                        OffsetOnEntry);
   else
     // This is a a location description, or a reference to one.
-    getLocationList(Attr, FormValue, Die, OffsetOnEntry);
+    processLocationList(Attr, FormValue, Die, OffsetOnEntry);
 }
 
 // Update the current element with the reference.
