@@ -33,14 +33,9 @@ using AttributeSpec = DWARFAbbreviationDeclaration::AttributeSpec;
 class LVELFReader final : public LVBinaryReader {
   object::ObjectFile &Obj;
 
-  // The ELF reader does not use this container; it is defined only to
-  // call 'prettyPrintRegisterOp'.
-  DIDumpOptions DumpOpts;
-
   // Indicates if ranges data are available; in the case of split DWARF any
   // reference to ranges is valid only if the skeleton DIE has been loaded.
   bool RangesDataAvailable = false;
-  DWARFDie DummyDie;
   LVAddress CUBaseAddress = 0;
   LVAddress CUHighAddress = 0;
 

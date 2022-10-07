@@ -682,6 +682,7 @@ void LVELFReader::traverseDieAndChildren(DWARFDie &DIE, LVScope *Parent,
   if (Scope) {
     LVOffset Lower = DIE.getOffset();
     LVOffset Upper = CurrentEndOffset;
+    DWARFDie DummyDie;
     // Traverse the children chain.
     DWARFDie Child = DIE.getFirstChild();
     while (Child) {
@@ -770,6 +771,7 @@ std::string LVELFReader::getRegisterName(LVSmall Opcode, uint64_t Operands[2]) {
       Opcode == dwarf::DW_OP_bregx || Opcode == dwarf::DW_OP_regx) {
     std::string string;
     raw_string_ostream Stream(string);
+    DIDumpOptions DumpOpts;
     prettyPrintRegisterOp(/*U=*/nullptr, Stream, DumpOpts, Opcode, Operands,
                           MRI.get(), /*isEH=*/false);
     return Stream.str();
@@ -920,6 +922,7 @@ Error LVELFReader::createScopes() {
     // The current unit corresponds to the .dwo file. We need to get the
     // skeleton unit and query for any ranges that will enclose any ranges
     // in the non-skeleton unit.
+    DWARFDie DummyDie;
     DWARFDie SkeletonDie =
         CUDie.getDwarfUnit()->isDWOUnit() ? CU->getUnitDIE(false) : DummyDie;
     // Disable the ranges processing if we have just a single .dwo object,
