@@ -791,12 +791,10 @@ Error LVELFReader::createScopes() {
   // we need to create our own Target information, to be used during the
   // logical view printing, in the case of instructions being requested.
   std::unique_ptr<DWARFContext> DwarfContext = DWARFContext::create(Obj);
-  if (!DwarfContext) {
-    std::string TheFilename(getFilename());
+  if (!DwarfContext)
     return createStringError(errc::invalid_argument,
                              "Could not create DWARF information: %s",
-                             TheFilename.c_str());
-  }
+                             getFilename().str().c_str());
 
   if (Error Err = loadTargetInfo(Obj))
     return Err;

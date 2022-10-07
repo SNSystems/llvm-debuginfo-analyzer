@@ -386,7 +386,7 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
     W.printString("Name", TS.getName());
   });
 
-  SmallString<128> ServerName(TS.getName());
+  std::string ServerName(TS.getName());
   BuffOrErr = MemoryBuffer::getFile(ServerName);
   if (BuffOrErr.getError()) {
     // The server name does not exist. Try in the directory as the input file.
@@ -394,10 +394,9 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
     BuffOrErr = MemoryBuffer::getFile(ServerName);
     if (BuffOrErr.getError()) {
       // For the error message, use the original type server name.
-      std::string TheFilename(TS.getName());
       return createStringError(errc::bad_file_descriptor,
                                "File '%s' does not exist.",
-                               TheFilename.c_str());
+                               TS.getName().str().c_str());
     }
   }
   MemBuffer = std::move(BuffOrErr.get());
@@ -406,11 +405,9 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
   assert(identify_magic((*MemBuffer).getBuffer()) == file_magic::pdb &&
          "Invalid PDB file.");
 
-  if (Error Err = loadDataForPDB(PDB_ReaderType::Native, ServerName, Session)) {
-    std::string TheFilename(ServerName);
+  if (Error Err = loadDataForPDB(PDB_ReaderType::Native, ServerName, Session))
     return createStringError(errorToErrorCode(std::move(Err)), "%s",
-                             TheFilename.c_str());
-  }
+                             ServerName.c_str());
 
   PdbSession.reset(static_cast<NativeSession *>(Session.release()));
   PDBFile &Pdb = PdbSession->getPDBFile();
@@ -444,35 +441,30 @@ Error LVCodeViewReader::loadPrecompiledObject(PrecompRecord &Precomp,
     W.printString("PrecompFile", Precomp.getPrecompFilePath());
   });
 
-  SmallString<128> ServerName(Precomp.getPrecompFilePath());
+  std::string ServerName(Precomp.getPrecompFilePath());
   BuffOrErr = MemoryBuffer::getFile(ServerName);
   if (BuffOrErr.getError()) {
     // The server name does not exist. Try in the directory as the input file.
     ServerName = createAlternativePath(InputFilename, ServerName);
     if (BuffOrErr.getError()) {
       // For the error message, use the original type server name.
-      std::string TheFilename(Precomp.getPrecompFilePath());
       return createStringError(errc::bad_file_descriptor,
                                "File '%s' does not exist.",
-                               TheFilename.c_str());
+                               Precomp.getPrecompFilePath().str().c_str());
     }
   }
   MemBuffer = std::move(BuffOrErr.get());
 
   Expected<std::unique_ptr<Binary>> BinOrErr = createBinary(*MemBuffer);
-  if (errorToErrorCode(BinOrErr.takeError())) {
-    std::string TheFilename(ServerName);
+  if (errorToErrorCode(BinOrErr.takeError()))
     return createStringError(errc::not_supported,
                              "Binary object format in '%s' is not supported.",
-                             TheFilename.c_str());
-  }
+                             ServerName.c_str());
 
   Binary &BinaryObj = *BinOrErr.get();
-  if (!BinaryObj.isCOFF()) {
-    std::string TheFilename(ServerName);
+  if (!BinaryObj.isCOFF())
     return createStringError(errc::not_supported, "'%s' is not a COFF object.",
-                             TheFilename.c_str());
-  }
+                             ServerName.c_str());
 
   Builder = std::make_unique<AppendingTypeTableBuilder>(BuilderAllocator);
 
@@ -926,10 +918,8 @@ Error LVCodeViewReader::createScopes(PDBFile &Pdb) {
     ErrorOr<std::unique_ptr<MemoryBuffer>> BuffOrErr =
         MemoryBuffer::getFileOrSTDIN(ExePath);
     if (BuffOrErr.getError()) {
-      std::string TheFilename(ExePath);
       return createStringError(errc::bad_file_descriptor,
-                               "File '%s' does not exist.",
-                               TheFilename.c_str());
+                               "File '%s' does not exist.", ExePath.c_str());
     }
     BinaryBuffer = std::move(BuffOrErr.get());
 
@@ -941,10 +931,9 @@ Error LVCodeViewReader::createScopes(PDBFile &Pdb) {
     Expected<std::unique_ptr<Binary>> BinOrErr =
         createBinary(BinaryBuffer->getMemBufferRef());
     if (errorToErrorCode(BinOrErr.takeError())) {
-      std::string TheFilename(ExePath);
       return createStringError(errc::not_supported,
                                "Binary object format in '%s' is not supported.",
-                               TheFilename.c_str());
+                               ExePath.c_str());
     }
     BinaryExecutable = std::move(*BinOrErr);
     if (COFFObjectFile *COFFObject =

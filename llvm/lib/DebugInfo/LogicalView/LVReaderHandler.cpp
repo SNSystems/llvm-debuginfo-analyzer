@@ -65,12 +65,10 @@ Error LVReaderHandler::createReader(StringRef Filename, LVReaders &Readers,
   };
 
   LVReader *Reader = CreateOneReader();
-  if (!Reader) {
-    std::string TheFilename(Filename);
+  if (!Reader)
     return createStringError(errc::invalid_argument,
                              "unable to create reader for: '%s'",
-                             TheFilename.c_str());
-  }
+                             Filename.str().c_str());
 
   Readers.push_back(Reader);
   return Reader->doLoad();
@@ -79,20 +77,19 @@ Error LVReaderHandler::createReader(StringRef Filename, LVReaders &Readers,
 Error LVReaderHandler::handleArchive(LVReaders &Readers, StringRef Filename,
                                      Archive &Arch) {
   Error Err = Error::success();
-  std::string TheFilename(Filename);
   for (const Archive::Child &Child : Arch.children(Err)) {
     Expected<MemoryBufferRef> BuffOrErr = Child.getMemoryBufferRef();
     if (Error Err = BuffOrErr.takeError())
       return createStringError(errorToErrorCode(std::move(Err)), "%s",
-                               TheFilename.c_str());
+                               Filename.str().c_str());
     Expected<StringRef> NameOrErr = Child.getName();
     if (Error Err = NameOrErr.takeError())
       return createStringError(errorToErrorCode(std::move(Err)), "%s",
-                               TheFilename.c_str());
+                               Filename.str().c_str());
     std::string Name = (Filename + "(" + NameOrErr.get() + ")").str();
     if (Error Err = handleBuffer(Readers, Name, BuffOrErr.get()))
       return createStringError(errorToErrorCode(std::move(Err)), "%s",
-                               TheFilename.c_str());
+                               Filename.str().c_str());
   }
 
   return Error::success();
@@ -185,11 +182,10 @@ Error LVReaderHandler::handleBuffer(LVReaders &Readers, StringRef Filename,
     // If we have a valid executable, try to find a matching PDB file.
     Expected<std::string> PdbPath = NativeSession::searchForPdb({Filename});
     if (errorToErrorCode(PdbPath.takeError())) {
-      std::string TheFilename(Filename);
       return createStringError(
           errc::not_supported,
           "Binary object format in '%s' does not have debug info.",
-          TheFilename.c_str());
+          Filename.str().c_str());
     }
     // Process the matching PDB file and pass the executable filename.
     return handleFile(Readers, PdbPath.get(), Filename);
@@ -197,10 +193,9 @@ Error LVReaderHandler::handleBuffer(LVReaders &Readers, StringRef Filename,
 
   Expected<std::unique_ptr<Binary>> BinOrErr = createBinary(Buffer);
   if (errorToErrorCode(BinOrErr.takeError())) {
-    std::string TheFilename(Filename);
     return createStringError(errc::not_supported,
                              "Binary object format in '%s' is not supported.",
-                             TheFilename.c_str());
+                             Filename.str().c_str());
   }
   return handleObject(Readers, Filename, *BinOrErr.get());
 }
@@ -213,9 +208,9 @@ Error LVReaderHandler::handleFile(LVReaders &Readers, StringRef Filename,
   ErrorOr<std::unique_ptr<MemoryBuffer>> BuffOrErr =
       MemoryBuffer::getFileOrSTDIN(ConvertedPath);
   if (BuffOrErr.getError()) {
-    std::string TheFilename(ConvertedPath);
     return createStringError(errc::bad_file_descriptor,
-                             "File '%s' does not exist.", TheFilename.c_str());
+                             "File '%s' does not exist.",
+                             ConvertedPath.c_str());
   }
   std::unique_ptr<MemoryBuffer> Buffer = std::move(BuffOrErr.get());
   return handleBuffer(Readers, ConvertedPath, *Buffer, ExePath);
@@ -266,11 +261,9 @@ Error LVReaderHandler::handleObject(LVReaders &Readers, StringRef Filename,
 Error LVReaderHandler::handleObject(LVReaders &Readers, StringRef Filename,
                                     StringRef Buffer, StringRef ExePath) {
   std::unique_ptr<IPDBSession> Session;
-  if (Error Err = loadDataForPDB(PDB_ReaderType::Native, Filename, Session)) {
-    std::string TheFilename(Filename);
+  if (Error Err = loadDataForPDB(PDB_ReaderType::Native, Filename, Session))
     return createStringError(errorToErrorCode(std::move(Err)), "%s",
-                             TheFilename.c_str());
-  }
+                             Filename.str().c_str());
 
   std::unique_ptr<NativeSession> PdbSession;
   PdbSession.reset(static_cast<NativeSession *>(Session.release()));

@@ -422,10 +422,8 @@ void LVNamespaceDeduction::init() {
         dbgs() << formatv("{0}\n", fmt_repeat('=', 72));
       };
       Header();
-      for (const StringRef &Item : Container) {
-        std::string TheItem(Item);
-        dbgs() << formatv("'{0}'\n", TheItem.c_str());
-      }
+      for (const StringRef &Item : Container)
+        dbgs() << formatv("'{0}'\n", Item.str().c_str());
     };
 
     Print(DeductedScopes, "Deducted Scopes");
@@ -436,10 +434,8 @@ void LVNamespaceDeduction::init() {
 
 LVScope *LVNamespaceDeduction::get(LVStringRefs Components) {
   LLVM_DEBUG({
-    for (const StringRef &Component : Components) {
-      std::string TheComponent(Component);
-      dbgs() << formatv("'{0}'\n", TheComponent.c_str());
-    }
+    for (const StringRef &Component : Components)
+      dbgs() << formatv("'{0}'\n", Component.str().c_str());
   });
 
   if (Components.empty())
@@ -478,8 +474,7 @@ LVScope *LVNamespaceDeduction::get(StringRef ScopedName, bool CheckScope) {
                      Components.end());
 
   LLVM_DEBUG({
-    std::string TheScopedName(ScopedName);
-    dbgs() << formatv("ScopedName: '{0}'\n", TheScopedName.c_str());
+    dbgs() << formatv("ScopedName: '{0}'\n", ScopedName.str().c_str());
   });
 
   return get(Components);
@@ -3371,8 +3366,7 @@ void LVLogicalVisitor::printRecords(raw_ostream &OS) const {
         OS << "\n";
       }
     };
-    std::string TheName(Name);
-    OS << format("%20s", TheName.c_str());
+    OS << format("%20s", Name.str().c_str());
     NewLine();
   };
 

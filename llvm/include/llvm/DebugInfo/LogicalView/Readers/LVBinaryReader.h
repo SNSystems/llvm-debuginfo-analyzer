@@ -158,7 +158,7 @@ public:
       : LVReader(Filename, FileFormatName, W, BinaryType) {}
   LVBinaryReader(const LVBinaryReader &) = delete;
   LVBinaryReader &operator=(const LVBinaryReader &) = delete;
-  ~LVBinaryReader() {
+  virtual ~LVBinaryReader() {
     // Delete the containers created by 'createInstructions'.
     std::vector<LVLines *> AllInstructionLines = ScopeInstructions.find();
     for (LVLines *Entry : AllInstructionLines)

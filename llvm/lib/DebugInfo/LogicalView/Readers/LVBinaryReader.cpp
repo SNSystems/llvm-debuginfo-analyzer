@@ -315,10 +315,9 @@ LVBinaryReader::getSection(LVScope *Scope, LVAddress Address,
   if (SectionIndex) {
     LVSections::iterator Iter = Sections.find(SectionIndex);
     if (Iter == Sections.end()) {
-      std::string TheFilename(Scope->getName());
       return createStringError(errc::invalid_argument,
                                "invalid section index for: '%s'",
-                               TheFilename.c_str());
+                               Scope->getName().str().c_str());
     }
     const object::SectionRef Section = Iter->second;
     return std::make_pair(Section.getAddress(), Section);
@@ -327,12 +326,10 @@ LVBinaryReader::getSection(LVScope *Scope, LVAddress Address,
   // Ensure a valid starting address for the public names.
   LVSectionAddresses::const_iterator Iter =
       SectionAddresses.upper_bound(Address);
-  if (Iter == SectionAddresses.begin()) {
-    std::string TheFilename(Scope->getName());
+  if (Iter == SectionAddresses.begin())
     return createStringError(errc::invalid_argument,
                              "invalid section address for: '%s'",
-                             TheFilename.c_str());
-  }
+                             Scope->getName().str().c_str());
 
   // Get section that contains the code for this function.
   Iter = SectionAddresses.lower_bound(Address);
