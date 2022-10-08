@@ -260,20 +260,6 @@ LVStringRefs getAllLexicalComponents(StringRef Name);
 std::string getScopedName(const LVStringRefs &Components,
                           StringRef BaseName = {});
 
-// Return a pathname composed by: parent_path(To) / filename(From).
-// This is useful when a type server (PDB file associated with an object
-// file or a precompiled header file) has been moved from its original
-// location. That is the case when running regression tests.
-inline std::string createAlternativePath(StringRef To, StringRef From) {
-  // Convert any Windows backslashes into forward slashes to get the path.
-  std::string ConvertedPath =
-      sys::path::convert_to_slash(From, sys::path::Style::windows);
-  SmallString<128> Path;
-  sys::path::append(Path, sys::path::parent_path(To),
-                    sys::path::filename(ConvertedPath));
-  return std::string(Path);
-}
-
 // These are the values assigned to the debug location record IDs.
 // See DebugInfo/CodeView/CodeViewSymbols.def.
 // S_DEFRANGE                               0x113f

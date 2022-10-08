@@ -386,11 +386,11 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
     W.printString("Name", TS.getName());
   });
 
-  std::string ServerName(TS.getName());
+  SmallString<128> ServerName(TS.getName());
   BuffOrErr = MemoryBuffer::getFile(ServerName);
   if (BuffOrErr.getError()) {
     // The server name does not exist. Try in the directory as the input file.
-    ServerName = createAlternativePath(InputFilename, ServerName);
+    ServerName = createAlternativePath(ServerName);
     BuffOrErr = MemoryBuffer::getFile(ServerName);
     if (BuffOrErr.getError()) {
       // For the error message, use the original type server name.
@@ -441,11 +441,11 @@ Error LVCodeViewReader::loadPrecompiledObject(PrecompRecord &Precomp,
     W.printString("PrecompFile", Precomp.getPrecompFilePath());
   });
 
-  std::string ServerName(Precomp.getPrecompFilePath());
+  SmallString<128> ServerName(Precomp.getPrecompFilePath());
   BuffOrErr = MemoryBuffer::getFile(ServerName);
   if (BuffOrErr.getError()) {
     // The server name does not exist. Try in the directory as the input file.
-    ServerName = createAlternativePath(InputFilename, ServerName);
+    ServerName = createAlternativePath(ServerName);
     if (BuffOrErr.getError()) {
       // For the error message, use the original type server name.
       return createStringError(errc::bad_file_descriptor,

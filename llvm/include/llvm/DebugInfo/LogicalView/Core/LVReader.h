@@ -99,6 +99,23 @@ protected:
     return Error::success();
   }
 
+  // Return a pathname composed by: parent_path(InputFilename)/filename(From).
+  // This is useful when a type server (PDB file associated with an object
+  // file or a precompiled header file) or a DWARF split object have been
+  // moved from their original location. That is the case when running
+  // regression tests, where object files are created in one location and
+  // executed in a different location.
+  std::string createAlternativePath(StringRef From) {
+    // During the reader initialization, any backslashes in 'InputFilename'
+    // are converted to forward slashes.
+    SmallString<128> Path;
+    sys::path::append(Path, sys::path::Style::posix,
+                      sys::path::parent_path(InputFilename),
+                      sys::path::filename(sys::path::convert_to_slash(
+                          From, sys::path::Style::windows)));
+    return std::string(Path);
+  }
+
   virtual Error printScopes();
   virtual Error printMatchedElements(bool UseMatchedElements);
   virtual void sortScopes() {}

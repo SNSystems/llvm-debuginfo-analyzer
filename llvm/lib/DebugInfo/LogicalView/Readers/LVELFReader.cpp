@@ -907,7 +907,7 @@ Error LVELFReader::createScopes() {
               ? dwarf::toString(UnitDie.find(dwarf::DW_AT_dwo_name))
               : dwarf::toString(UnitDie.find(dwarf::DW_AT_GNU_dwo_name));
       StringRef From(DWOFileName.has_value() ? DWOFileName.value() : "");
-      DWOAlternativeLocation = createAlternativePath(InputFilename, From);
+      DWOAlternativeLocation = createAlternativePath(From);
     }
 
     // The current CU can be a normal compile unit (standard) or a skeleton
