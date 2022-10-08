@@ -186,7 +186,6 @@ public:
       delete Entry.second;
   }
 
-public:
   void add(FirstKeyType FirstKey, SecondKeyType SecondKey, ValueType Value) {
     LVSecondMapType *SecondMap = nullptr;
     typename LVFirstMapType::iterator FirstIter = FirstMap.find(FirstKey);
