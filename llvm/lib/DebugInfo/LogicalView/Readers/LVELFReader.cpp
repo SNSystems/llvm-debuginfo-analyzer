@@ -772,8 +772,9 @@ std::string LVELFReader::getRegisterName(LVSmall Opcode, uint64_t Operands[2]) {
     std::string string;
     raw_string_ostream Stream(string);
     DIDumpOptions DumpOpts;
-    prettyPrintRegisterOp(/*U=*/nullptr, Stream, DumpOpts, Opcode, Operands,
-                          MRI.get(), /*isEH=*/false);
+    DWARFExpression::prettyPrintRegisterOp(/*U=*/nullptr, Stream, DumpOpts,
+                                           Opcode, Operands, MRI.get(),
+                                           /*isEH=*/false);
     return Stream.str();
   }
   return {};
