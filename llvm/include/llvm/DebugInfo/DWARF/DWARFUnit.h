@@ -569,6 +569,9 @@ private:
 
   /// parseDWO - Parses .dwo file for current compile unit. Returns true if
   /// it was actually constructed.
+  /// The \p AlternativeLocation specifies an alternative location to get
+  /// the DWARF context for the DWO object; this is the case when it has
+  /// been moved from its original location.
   bool parseDWO(StringRef AlternativeLocation = {});
 };
 
