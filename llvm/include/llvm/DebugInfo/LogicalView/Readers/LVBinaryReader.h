@@ -158,14 +158,7 @@ public:
       : LVReader(Filename, FileFormatName, W, BinaryType) {}
   LVBinaryReader(const LVBinaryReader &) = delete;
   LVBinaryReader &operator=(const LVBinaryReader &) = delete;
-  virtual ~LVBinaryReader() {
-    // Delete the containers created by 'createInstructions'.
-    std::vector<LVLines *> AllInstructionLines = ScopeInstructions.find();
-    for (LVLines *Entry : AllInstructionLines)
-      delete Entry;
-    for (LVSectionRanges::reference Entry : SectionRanges)
-      delete Entry.second;
-  }
+  virtual ~LVBinaryReader();
 
   void addInlineeLines(LVScope *Scope, LVLines &Lines) {
     LVLines *InlineeLines = new LVLines();

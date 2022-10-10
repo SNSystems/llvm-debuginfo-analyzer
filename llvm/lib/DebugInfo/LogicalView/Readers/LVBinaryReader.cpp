@@ -365,6 +365,16 @@ LVRange *LVBinaryReader::getSectionRanges(LVSectionIndex SectionIndex) {
   return Range;
 }
 
+LVBinaryReader::~LVBinaryReader() {
+  // Delete the lines created by 'createInstructions'.
+  std::vector<LVLines *> AllInstructionLines = ScopeInstructions.find();
+  for (LVLines *Entry : AllInstructionLines)
+    delete Entry;
+  // Delete the ranges created by 'getSectionRanges'.
+  for (LVSectionRanges::reference Entry : SectionRanges)
+    delete Entry.second;
+}
+
 Error LVBinaryReader::createInstructions(LVScope *Scope,
                                          LVSectionIndex SectionIndex,
                                          const LVNameInfo &NameInfo) {
