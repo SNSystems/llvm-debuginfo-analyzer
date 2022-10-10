@@ -255,7 +255,9 @@ Error LVReaderHandler::handleObject(LVReaders &Readers, StringRef Filename,
   if (Archive *Arch = dyn_cast<Archive>(&Binary))
     return handleArchive(Readers, Filename, *Arch);
 
-  return Error::success();
+  return createStringError(errc::not_supported,
+                           "Binary object format in '%s' is not supported.",
+                           Filename.str().c_str());
 }
 
 Error LVReaderHandler::handleObject(LVReaders &Readers, StringRef Filename,
