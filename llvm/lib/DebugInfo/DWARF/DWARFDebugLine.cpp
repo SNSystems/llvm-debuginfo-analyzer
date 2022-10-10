@@ -1422,14 +1422,16 @@ bool DWARFDebugLine::LineTable::getFileLineInfoForAddress(
 bool DWARFDebugLine::LineTable::getDirectoryForEntry(
     const FileNameEntry &Entry, std::string &Directory) const {
   if (Prologue.getVersion() >= 5) {
-    if (Entry.DirIdx < Prologue.IncludeDirectories.size())
+    if (Entry.DirIdx < Prologue.IncludeDirectories.size()) {
       Directory =
           dwarf::toString(Prologue.IncludeDirectories[Entry.DirIdx], "");
-    return true;
-  } else {
-    if (0 < Entry.DirIdx && Entry.DirIdx <= Prologue.IncludeDirectories.size())
-      Directory =
-          dwarf::toString(Prologue.IncludeDirectories[Entry.DirIdx - 1], "");
+      return true;
+    }
+    return false;
+  }
+  if (0 < Entry.DirIdx && Entry.DirIdx <= Prologue.IncludeDirectories.size()) {
+    Directory =
+        dwarf::toString(Prologue.IncludeDirectories[Entry.DirIdx - 1], "");
     return true;
   }
   return false;
