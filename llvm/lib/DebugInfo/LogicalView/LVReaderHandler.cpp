@@ -291,8 +291,8 @@ Error LVReaderHandler::createReaders() {
 
 Error LVReaderHandler::printReaders() {
   LLVM_DEBUG(dbgs() << "printReaders\n");
-  for (LVReader *Reader : TheReaders)
-    if (options().getPrintExecute())
+  if (options().getPrintExecute())
+    for (LVReader *Reader : TheReaders)
       if (Error Err = Reader->doPrint())
         return Err;
 
