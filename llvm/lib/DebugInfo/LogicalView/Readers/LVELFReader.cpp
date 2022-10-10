@@ -460,7 +460,7 @@ void LVELFReader::processOneAttribute(const DWARFDie &Die, LVOffset *OffsetPtr,
       DWARFAddressRangesVector Ranges = RangesOrError.get();
       for (DWARFAddressRange &Range : Ranges) {
         // This seems to be a tombstone for empty ranges.
-        if (Range.LowPC == 1 && Range.HighPC == 1)
+        if (Range.LowPC == Range.HighPC)
           continue;
         // Store the real upper limit for the address range.
         if (UpdateHighAddress && Range.HighPC > 0)
