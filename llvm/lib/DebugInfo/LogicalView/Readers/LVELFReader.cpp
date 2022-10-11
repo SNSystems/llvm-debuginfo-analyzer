@@ -766,18 +766,14 @@ std::string LVELFReader::getRegisterName(LVSmall Opcode, uint64_t Operands[2]) {
   // We do not support DW_OP_regval_type here.
   if (Opcode == dwarf::DW_OP_regval_type)
     return {};
-  if ((Opcode >= dwarf::DW_OP_breg0 && Opcode <= dwarf::DW_OP_breg31) ||
-      (Opcode >= dwarf::DW_OP_reg0 && Opcode <= dwarf::DW_OP_reg31) ||
-      Opcode == dwarf::DW_OP_bregx || Opcode == dwarf::DW_OP_regx) {
-    std::string string;
-    raw_string_ostream Stream(string);
-    DIDumpOptions DumpOpts;
-    DWARFExpression::prettyPrintRegisterOp(/*U=*/nullptr, Stream, DumpOpts,
-                                           Opcode, Operands, MRI.get(),
-                                           /*isEH=*/false);
-    return Stream.str();
-  }
-  return {};
+
+  std::string string;
+  raw_string_ostream Stream(string);
+  DIDumpOptions DumpOpts;
+  DWARFExpression::prettyPrintRegisterOp(/*U=*/nullptr, Stream, DumpOpts,
+                                         Opcode, Operands, MRI.get(),
+                                         /*isEH=*/false);
+  return Stream.str();
 }
 
 Error LVELFReader::createScopes() {
