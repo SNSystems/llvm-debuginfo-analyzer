@@ -144,8 +144,8 @@ class LVSymbolVisitor final : public SymbolVisitorCallbacks {
   bool IsCompileUnit = false;
 
   // Register for the locals and parameters symbols in the current frame.
-  RegisterId LocalFrameRegister;
-  RegisterId ParamFrameRegister;
+  RegisterId LocalFrameRegister = RegisterId::NONE;
+  RegisterId ParamFrameRegister = RegisterId::NONE;
 
   void printLocalVariableAddrRange(const LocalVariableAddrRange &Range,
                                    uint32_t RelocationOffset);
