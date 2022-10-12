@@ -400,10 +400,10 @@ void LVNamespaceDeduction::add(StringRef String) {
 
 void LVNamespaceDeduction::init() {
   // We have 2 sets of names:
-  // - deducted scopes (class, structure, union and enum) and
-  // - unresolved scopes, that can represent namespaces or any deducted.
+  // - deduced scopes (class, structure, union and enum) and
+  // - unresolved scopes, that can represent namespaces or any deduced.
   // Before creating the namespaces, we have to traverse the unresolved
-  // and remove any references to already deducted scopes.
+  // and remove any references to already deduced scopes.
   LVStringRefs Components;
   for (const StringRef &Unresolved : UnresolvedScopes) {
     Components = getAllLexicalComponents(Unresolved);
@@ -1060,7 +1060,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
 Error LVSymbolVisitor::visitKnownRecord(
     CVSymbol &Record,
     DefRangeFramePointerRelFullScopeSym &DefRangeFramePointerRelFullScope) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -1087,7 +1087,7 @@ Error LVSymbolVisitor::visitKnownRecord(
 // S_DEFRANGE_FRAMEPOINTER_REL
 Error LVSymbolVisitor::visitKnownRecord(
     CVSymbol &Record, DefRangeFramePointerRelSym &DefRangeFramePointerRel) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -1125,7 +1125,7 @@ Error LVSymbolVisitor::visitKnownRecord(
 // S_DEFRANGE_REGISTER_REL
 Error LVSymbolVisitor::visitKnownRecord(
     CVSymbol &Record, DefRangeRegisterRelSym &DefRangeRegisterRel) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -1164,7 +1164,7 @@ Error LVSymbolVisitor::visitKnownRecord(
 // S_DEFRANGE_REGISTER
 Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
                                         DefRangeRegisterSym &DefRangeRegister) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -1195,7 +1195,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
 // S_DEFRANGE_SUBFIELD_REGISTER
 Error LVSymbolVisitor::visitKnownRecord(
     CVSymbol &Record, DefRangeSubfieldRegisterSym &DefRangeSubfieldRegister) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -1229,7 +1229,7 @@ Error LVSymbolVisitor::visitKnownRecord(
 // S_DEFRANGE_SUBFIELD
 Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
                                         DefRangeSubfieldSym &DefRangeSubfield) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -1272,7 +1272,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
 // S_DEFRANGE
 Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
                                         DefRangeSym &DefRange) {
-  // Defranges don't have types, just registers and code offsets.
+  // DefRanges don't have types, just registers and code offsets.
   LLVM_DEBUG({
     if (LocalSymbol)
       W.getOStream() << formatv("Symbol: {0}, ", LocalSymbol->getName());
@@ -2249,7 +2249,7 @@ Error LVLogicalVisitor::visitKnownRecord(CVType &Record, ModifierRecord &Mod,
   // scope parent. They must be assigned to the current compile unit.
   LVScopeCompileUnit *CompileUnit = Reader->getCompileUnit();
 
-  // The incomming element, does not have a defined kind. Use the given
+  // The incoming element does not have a defined kind. Use the given
   // modifiers to complete its type. A type can have more than one modifier;
   // in that case, we have to create an extra type to have the other modifier.
   LVType *LastLink = static_cast<LVType *>(Element);
@@ -2315,7 +2315,7 @@ Error LVLogicalVisitor::visitKnownRecord(CVType &Record, PointerRecord &Ptr,
     printTypeEnd(Record);
   });
 
-  // Type pointer is point to.
+  // Find the pointed-to type.
   LVType *Pointer = static_cast<LVType *>(Element);
   LVElement *Pointee = nullptr;
 
@@ -3398,7 +3398,7 @@ Error LVLogicalVisitor::inlineSiteAnnotation(LVScope *AbstractFunction,
     }
   }
 
-  // For the given inlinesite, get the initial line number and it's
+  // For the given inlinesite, get the initial line number and its
   // source filename. Update the logical scope representing it.
   uint32_t LineNumber = 0;
   StringRef Filename;

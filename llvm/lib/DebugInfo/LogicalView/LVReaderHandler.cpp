@@ -146,7 +146,7 @@ Error LVReaderHandler::handleBuffer(LVReaders &Readers, StringRef Filename,
     if (!ExePath.empty())
       return handleObject(Readers, Filename, Buffer.getBuffer(), ExePath);
 
-    // Search in the directory derivated from the given 'Filename' for a
+    // Search in the directory derived from the given 'Filename' for a
     // matching object file (.o, .obj, .lib) or a matching executable file
     // (.exe/.dll) and try to create the reader based on the matched file.
     // If no matching file is found then we load the original PDB file.

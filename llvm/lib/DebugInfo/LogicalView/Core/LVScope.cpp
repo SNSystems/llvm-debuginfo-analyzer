@@ -1798,7 +1798,7 @@ void LVScopeFunction::resolveReferences() {
   //	            DW_AT_external DW_FORM_flag_present
   // 00000070 DW_TAG_subprogram "bar"
   //   DW_AT_specification DW_FORM_ref4 0x00000048
-  // The CodeView does not include any information at the class level to
+  // CodeView does not include any information at the class level to
   // mark the member function as external.
   // If there is a reference linking the declaration and definition, mark
   // the definition as extern, to facilitate the logical view comparison.

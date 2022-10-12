@@ -844,7 +844,7 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
 }
 
 // Traverse the scopes for the given 'Function' looking for any inlined
-// scopes with inlined lines, which are recorded in 'CUInlineeLines'.
+// scopes with inlined lines, which are found in 'CUInlineeLines'.
 void LVBinaryReader::includeInlineeLines(LVSectionIndex SectionIndex,
                                          LVScope *Function) {
   SmallVector<LVInlineeLine::iterator> InlineeIters;

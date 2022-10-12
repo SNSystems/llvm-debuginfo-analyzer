@@ -389,7 +389,8 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
   SmallString<128> ServerName(TS.getName());
   BuffOrErr = MemoryBuffer::getFile(ServerName);
   if (BuffOrErr.getError()) {
-    // The server name does not exist. Try in the directory as the input file.
+    // The server name does not exist. Try in the same directory as the
+    // input file.
     ServerName = createAlternativePath(ServerName);
     BuffOrErr = MemoryBuffer::getFile(ServerName);
     if (BuffOrErr.getError()) {
@@ -421,7 +422,7 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
 
   // The reader needs to switch to a type server, to process the types from
   // the server. We need to keep the original input source, as reading other
-  // sections wil require the input associated with the loaded object file.
+  // sections will require the input associated with the loaded object file.
   TypeServer = std::make_shared<InputFile>(&Pdb);
   LogicalVisitor.setInput(TypeServer);
 
@@ -766,7 +767,7 @@ Error LVCodeViewReader::traverseSymbolSection(StringRef SectionName,
     if (Error E = Lines.initialize(Reader))
       return createStringError(errorToErrorCode(std::move(E)), getFileName());
 
-    // Find the associate symbol table information.
+    // Find the associated symbol table information.
     LVSymbolTableEntry SymbolTableEntry = getSymbolTableEntry(SymbolName);
     LVScope *Function = SymbolTableEntry.Scope;
     if (!Function)
@@ -1156,12 +1157,12 @@ Error LVCodeViewReader::processModule() {
   return Error::success();
 }
 
-// In order to create the scopes, the CodeView Reader:
+// In order to create the scopes, the CodeView Reader will:
 // = Traverse the TPI/IPI stream (Type visitor):
 // Collect forward references, scoped names, type indexes that will represent
 // a logical element, strings, line records, linkage names.
 // = Traverse the symbols section (Symbol visitor):
-// It creates the scopes tree and creates the required logical elements, by
+// Create the scopes tree and creates the required logical elements, by
 // using the collected indexes from the type visitor.
 Error LVCodeViewReader::createScopes() {
   LLVM_DEBUG({
