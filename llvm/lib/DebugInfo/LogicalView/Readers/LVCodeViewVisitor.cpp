@@ -310,8 +310,8 @@ using LVSymbolKinds = std::set<SymbolKind>;
 // It is shared by the type visitor, symbol visitor and logical visitor and
 // it is independent from the CodeViewReader.
 struct LVShared {
-  LVCodeViewReader *Reader = nullptr;
-  LVLogicalVisitor *Visitor = nullptr;
+  LVCodeViewReader *Reader;
+  LVLogicalVisitor *Visitor;
   LVForwardReferences ForwardReferences;
   LVLineRecords LineRecords;
   LVNamespaceDeduction NamespaceDeduction;

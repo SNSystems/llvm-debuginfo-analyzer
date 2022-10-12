@@ -85,7 +85,7 @@ public:
 };
 
 class LVSymbolVisitorDelegate final : public SymbolVisitorDelegate {
-  LVCodeViewReader *Reader = nullptr;
+  LVCodeViewReader *Reader;
   const llvm::object::coff_section *CoffSection;
   StringRef SectionContents;
 
@@ -130,13 +130,13 @@ extern LVType *CurrentType;
 
 // Visitor for CodeView symbol streams found in COFF object files and PDB files.
 class LVSymbolVisitor final : public SymbolVisitorCallbacks {
-  LVCodeViewReader *Reader = nullptr;
+  LVCodeViewReader *Reader;
   ScopedPrinter &W;
   LVLogicalVisitor *LogicalVisitor;
   LazyRandomTypeCollection &Types;
   LazyRandomTypeCollection &Ids;
   LVSymbolVisitorDelegate *ObjDelegate;
-  LVShared *Shared = nullptr;
+  LVShared *Shared;
 
   // Symbol offset when processing PDB streams.
   uint32_t CurrentOffset = 0;
@@ -145,7 +145,7 @@ class LVSymbolVisitor final : public SymbolVisitorCallbacks {
   // Last symbol processed by S_LOCAL.
   LVSymbol *LocalSymbol = nullptr;
 
-  bool HasIds = false;
+  bool HasIds;
   bool InFunctionScope = false;
   bool IsCompileUnit = false;
 
@@ -236,7 +236,7 @@ public:
 
 // Visitor for CodeView types and symbols to populate elements.
 class LVLogicalVisitor final {
-  LVCodeViewReader *Reader = nullptr;
+  LVCodeViewReader *Reader;
   ScopedPrinter &W;
 
   // Encapsulates access to the input file and any dependent type server,
@@ -245,7 +245,7 @@ class LVLogicalVisitor final {
   std::shared_ptr<llvm::pdb::InputFile> TypeServer = nullptr;
   std::shared_ptr<LazyRandomTypeCollection> PrecompHeader = nullptr;
 
-  LVShared *Shared = nullptr;
+  LVShared *Shared;
 
   // Object files have only one type stream that contains both types and ids.
   // Precompiled header objects don't contain an IPI stream. Use the TPI.
