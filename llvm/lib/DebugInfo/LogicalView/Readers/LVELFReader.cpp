@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 // This implements the LVELFReader class.
+// It supports ELF and Mach-O formats.
 //
 //===----------------------------------------------------------------------===//
 
@@ -1165,9 +1166,10 @@ void LVELFReader::mapRangeAddress(const ObjectFile &Obj) {
     if (Type != SymbolRef::ST_Function)
       continue;
 
-    // Don't ask a Mach-O STAB symbol for its section unless you know that
-    // STAB symbol's section field refers to a valid section index. Otherwise
-    // the symbol may error trying to load a section that does not exist.
+    // In the case of a Mach-O STAB symbol, get its section only if
+    // the STAB symbol's section field refers to a valid section index.
+    // Otherwise the symbol may error trying to load a section that
+    // does not exist.
     const MachOObjectFile *MachO = dyn_cast<const MachOObjectFile>(&Obj);
     bool IsSTAB = false;
     if (MachO) {
