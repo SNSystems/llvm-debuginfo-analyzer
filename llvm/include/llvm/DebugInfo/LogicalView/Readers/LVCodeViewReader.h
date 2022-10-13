@@ -34,9 +34,7 @@ template <> struct BinaryItemTraits<codeview::CVType> {
     return Item.data();
   }
 };
-} // namespace llvm
 
-namespace llvm {
 namespace codeview {
 class LazyRandomTypeCollection;
 }
