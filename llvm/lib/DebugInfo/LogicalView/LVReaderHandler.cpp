@@ -126,7 +126,7 @@ static std::string searchForObj(const StringRef Path,
                                 const StringRef Extension) {
   SmallString<128> ObjPath(Path);
   llvm::sys::path::replace_extension(ObjPath, Extension);
-  if (llvm::sys::fs::exists(Twine(ObjPath))) {
+  if (llvm::sys::fs::exists(ObjPath)) {
     ErrorOr<std::unique_ptr<MemoryBuffer>> BuffOrErr =
         MemoryBuffer::getFileOrSTDIN(ObjPath);
     if (!BuffOrErr)
