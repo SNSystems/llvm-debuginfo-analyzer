@@ -473,9 +473,8 @@ LVScope *LVNamespaceDeduction::get(StringRef ScopedName, bool CheckScope) {
                                     }),
                      Components.end());
 
-  LLVM_DEBUG({
-    dbgs() << formatv("ScopedName: '{0}'\n", ScopedName.str().c_str());
-  });
+  LLVM_DEBUG(
+      { dbgs() << formatv("ScopedName: '{0}'\n", ScopedName.str().c_str()); });
 
   return get(Components);
 }
@@ -675,18 +674,6 @@ Error LVTypeVisitor::visitKnownRecord(CVType &Record, UnionRecord &Union) {
   return Error::success();
 }
 
-namespace llvm {
-namespace logicalview {
-
-// Current elements during the processing of a RecordType or RecordSymbol.
-LVElement *CurrentElement = nullptr;
-LVScope *CurrentScope = nullptr;
-LVSymbol *CurrentSymbol = nullptr;
-LVType *CurrentType = nullptr;
-
-} // namespace logicalview
-} // namespace llvm
-
 #undef DEBUG_TYPE
 #define DEBUG_TYPE "CodeViewSymbolVisitor"
 
@@ -758,8 +745,8 @@ Error LVSymbolVisitor::visitSymbolBegin(CVSymbol &Record, uint32_t Offset) {
   if (options().getInternalTag())
     Shared->SymbolKinds.insert(Kind);
 
-  CurrentElement = LogicalVisitor->createElement(Kind);
-  if (!CurrentElement) {
+  LogicalVisitor->CurrentElement = LogicalVisitor->createElement(Kind);
+  if (!LogicalVisitor->CurrentElement) {
     LLVM_DEBUG({
         // We have an unsupported Symbol or Type Record.
         // W.printEnum("Kind ignored", unsigned(Kind), getSymbolTypeNames());
@@ -770,16 +757,16 @@ Error LVSymbolVisitor::visitSymbolBegin(CVSymbol &Record, uint32_t Offset) {
   // Offset carried by the traversal routines when dealing with streams.
   CurrentOffset = Offset;
   IsCompileUnit = false;
-  if (!CurrentElement->getOffsetFromTypeIndex())
-    CurrentElement->setOffset(Offset);
+  if (!LogicalVisitor->CurrentElement->getOffsetFromTypeIndex())
+    LogicalVisitor->CurrentElement->setOffset(Offset);
   if (symbolOpensScope(Kind) || (IsCompileUnit = symbolIsCompileUnit(Kind))) {
-    assert(CurrentScope && "Invalid scope!");
-    LogicalVisitor->addElement(CurrentScope, IsCompileUnit);
+    assert(LogicalVisitor->CurrentScope && "Invalid scope!");
+    LogicalVisitor->addElement(LogicalVisitor->CurrentScope, IsCompileUnit);
   } else {
-    if (CurrentSymbol)
-      LogicalVisitor->addElement(CurrentSymbol);
-    if (CurrentType)
-      LogicalVisitor->addElement(CurrentType);
+    if (LogicalVisitor->CurrentSymbol)
+      LogicalVisitor->addElement(LogicalVisitor->CurrentSymbol);
+    if (LogicalVisitor->CurrentType)
+      LogicalVisitor->addElement(LogicalVisitor->CurrentType);
   }
 
   return Error::success();
@@ -810,7 +797,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, BlockSym &Block) {
     W.printString("BlockName", Block.Name);
   });
 
-  if (LVScope *Scope = CurrentScope) {
+  if (LVScope *Scope = LogicalVisitor->CurrentScope) {
     StringRef LinkageName;
     if (ObjDelegate)
       ObjDelegate->getLinkageName(Block.getRelocationOffset(), Block.CodeOffset,
@@ -839,7 +826,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
     W.printString("VarName", Local.Name);
   });
 
-  if (LVSymbol *Symbol = CurrentSymbol) {
+  if (LVSymbol *Symbol = LogicalVisitor->CurrentSymbol) {
     Symbol->setName(Local.Name);
     // From the MS_Symbol_Type.pdf documentation (S_BPREL32):
     // This symbol specifies symbols that are allocated on the stack for a
@@ -894,7 +881,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
     W.printString("VarName", Local.Name);
   });
 
-  if (LVSymbol *Symbol = CurrentSymbol) {
+  if (LVSymbol *Symbol = LogicalVisitor->CurrentSymbol) {
     Symbol->setName(Local.Name);
 
     // Symbol was created as 'variable'; determine its real kind.
@@ -972,7 +959,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
   //   S_BUILDINFO  --> Extract the source name.
   //
   // For both toolchains, update the compile unit name from S_BUILDINFO.
-  if (LVScope *Scope = CurrentScope) {
+  if (LVScope *Scope = LogicalVisitor->CurrentScope) {
     // The name of the CU, was extracted from the 'BuildInfo' subsection.
     Reader->setCompileUnitCPUType(Compile2.Machine);
     Scope->setName(CurrentObjectName);
@@ -1017,7 +1004,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
   //   S_BUILDINFO  --> Extract the source name.
   //
   // For both toolchains, update the compile unit name from S_BUILDINFO.
-  if (LVScope *Scope = CurrentScope) {
+  if (LVScope *Scope = LogicalVisitor->CurrentScope) {
     // The name of the CU, was extracted from the 'BuildInfo' subsection.
     Reader->setCompileUnitCPUType(Compile3.Machine);
     Scope->setName(CurrentObjectName);
@@ -1047,7 +1034,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
     W.printString("Name", Constant.Name);
   });
 
-  if (LVSymbol *Symbol = CurrentSymbol) {
+  if (LVSymbol *Symbol = LogicalVisitor->CurrentSymbol) {
     Symbol->setName(Constant.Name);
     Symbol->setType(LogicalVisitor->getElement(StreamTPI, Constant.Type));
     Symbol->resetIncludeInPrint();
@@ -1350,7 +1337,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, DataSym &Data) {
     W.printString("DisplayName", Data.Name);
   });
 
-  if (LVSymbol *Symbol = CurrentSymbol) {
+  if (LVSymbol *Symbol = LogicalVisitor->CurrentSymbol) {
     StringRef LinkageName;
     if (ObjDelegate)
       ObjDelegate->getLinkageName(Data.getRelocationOffset(), Data.DataOffset,
@@ -1390,7 +1377,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
                                         InlineSiteSym &InlineSite) {
   LLVM_DEBUG({ printTypeIndex("Inlinee", InlineSite.Inlinee); });
 
-  if (LVScope *InlinedFunction = CurrentScope) {
+  if (LVScope *InlinedFunction = LogicalVisitor->CurrentScope) {
     LVScope *AbstractFunction = new LVScopeFunction();
     if (AbstractFunction) {
       AbstractFunction->setIsSubprogram();
@@ -1431,7 +1418,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, LocalSym &Local) {
     W.printString("VarName", Local.Name);
   });
 
-  if (LVSymbol *Symbol = CurrentSymbol) {
+  if (LVSymbol *Symbol = LogicalVisitor->CurrentSymbol) {
     Symbol->setName(Local.Name);
 
     // Symbol was created as 'variable'; determine its real kind.
@@ -1534,7 +1521,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, ProcSym &Proc) {
   //
   // Before deducting its scope, we need to evaluate its type and create any
   // associated namespaces.
-  if (LVScope *Function = CurrentScope) {
+  if (LVScope *Function = LogicalVisitor->CurrentScope) {
     StringRef LinkageName;
     if (ObjDelegate)
       ObjDelegate->getLinkageName(Proc.getRelocationOffset(), Proc.CodeOffset,
@@ -1640,7 +1627,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, Thunk32Sym &Thunk) {
     W.printString("Name", Thunk.Name);
   });
 
-  if (LVScope *Function = CurrentScope)
+  if (LVScope *Function = LogicalVisitor->CurrentScope)
     Function->setName(Thunk.Name);
 
   return Error::success();
@@ -1653,7 +1640,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, UDTSym &UDT) {
     W.printString("UDTName", UDT.Name);
   });
 
-  if (LVType *Type = CurrentType) {
+  if (LVType *Type = LogicalVisitor->CurrentType) {
     if (LVScope *Namespace = Shared->NamespaceDeduction.get(UDT.Name)) {
       if (Type->getParentScope()->removeElement(Type))
         Namespace->addElement(Type);

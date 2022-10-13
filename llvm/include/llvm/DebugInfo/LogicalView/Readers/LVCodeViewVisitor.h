@@ -122,12 +122,6 @@ class LVScope;
 class LVSymbol;
 class LVType;
 
-// Current elements during the processing of a RecordType or RecordSymbol.
-extern LVElement *CurrentElement;
-extern LVScope *CurrentScope;
-extern LVSymbol *CurrentSymbol;
-extern LVType *CurrentType;
-
 // Visitor for CodeView symbol streams found in COFF object files and PDB files.
 class LVSymbolVisitor final : public SymbolVisitorCallbacks {
   LVCodeViewReader *Reader;
@@ -290,6 +284,13 @@ public:
   LVLogicalVisitor(LVCodeViewReader *Reader, ScopedPrinter &W,
                    llvm::pdb::InputFile &Input);
   ~LVLogicalVisitor();
+
+  // Current elements during the processing of a RecordType or RecordSymbol.
+  // They are shared with the SymbolVisitor.
+  LVElement *CurrentElement = nullptr;
+  LVScope *CurrentScope = nullptr;
+  LVSymbol *CurrentSymbol = nullptr;
+  LVType *CurrentType = nullptr;
 
   // Input source in the case of type server or precompiled header.
   void setInput(std::shared_ptr<llvm::pdb::InputFile> TypeServer) {
