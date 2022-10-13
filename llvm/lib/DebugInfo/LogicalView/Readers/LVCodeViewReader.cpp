@@ -1012,14 +1012,16 @@ Error LVCodeViewReader::createScopes(PDBFile &Pdb) {
             if (Error Err = Visitor.visitSymbolRecord(*Sym, PubSymOff))
               return createStringError(errorToErrorCode(std::move(Err)),
                                        getFileName());
-          } else
+          } else {
             consumeError(Sym.takeError());
+          }
         }
       }
 
       LogicalVisitor.closeScope();
-    } else
+    } else {
       consumeError(ExpectedSyms.takeError());
+    }
   }
 
   // Traverse symbols (DBI).
