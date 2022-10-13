@@ -122,7 +122,7 @@ void checkElementPropertiesClangCodeview(LVReader *Reader) {
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
   ASSERT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x10u);
+  EXPECT_EQ(Lines->size(), 0x10u);
 }
 
 // Check the logical elements basic properties (MSVC - Codeview).
@@ -188,7 +188,7 @@ void checkElementPropertiesMsvcCodeview(LVReader *Reader) {
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
   ASSERT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x0eu);
+  EXPECT_EQ(Lines->size(), 0x0eu);
 }
 
 // Check the logical elements basic properties (MSVC - PDB).
@@ -254,7 +254,7 @@ void checkElementPropertiesMsvcCodeviewPdb(LVReader *Reader) {
   // Lines (debug and assembler) for 'foo'.
   const LVLines *Lines = Foo->getLines();
   ASSERT_NE(Lines, nullptr);
-  ASSERT_EQ(Lines->size(), 0x0eu);
+  EXPECT_EQ(Lines->size(), 0x0eu);
 }
 
 struct SelectionInfo {
