@@ -242,7 +242,6 @@ void LVElement::resolveParents() {
 
 // Generate a name for unnamed elements.
 void LVElement::generateName(std::string &Prefix) const {
-  // CodeView elements that are not referenced and not finalized.
   LVScope *Scope = getParentScope();
   if (!Scope)
     return;

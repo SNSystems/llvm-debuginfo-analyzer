@@ -172,7 +172,7 @@ class LVCodeViewReader final : public LVBinaryReader {
 
   /// Given a .debug$S section, find the string table and file checksum table.
   /// This function taken from (COFFDumper.cpp).
-  /// It can be moved to the COFF library.
+  /// TODO: It can be moved to the COFF library.
   Error initializeFileAndStringTables(BinaryStreamReader &Reader);
 
   Error createLines(const FixedStreamArray<LineNumberEntry> &LineNumbers,

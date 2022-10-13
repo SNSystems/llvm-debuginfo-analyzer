@@ -495,6 +495,7 @@ Error LVCodeViewReader::loadPrecompiledObject(PrecompRecord &Precomp,
         }
         Builder->insertRecordBytes(TypeData);
       }
+      // Done processing .debug$P, break out of section loop.
       break;
     }
   }
@@ -995,8 +996,8 @@ Error LVCodeViewReader::createScopes(PDBFile &Pdb) {
         consumeError(std::move(Err));
       else {
         // The CodeView compile unit containing the global symbols does not
-        // have a name; use the  and it is marked as such. Just append the
-        // '_global' string.
+        // have a name; generate one using its parent name (object filename)
+        // follow by the '_global' string.
         std::string Name(CompileUnit->getParentScope()->getName());
         CompileUnit->setName(Name.append("_global"));
 
