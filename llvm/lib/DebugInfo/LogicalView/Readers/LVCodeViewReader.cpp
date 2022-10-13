@@ -47,15 +47,6 @@ using namespace llvm::pdb;
 
 #define DEBUG_TYPE "CodeViewReader"
 
-//===----------------------------------------------------------------------===//
-// CodeView Reader.
-//===----------------------------------------------------------------------===//
-// Use the 'PointerToRawData' as base for the unique offset for the
-// Symbol records. Using 'RecordOffset' does not give unique values
-// as that offset is relative to each subsection.
-uint32_t PointerToRawData = 0;
-#define ABSOLUTE_OFFSET(offset) (PointerToRawData + offset)
-
 std::string LVCodeViewReader::getSymbolKindName(SymbolKind Kind) {
   switch (Kind) {
 #define SYMBOL_RECORD(EnumName, EnumVal, Name)                                 \
@@ -654,8 +645,6 @@ Error LVCodeViewReader::traverseSymbolSection(StringRef SectionName,
     ListScope D(W, "CodeViewDebugInfo");
     W.printNumber("Section", SectionName, getObj().getSectionID(Section));
   });
-
-  PointerToRawData = getObj().getCOFFSection(Section)->PointerToRawData;
 
   Expected<StringRef> SectionOrErr = Section.getContents();
   if (!SectionOrErr)
