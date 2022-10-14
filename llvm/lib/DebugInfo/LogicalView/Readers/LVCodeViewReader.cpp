@@ -408,7 +408,7 @@ Error LVCodeViewReader::loadTypeServer(TypeServer2Record &TS) {
   // PDB file doesn't mean it matches. For it to match the InfoStream's GUID
   // must match the GUID specified in the TypeServer2 record.
   Expected<InfoStream &> expectedInfo = Pdb.getPDBInfoStream();
-  if (expectedInfo && expectedInfo->getGuid() != TS.getGuid())
+  if (!expectedInfo || expectedInfo->getGuid() != TS.getGuid())
     return createStringError(errc::invalid_argument, "signature_out_of_date");
 
   // The reader needs to switch to a type server, to process the types from
