@@ -3379,10 +3379,8 @@ Error LVLogicalVisitor::inlineSiteAnnotation(LVScope *AbstractFunction,
   LVAddress ParentLowPC = 0;
   LVScope *Parent = InlinedFunction->getParentScope();
   if (const LVLocations *Locations = Parent->getRanges()) {
-    for (const LVLocation *Location : *Locations) {
-      ParentLowPC = Location->getLowerAddress();
-      break;
-    }
+    if (!Locations->empty())
+      ParentLowPC = (*Locations->begin())->getLowerAddress();
   }
 
   // For the given inlinesite, get the initial line number and its
