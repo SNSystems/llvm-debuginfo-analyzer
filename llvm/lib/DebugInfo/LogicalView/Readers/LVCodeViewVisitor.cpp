@@ -1172,7 +1172,11 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
     dwarf::Attribute Attr = dwarf::Attribute(SymbolKind::S_DEFRANGE_REGISTER);
     uint64_t Operand1 = DefRangeRegister.Hdr.Register;
 
-    Symbol->addLocation(Attr, 0, 0, 0, 0);
+    LocalVariableAddrRange Range = DefRangeRegister.Range;
+    LVAddress Address =
+        Reader->linearAddress(Range.ISectStart, Range.OffsetStart);
+
+    Symbol->addLocation(Attr, Address, Address + Range.Range, 0, 0);
     Symbol->addLocationOperands(LVSmall(Attr), Operand1, /*Operand2=*/0);
   }
 
@@ -1206,7 +1210,11 @@ Error LVSymbolVisitor::visitKnownRecord(
         dwarf::Attribute(SymbolKind::S_DEFRANGE_SUBFIELD_REGISTER);
     uint64_t Operand1 = DefRangeSubfieldRegister.Hdr.Register;
 
-    Symbol->addLocation(Attr, 0, 0, 0, 0);
+    LocalVariableAddrRange Range = DefRangeSubfieldRegister.Range;
+    LVAddress Address =
+        Reader->linearAddress(Range.ISectStart, Range.OffsetStart);
+
+    Symbol->addLocation(Attr, Address, Address + Range.Range, 0, 0);
     Symbol->addLocationOperands(LVSmall(Attr), Operand1, /*Operand2=*/0);
   }
 
