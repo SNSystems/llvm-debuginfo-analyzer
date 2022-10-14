@@ -223,7 +223,7 @@ class LVNamespaceDeduction {
   Names NamespaceNames;
 
   using LookupSet = std::set<StringRef>;
-  LookupSet DeductedScopes;
+  LookupSet DeducedScopes;
   LookupSet UnresolvedScopes;
   LookupSet IdentifiedNamespaces;
 
@@ -393,7 +393,7 @@ void LVNamespaceDeduction::add(StringRef String) {
   StringRef InnerComponent;
   StringRef OuterComponent;
   std::tie(OuterComponent, InnerComponent) = getInnerComponent(String);
-  DeductedScopes.insert(InnerComponent);
+  DeducedScopes.insert(InnerComponent);
   if (OuterComponent.size())
     UnresolvedScopes.insert(OuterComponent);
 }
@@ -408,8 +408,8 @@ void LVNamespaceDeduction::init() {
   for (const StringRef &Unresolved : UnresolvedScopes) {
     Components = getAllLexicalComponents(Unresolved);
     for (const StringRef &Component : Components) {
-      LookupSet::iterator Iter = DeductedScopes.find(Component);
-      if (Iter == DeductedScopes.end())
+      LookupSet::iterator Iter = DeducedScopes.find(Component);
+      if (Iter == DeducedScopes.end())
         IdentifiedNamespaces.insert(Component);
     }
   }
@@ -426,7 +426,7 @@ void LVNamespaceDeduction::init() {
         dbgs() << formatv("'{0}'\n", Item.str().c_str());
     };
 
-    Print(DeductedScopes, "Deducted Scopes");
+    Print(DeducedScopes, "Deducted Scopes");
     Print(UnresolvedScopes, "Unresolved Scopes");
     Print(IdentifiedNamespaces, "Namespaces");
   });
