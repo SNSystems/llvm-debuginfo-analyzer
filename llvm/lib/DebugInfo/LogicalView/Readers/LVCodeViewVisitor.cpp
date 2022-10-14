@@ -256,7 +256,7 @@ public:
       return {};
 
     LVStringRefs::size_type FirstNamespace = 0;
-    LVStringRefs::size_type FirstNonNamespace = Components.size() - 1;
+    LVStringRefs::size_type FirstNonNamespace;
     for (LVStringRefs::size_type Index = 0; Index < Components.size();
          ++Index) {
       FirstNonNamespace = Index;
@@ -3472,7 +3472,6 @@ Error LVLogicalVisitor::inlineSiteAnnotation(LVScope *AbstractFunction,
       if (Annot.OpCode == BinaryAnnotationsOpCode::ChangeCodeLength) {
         HighPC = CodeOffset - 1;
         SeenHighAddress = true;
-        break;
       }
       break;
     case BinaryAnnotationsOpCode::ChangeCodeLengthAndCodeOffset:

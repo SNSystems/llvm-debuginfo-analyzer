@@ -47,7 +47,7 @@ using namespace llvm::pdb;
 
 #define DEBUG_TYPE "CodeViewReader"
 
-std::string LVCodeViewReader::getSymbolKindName(SymbolKind Kind) {
+StringRef LVCodeViewReader::getSymbolKindName(SymbolKind Kind) {
   switch (Kind) {
 #define SYMBOL_RECORD(EnumName, EnumVal, Name)                                 \
   case EnumName:                                                               \
@@ -56,6 +56,7 @@ std::string LVCodeViewReader::getSymbolKindName(SymbolKind Kind) {
   default:
     return "UnknownSym";
   }
+  llvm_unreachable("Unknown SymbolKind::Kind");
 }
 
 std::string LVCodeViewReader::formatRegisterId(RegisterId Register,
@@ -120,7 +121,7 @@ void LVCodeViewReader::getLinkageName(const coff_section *CoffSection,
   StringRef SymStorage;
   StringRef &Symbol = RelocSym ? *RelocSym : SymStorage;
   if (resolveSymbolName(CoffSection, RelocOffset, Symbol))
-    *RelocSym = "";
+    Symbol = "";
 }
 
 Expected<StringRef>

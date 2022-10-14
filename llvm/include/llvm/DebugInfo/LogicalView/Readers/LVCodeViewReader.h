@@ -212,7 +212,7 @@ public:
   }
 
   // Get the string representation for the CodeView symbols.
-  static std::string getSymbolKindName(SymbolKind Kind);
+  static StringRef getSymbolKindName(SymbolKind Kind);
   static std::string formatRegisterId(RegisterId Register, CPUType CPU);
 
   std::string getRegisterName(LVSmall Opcode, uint64_t Operands[2]) override;

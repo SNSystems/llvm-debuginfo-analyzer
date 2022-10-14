@@ -50,7 +50,7 @@ Error LVReaderHandler::createReader(StringRef Filename, LVReaders &Readers,
     if (Input.is<ObjectFile *>()) {
       ObjectFile &Obj = *Input.get<ObjectFile *>();
       if (Obj.isCOFF()) {
-        COFFObjectFile *COFF = dyn_cast<COFFObjectFile>(&Obj);
+        COFFObjectFile *COFF = cast<COFFObjectFile>(&Obj);
         return new LVCodeViewReader(Filename, FileFormatName, *COFF, W,
                                     ExePath);
       }
