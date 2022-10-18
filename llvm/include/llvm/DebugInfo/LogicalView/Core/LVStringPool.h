@@ -68,7 +68,6 @@ public:
 
   // Given the index, return its corresponding string.
   StringRef getString(size_t Index) const {
-    assert(Index < Entries.size() && "Invalid string pool index.");
     return (Index >= Entries.size()) ? StringRef() : Entries[Index]->getKey();
   }
 
