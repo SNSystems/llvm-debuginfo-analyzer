@@ -1606,8 +1606,15 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, ProcSym &Proc) {
     // We don't have a way to see if the symbol is compiler generated. Use
     // the linkage name, to detect `scalar deleting destructor' functions.
     std::string DemangledSymbol = demangle(std::string(LinkageName));
-    if (DemangledSymbol.find("scalar deleting dtor") != std::string::npos)
+    if (DemangledSymbol.find("scalar deleting dtor") != std::string::npos) {
       Function->setIsArtificial();
+    } else {
+      // Clang generates global ctor and dtor names containing the substrings:
+      // 'dynamic initializer for' and 'dynamic atexit destructor for'.
+      if (DemangledSymbol.find("dynamic atexit destructor for") !=
+          std::string::npos)
+        Function->setIsArtificial();
+    }
   }
 
   return Error::success();
