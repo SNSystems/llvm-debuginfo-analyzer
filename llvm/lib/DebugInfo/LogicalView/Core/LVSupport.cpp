@@ -62,9 +62,7 @@ static LexicalIndexes getAllLexicalIndexes(StringRef Name) {
   if (Name.empty())
     return {};
 
-  bool InTemplate = false;
   size_t AngleCount = 0;
-  size_t CharsSeen = 0;
   size_t ColonSeen = 0;
   size_t Current = 0;
 
@@ -88,7 +86,6 @@ static LexicalIndexes getAllLexicalIndexes(StringRef Name) {
     switch (Name[Index]) {
     case '<':
       ++AngleCount;
-      InTemplate = true;
       break;
     case '>':
       --AngleCount;
@@ -97,19 +94,15 @@ static LexicalIndexes getAllLexicalIndexes(StringRef Name) {
       ++ColonSeen;
       break;
     }
-    ++CharsSeen;
     if (ColonSeen == 2) {
-      if (!InTemplate) {
+      if (!AngleCount) {
         Indexes.push_back(LexicalEntry(Current, Index - 2));
         Current = Index + 1;
-        CharsSeen = 0;
         LLVM_DEBUG({ PrintLexicalEntry(); });
       }
       ColonSeen = 0;
       continue;
     }
-    if (InTemplate && !AngleCount)
-      InTemplate = false;
   }
 
   // Store last component.
