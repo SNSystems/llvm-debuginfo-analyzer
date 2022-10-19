@@ -1387,32 +1387,30 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record,
 
   if (LVScope *InlinedFunction = LogicalVisitor->CurrentScope) {
     LVScope *AbstractFunction = new LVScopeFunction();
-    if (AbstractFunction) {
-      AbstractFunction->setIsSubprogram();
-      AbstractFunction->setTag(dwarf::DW_TAG_subprogram);
-      AbstractFunction->setInlineCode(dwarf::DW_INL_inlined);
-      AbstractFunction->setIsInlinedAbstract();
-      InlinedFunction->setReference(AbstractFunction);
+    AbstractFunction->setIsSubprogram();
+    AbstractFunction->setTag(dwarf::DW_TAG_subprogram);
+    AbstractFunction->setInlineCode(dwarf::DW_INL_inlined);
+    AbstractFunction->setIsInlinedAbstract();
+    InlinedFunction->setReference(AbstractFunction);
 
-      LogicalVisitor->startProcessArgumentList();
-      // 'Inlinee' is a Type ID.
-      CVType CVFunctionType = Ids.getType(InlineSite.Inlinee);
-      if (Error Err = LogicalVisitor->finishVisitation(
-              CVFunctionType, InlineSite.Inlinee, AbstractFunction))
-        return Err;
-      LogicalVisitor->stopProcessArgumentList();
+    LogicalVisitor->startProcessArgumentList();
+    // 'Inlinee' is a Type ID.
+    CVType CVFunctionType = Ids.getType(InlineSite.Inlinee);
+    if (Error Err = LogicalVisitor->finishVisitation(
+            CVFunctionType, InlineSite.Inlinee, AbstractFunction))
+      return Err;
+    LogicalVisitor->stopProcessArgumentList();
 
-      // For inlined functions set the linkage name to be the same as
-      // the name. It used to find their lines and ranges.
-      StringRef Name = AbstractFunction->getName();
-      InlinedFunction->setName(Name);
-      InlinedFunction->setLinkageName(Name);
+    // For inlined functions set the linkage name to be the same as
+    // the name. It used to find their lines and ranges.
+    StringRef Name = AbstractFunction->getName();
+    InlinedFunction->setName(Name);
+    InlinedFunction->setLinkageName(Name);
 
-      // Process annotation bytes to calculate code and line offsets.
-      if (Error Err = LogicalVisitor->inlineSiteAnnotation(
-              AbstractFunction, InlinedFunction, InlineSite))
-        return Err;
-    }
+    // Process annotation bytes to calculate code and line offsets.
+    if (Error Err = LogicalVisitor->inlineSiteAnnotation(
+            AbstractFunction, InlinedFunction, InlineSite))
+      return Err;
   }
 
   return Error::success();
