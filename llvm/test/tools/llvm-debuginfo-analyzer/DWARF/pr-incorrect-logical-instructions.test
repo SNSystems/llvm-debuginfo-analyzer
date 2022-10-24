@@ -12,7 +12,7 @@
 ;  4 }
 ;  5
 ;  6 int foo(int Param) {
-;  7   return Param - bar(Param) / Param * 66 + ABCDE; 
+;  7   return Param - bar(Param) / Param * 66 + ABCDE;
 ;  8 }
 ;  9
 ; 10 int test(int P1) {
