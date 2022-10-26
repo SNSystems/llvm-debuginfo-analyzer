@@ -390,8 +390,8 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
 
   LLVM_DEBUG({
     dbgs() << "\nPublic Name instructions: '" << Scope->getName() << "' / '"
-           << Scope->getLinkageName() << "'\n";
-    dbgs() << "DIE Offset: " << hexValue(Scope->getOffset()) << " Range: ["
+           << Scope->getLinkageName() << "'\n"
+           << "DIE Offset: " << hexValue(Scope->getOffset()) << " Range: ["
            << hexValue(Address) << ":" << hexValue(Address + Size) << "]\n";
   });
 
@@ -489,7 +489,9 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
 
   LLVM_DEBUG({
     size_t Index = 0;
-    dbgs() << "\nAddress: " << hexValue(FirstAddress)
+    dbgs() << "\nSectionIndex: " << format_decimal(SectionIndex, 3)
+           << " Scope DIE: " << hexValue(Scope->getOffset()) << "\n"
+           << "Address: " << hexValue(FirstAddress)
            << format(" - Collected instructions lines: %d\n",
                      Instructions->size());
     for (const LVLine *Line : *Instructions)
@@ -522,13 +524,15 @@ Error LVBinaryReader::createInstructions() {
     return Error::success();
 
   LLVM_DEBUG({
+    size_t Index = 1;
     dbgs() << "\nPublic Names (Scope):\n";
     for (LVPublicNames::const_reference Name : CompileUnit->getPublicNames()) {
       LVScope *Scope = Name.first;
       const LVNameInfo &NameInfo = Name.second;
       LVAddress Address = NameInfo.first;
       uint64_t Size = NameInfo.second;
-      dbgs() << "DIE Offset: " << hexValue(Scope->getOffset()) << " Range: ["
+      dbgs() << format_decimal(Index++, 5) << ": "
+             << "DIE Offset: " << hexValue(Scope->getOffset()) << " Range: ["
              << hexValue(Address) << ":" << hexValue(Address + Size) << "] "
              << "Name: '" << Scope->getName() << "' / '"
              << Scope->getLinkageName() << "'\n";
@@ -579,8 +583,8 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
     dbgs() << format("\nProcess debug lines: %d\n", DebugLines->size());
     for (const LVLine *Line : *DebugLines) {
       dbgs() << format_decimal(Index, 5) << ": " << hexValue(Line->getOffset())
-             << ", (" << Line->getLineNumber() << ")";
-      dbgs() << ((Index % PerLine) ? "  " : "\n");
+             << ", (" << Line->getLineNumber() << ")"
+             << ((Index % PerLine) ? "  " : "\n");
       ++Index;
     }
     dbgs() << ((Index % PerLine) ? "\n" : "");
@@ -607,11 +611,13 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
     LVLines InstructionLines;
     LVLines *Lines = ScopeInstructions.find(SectionIndex, Scope);
     if (Lines)
-      InstructionLines.append(std::move(*Lines));
+      InstructionLines = std::move(*Lines);
 
     LLVM_DEBUG({
       size_t Index = 0;
-      dbgs() << format("\nProcess instructions lines: %d\n",
+      dbgs() << "\nSectionIndex: " << format_decimal(SectionIndex, 3)
+             << " Scope DIE: " << hexValue(Scope->getOffset()) << "\n"
+             << format("Process instructions lines: %d\n",
                        InstructionLines.size());
       for (const LVLine *Line : InstructionLines)
         dbgs() << format_decimal(++Index, 5) << ": "
@@ -689,9 +695,25 @@ void LVBinaryReader::processLines(LVLines *DebugLines,
   if (DebugLines->empty()) {
     if (const LVScopes *Scopes = CompileUnit->getScopes())
       for (LVScope *Scope : *Scopes) {
-        LVLines *Lines = ScopeInstructions.find(SectionIndex, Scope);
-        if (Lines)
-          DebugLines->append(std::move(*Lines));
+        if (Scope->getIsArtificial())
+          continue;
+        LVLines *Lines = ScopeInstructions.find(Scope);
+        if (Lines) {
+
+          LLVM_DEBUG({
+            size_t Index = 0;
+            dbgs() << "\nSectionIndex: " << format_decimal(SectionIndex, 3)
+                   << " Scope DIE: " << hexValue(Scope->getOffset()) << "\n"
+                   << format("Instructions lines: %d\n", Lines->size());
+            for (const LVLine *Line : *Lines)
+              dbgs() << format_decimal(++Index, 5) << ": "
+                     << hexValue(Line->getOffset()) << ", (" << Line->getName()
+                     << ")\n";
+          });
+
+          DebugLines->append(*Lines);
+          Lines->clear();
+        }
       }
   }
 

@@ -176,8 +176,10 @@ class LVDoubleMap {
                 "ValueType must be a pointer.");
   using LVSecondMapType = std::map<SecondKeyType, ValueType>;
   using LVFirstMapType = std::map<FirstKeyType, LVSecondMapType *>;
+  using LVAuxMapType = std::map<SecondKeyType, FirstKeyType>;
   using LVValueTypes = std::vector<ValueType>;
   LVFirstMapType FirstMap;
+  LVAuxMapType AuxMap;
 
 public:
   LVDoubleMap() = default;
@@ -199,6 +201,11 @@ public:
     assert(SecondMap && "SecondMap is null.");
     if (SecondMap && SecondMap->find(SecondKey) == SecondMap->end())
       SecondMap->emplace(SecondKey, Value);
+
+    typename LVAuxMapType::iterator AuxIter = AuxMap.find(SecondKey);
+    if (AuxIter == AuxMap.end()) {
+      AuxMap.emplace(SecondKey, FirstKey);
+    }
   }
 
   LVSecondMapType *findMap(FirstKeyType FirstKey) const {
@@ -218,6 +225,13 @@ public:
     typename LVSecondMapType::const_iterator SecondIter =
         SecondMap->find(SecondKey);
     return (SecondIter != SecondMap->end()) ? SecondIter->second : nullptr;
+  }
+
+  ValueType find(SecondKeyType SecondKey) const {
+    typename LVAuxMapType::const_iterator AuxIter = AuxMap.find(SecondKey);
+    if (AuxIter == AuxMap.end())
+      return nullptr;
+    return find(AuxIter->second, SecondKey);
   }
 
   // Return a vector with all the 'ValueType' values.
