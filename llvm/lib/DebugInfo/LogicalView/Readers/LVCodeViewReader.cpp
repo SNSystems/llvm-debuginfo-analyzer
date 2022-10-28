@@ -677,8 +677,8 @@ Error LVCodeViewReader::traverseSymbolSection(StringRef SectionName,
     if (Error E = consume(Data, SubSectionSize))
       return createStringError(errorToErrorCode(std::move(E)), getFileName());
 
-    if (SubType & SubsectionIgnoreFlag)
-      SubType &= ~SubsectionIgnoreFlag;
+    // Process the subsection as normal even if the ignore bit is set.
+    SubType &= ~SubsectionIgnoreFlag;
 
     // Get the contents of the subsection.
     if (SubSectionSize > Data.size())

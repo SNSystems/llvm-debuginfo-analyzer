@@ -12,6 +12,7 @@
 #include "llvm/DebugInfo/LogicalView/Core/LVSymbol.h"
 #include "llvm/DebugInfo/LogicalView/Core/LVType.h"
 #include "llvm/DebugInfo/LogicalView/LVReaderHandler.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/COM.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/ScopedPrinter.h"
@@ -461,6 +462,16 @@ TEST(LogicalViewTest, CodeViewReader) {
   InitializeAllDisassemblers();
 
   llvm::sys::InitializeCOMRAII COM(llvm::sys::COMThreadingMode::MultiThreaded);
+
+  // This test requires a x86-registered-target.
+  Triple TT;
+  TT.setArch(Triple::x86_64);
+  TT.setVendor(Triple::UnknownVendor);
+  TT.setOS(Triple::UnknownOS);
+
+  std::string TargetLookupError;
+  if (!TargetRegistry::lookupTarget(std::string(TT.str()), TargetLookupError))
+    return;
 
   SmallString<128> InputsDir = unittest::getInputFileDirectory(TestMainArgv0);
 

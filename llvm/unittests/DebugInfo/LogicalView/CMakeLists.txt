@@ -1,7 +1,7 @@
 set(LLVM_LINK_COMPONENTS
   AllTargetsDescs
-  AllTargetsInfos
   AllTargetsDisassemblers
+  AllTargetsInfos
   DebugInfoLogicalView
   MC
   MCDisassembler
