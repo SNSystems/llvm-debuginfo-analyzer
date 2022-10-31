@@ -140,7 +140,7 @@ public:
   void add(uint32_t StreamIdx, TypeIndex TI, TypeLeafKind Kind,
            LVElement *Element = nullptr);
   void add(uint32_t StreamIdx, TypeIndex TI, StringRef Name);
-  LVElement *find(uint32_t StreamIdx, TypeIndex TI);
+  LVElement *find(uint32_t StreamIdx, TypeIndex TI, bool Create = true);
   TypeIndex find(uint32_t StreamIdx, StringRef Name);
 };
 
@@ -346,7 +346,7 @@ void LVTypeRecords::add(uint32_t StreamIdx, TypeIndex TI, StringRef Name) {
   Target.emplace(Name, TI);
 }
 
-LVElement *LVTypeRecords::find(uint32_t StreamIdx, TypeIndex TI) {
+LVElement *LVTypeRecords::find(uint32_t StreamIdx, TypeIndex TI, bool Create) {
   RecordTable &Target =
       (StreamIdx == StreamTPI) ? RecordFromTypes : RecordFromIds;
 
@@ -354,7 +354,7 @@ LVElement *LVTypeRecords::find(uint32_t StreamIdx, TypeIndex TI) {
   RecordTable::iterator Iter = Target.find(TI);
   if (Iter != Target.end()) {
     Element = Iter->second.second;
-    if (Element)
+    if (Element || !Create)
       return Element;
 
     // Create the logical element if not found.
@@ -3337,8 +3337,11 @@ void LVLogicalVisitor::processLines() {
         W.printNumber("LineNumber", Line.getLineNumber());
       });
 
-      if (LVElement *Element =
-              Shared->TypeRecords.find(StreamTPI, Line.getUDT())) {
+      // The TypeIndex returned by 'getUDT()' must point to an already
+      // created logical element. If no logical element is found, it means
+      // the LF_UDT_SRC_LINE is associated with a system TypeIndex.
+      if (LVElement *Element = Shared->TypeRecords.find(
+              StreamTPI, Line.getUDT(), /*Create=*/false)) {
         Element->setLineNumber(Line.getLineNumber());
         Element->setFilenameIndex(
             Shared->StringRecords.findIndex(Line.getSourceFile()));
@@ -3417,6 +3420,10 @@ Error LVLogicalVisitor::inlineSiteAnnotation(LVScope *AbstractFunction,
            << "Parent: " << Parent->getName() << "\n"
            << "Low PC: " << hexValue(ParentLowPC) << "\n";
   });
+
+  // Get the source lines if requested by command line option.
+  if (!options().getPrintLines())
+    return Error::success();
 
   // Limitation: Currently we don't track changes in the FileOffset. The
   // side effects are the caller that it is unable to differentiate the
