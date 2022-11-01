@@ -41,6 +41,7 @@ add_llvm_component_library(LLVMDebugInfoLogicalView
 
   LINK_COMPONENTS
   BinaryFormat
+  Demangle
   Object
   MC
   Support
