@@ -28,6 +28,18 @@ def AArch64ObscureCopy : SDNode<"AArch64ISD::OBSCURE_COPY", SDTypeProfile<1, 1, 
 def AArch64ObscureCopy : SDNode<"AArch64ISD::OBSCURE_COPY", SDTypeProfile<1, 1, []>, []>;
 
 //===----------------------------------------------------------------------===//
+// Instruction naming conventions.
+//===----------------------------------------------------------------------===//
+
+// M = SME array register (ZA)
+// P = Predicate register
+// C = Predicate-as-counter register
+// I = immediate
+// Z = SVE vector register
+// T = ZT0 register
+//
+
+//===----------------------------------------------------------------------===//
 // Add vector elements horizontally or vertically to ZA tile.
 //===----------------------------------------------------------------------===//
 
