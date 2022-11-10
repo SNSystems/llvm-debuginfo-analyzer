@@ -27,25 +27,6 @@
 namespace llvm {
 namespace logicalview {
 
-template <typename T>
-using TypeIsValid = std::bool_constant<std::is_pointer<T>::value>;
-
-// Utility class to help memory management and perform an automatic cleaning.
-template <typename T, unsigned N = 8>
-class LVAutoSmallVector : public SmallVector<T, N> {
-  static_assert(TypeIsValid<T>::value, "T must be a pointer type");
-
-public:
-  using iterator = typename SmallVector<T, N>::iterator;
-  LVAutoSmallVector() : SmallVector<T, N>::SmallVector() {}
-
-  ~LVAutoSmallVector() {
-    // Destroy the constructed elements in the vector.
-    for (auto *Item : *this)
-      delete Item;
-  }
-};
-
 using LVStringRefs = std::vector<StringRef>;
 using LVLexicalComponent = std::tuple<StringRef, StringRef>;
 using LVLexicalIndex =

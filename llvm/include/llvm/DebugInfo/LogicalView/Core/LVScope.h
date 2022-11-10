@@ -100,7 +100,8 @@ class LVScope : public LVElement {
   // Calculate coverage factor.
   void calculateCoverage() {
     float CoveragePercentage = 0;
-    LVLocation::calculateCoverage(Ranges, CoverageFactor, CoveragePercentage);
+    LVLocation::calculateCoverage(Ranges.get(), CoverageFactor,
+                                  CoveragePercentage);
   }
 
   // Decide if the scope will be printed, using some conditions given by:
@@ -117,11 +118,11 @@ class LVScope : public LVElement {
 
 protected:
   // Types, Symbols, Scopes, Lines, Locations in this scope.
-  LVAutoTypes *Types = nullptr;
-  LVAutoSymbols *Symbols = nullptr;
-  LVAutoScopes *Scopes = nullptr;
-  LVAutoLines *Lines = nullptr;
-  LVAutoLocations *Ranges = nullptr;
+  LVTypesPtr Types = nullptr;
+  LVSymbolsPtr Symbols = nullptr;
+  LVScopesPtr Scopes = nullptr;
+  LVLinesPtr Lines = nullptr;
+  LVLocationsPtr Ranges = nullptr;
 
   // Vector of elements (types, scopes and symbols).
   // It is the union of (*Types, *Symbols and *Scopes) to be used for
@@ -129,7 +130,7 @@ protected:
   // - Preserve the order the logical elements are read in.
   // - To have a single container with all the logical elements, when
   //   the traversal does not require any specific element kind.
-  LVElements *Children = nullptr;
+  LVElementsPtr Children = nullptr;
 
   // Resolve the template parameters/arguments relationship.
   void resolveTemplate();
@@ -150,7 +151,7 @@ public:
   }
   LVScope(const LVScope &) = delete;
   LVScope &operator=(const LVScope &) = delete;
-  virtual ~LVScope();
+  virtual ~LVScope() = default;
 
   static bool classof(const LVElement *Element) {
     return Element->getSubclassID() == LVSubclassID::LV_SCOPE;
@@ -202,12 +203,12 @@ public:
   const char *kind() const override;
 
   // Get the specific children.
-  const LVLines *getLines() const { return Lines; }
-  const LVLocations *getRanges() const { return Ranges; }
-  const LVScopes *getScopes() const { return Scopes; }
-  const LVSymbols *getSymbols() const { return Symbols; }
-  const LVTypes *getTypes() const { return Types; }
-  const LVElements *getChildren() const { return Children; }
+  const LVLines *getLines() const { return Lines.get(); }
+  const LVLocations *getRanges() const { return Ranges.get(); }
+  const LVScopes *getScopes() const { return Scopes.get(); }
+  const LVSymbols *getSymbols() const { return Symbols.get(); }
+  const LVTypes *getTypes() const { return Types.get(); }
+  const LVElements *getChildren() const { return Children.get(); }
 
   void addElement(LVElement *Element);
   void addElement(LVLine *Line);

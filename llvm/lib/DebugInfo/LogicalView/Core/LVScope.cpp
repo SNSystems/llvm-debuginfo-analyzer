@@ -45,15 +45,6 @@ const char *const KindUnion = "Union";
 //===----------------------------------------------------------------------===//
 // DWARF lexical block, such as: namespace, function, compile unit, module, etc.
 //===----------------------------------------------------------------------===//
-LVScope::~LVScope() {
-  delete Types;
-  delete Symbols;
-  delete Scopes;
-  delete Lines;
-  delete Ranges;
-  delete Children;
-}
-
 // Return a string representation for the scope kind.
 const char *LVScope::kind() const {
   const char *Kind = KindUndefined;
@@ -114,7 +105,7 @@ LVScopeDispatch LVScope::Dispatch = {
 
 void LVScope::addToChildren(LVElement *Element) {
   if (!Children)
-    Children = new LVElements();
+    Children = std::make_unique<LVElements>();
   Children->push_back(Element);
 }
 
@@ -137,7 +128,7 @@ void LVScope::addElement(LVLine *Line) {
   assert(Line && "Invalid line.");
   assert(!Line->getParent() && "Line already inserted");
   if (!Lines)
-    Lines = new LVAutoLines();
+    Lines = std::make_unique<LVLines>();
 
   // Add it to parent.
   Lines->push_back(Line);
@@ -161,7 +152,7 @@ void LVScope::addObject(LVLocation *Location) {
   assert(Location && "Invalid location.");
   assert(!Location->getParent() && "Location already inserted");
   if (!Ranges)
-    Ranges = new LVAutoLocations();
+    Ranges = std::make_unique<LVLocations>();
 
   // Add it to parent.
   Location->setParent(this);
@@ -176,7 +167,7 @@ void LVScope::addElement(LVScope *Scope) {
   assert(Scope && "Invalid scope.");
   assert(!Scope->getParent() && "Scope already inserted");
   if (!Scopes)
-    Scopes = new LVAutoScopes();
+    Scopes = std::make_unique<LVScopes>();
 
   // Add it to parent.
   Scopes->push_back(Scope);
@@ -203,7 +194,7 @@ void LVScope::addElement(LVSymbol *Symbol) {
   assert(Symbol && "Invalid symbol.");
   assert(!Symbol->getParent() && "Symbol already inserted");
   if (!Symbols)
-    Symbols = new LVAutoSymbols();
+    Symbols = std::make_unique<LVSymbols>();
 
   // Add it to parent.
   Symbols->push_back(Symbol);
@@ -230,7 +221,7 @@ void LVScope::addElement(LVType *Type) {
   assert(Type && "Invalid type.");
   assert(!Type->getParent() && "Type already inserted");
   if (!Types)
-    Types = new LVAutoTypes();
+    Types = std::make_unique<LVTypes>();
 
   // Add it to parent.
   Types->push_back(Type);
@@ -255,7 +246,7 @@ void LVScope::addElement(LVType *Type) {
 // Add a pair of ranges.
 void LVScope::addObject(LVAddress LowerAddress, LVAddress UpperAddress) {
   // Pack the ranges into a Location object.
-  LVLocation *Location = new LVLocation();
+  LVLocation *Location = getReader().createObject<LVLocation>();
   Location->setLowerAddress(LowerAddress);
   Location->setUpperAddress(UpperAddress);
   Location->setIsAddressRange();
@@ -341,7 +332,7 @@ void LVScope::addMissingElements(LVScope *Reference) {
       // information that is incorrect for the element to be inserted.
       // As the symbol being added does not exist in the debug section,
       // use its parent scope offset, to indicate its DIE location.
-      LVSymbol *Symbol = new LVSymbol();
+      LVSymbol *Symbol = getReader().createObject<LVSymbol>();
       addElement(Symbol);
       Symbol->setOffset(getOffset());
       Symbol->setIsOptimized();
@@ -698,11 +689,11 @@ void LVScope::sort() {
             if (Set)
               std::stable_sort(Set->begin(), Set->end(), SortFunction);
           };
-          Traverse(Parent->Types, SortFunction);
-          Traverse(Parent->Symbols, SortFunction);
-          Traverse(Parent->Scopes, SortFunction);
-          Traverse(Parent->Ranges, compareRange);
-          Traverse(Parent->Children, SortFunction);
+          Traverse(Parent->Types.get(), SortFunction);
+          Traverse(Parent->Symbols.get(), SortFunction);
+          Traverse(Parent->Scopes.get(), SortFunction);
+          Traverse(Parent->Ranges.get(), compareRange);
+          Traverse(Parent->Children.get(), SortFunction);
 
           if (Parent->Scopes)
             for (LVScope *Scope : *Parent->Scopes)
@@ -886,10 +877,10 @@ void LVScope::markMissingParents(const LVScope *Target, bool TraverseChildren) {
       for (auto *Entry : *Container)
         Entry->setIsInCompare();
   };
-  SetCompareState(Types);
-  SetCompareState(Symbols);
-  SetCompareState(Lines);
-  SetCompareState(Scopes);
+  SetCompareState(Types.get());
+  SetCompareState(Symbols.get());
+  SetCompareState(Lines.get());
+  SetCompareState(Scopes.get());
 
   // At this point, we are ready to start comparing the current scope, once
   // the compare bits have been set.

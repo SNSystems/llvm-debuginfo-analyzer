@@ -50,7 +50,7 @@ protected:
   template <typename T, typename F> T *create(F Function) {
     // 'Function' will update a specific kind of the logical element to
     // have the ability of kind selection.
-    T *Element = new (std::nothrow) T();
+    T *Element = createObject<T>();
     EXPECT_NE(Element, nullptr);
     (Element->*Function)();
     return Element;

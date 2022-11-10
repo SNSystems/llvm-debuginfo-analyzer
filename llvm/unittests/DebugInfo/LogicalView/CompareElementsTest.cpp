@@ -26,10 +26,6 @@ namespace {
 //===----------------------------------------------------------------------===//
 // Basic Reader functionality.
 class ReaderTestCompare : public LVReader {
-  // Elements created but not added to any logical scope. They are
-  // deleted when the logical Reader is destroyed.
-  LVAutoSmallVector<LVElement *> OrphanElements;
-
 public:
   // Types.
   LVType *IntegerType = nullptr;
@@ -69,7 +65,7 @@ protected:
   template <typename T, typename F> T *create(F Function) {
     // 'Function' will update a specific kind of the logical element to
     // have the ability of kind selection.
-    T *Element = new (std::nothrow) T();
+    T *Element = createObject<T>();
     EXPECT_NE(Element, nullptr);
     (Element->*Function)();
     return Element;
@@ -203,8 +199,6 @@ void ReaderTestCompare::addElements(bool IsReference, bool IsTarget) {
   auto Insert = [&](bool Insert, auto *Parent, auto *Child) {
     if (Insert)
       add(Parent, Child);
-    else
-      OrphanElements.push_back(Child);
   };
 
   setCompileUnit(CompileUnit);

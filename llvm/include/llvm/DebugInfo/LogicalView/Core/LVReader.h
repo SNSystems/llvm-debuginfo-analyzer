@@ -74,6 +74,10 @@ class LVReader {
   Error createSplitFolder();
   bool OutputSplit = false;
 
+  // Allocated logical elements.
+  using LVObjectPtr = std::unique_ptr<LVObject>;
+  SmallVector<LVObjectPtr> AllocatedObjects;
+
 protected:
   LVScopeRoot *Root = nullptr;
   std::string InputFilename;
@@ -92,7 +96,7 @@ protected:
 
   // Create the Scope Root.
   virtual Error createScopes() {
-    Root = new LVScopeRoot();
+    Root = createObject<LVScopeRoot>();
     Root->setName(getFilename());
     if (options().getAttributeFormat())
       Root->setFileFormatName(FileFormatName);
@@ -129,9 +133,14 @@ public:
         OS(W.getOStream()) {}
   LVReader(const LVReader &) = delete;
   LVReader &operator=(const LVReader &) = delete;
-  virtual ~LVReader() {
-    if (Root)
-      delete Root;
+  virtual ~LVReader() = default;
+
+  // Creates a logical object and records it in the Reader.
+  template <typename ObjectType> ObjectType *createObject() {
+    LVObjectPtr ObjectPtr = std::make_unique<ObjectType>();
+    LVObject *Object = ObjectPtr.get();
+    AllocatedObjects.emplace_back(std::move(ObjectPtr));
+    return (ObjectType *)Object;
   }
 
   StringRef getFilename(LVObject *Object, size_t Index) const;

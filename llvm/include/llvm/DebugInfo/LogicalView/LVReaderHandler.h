@@ -27,7 +27,8 @@
 namespace llvm {
 namespace logicalview {
 
-using LVReaders = std::vector<LVReader *>;
+using LVReaderObj = std::unique_ptr<LVReader>;
+using LVReaders = std::vector<LVReaderObj>;
 using ArgVector = std::vector<std::string>;
 using PdbOrObj = PointerUnion<object::ObjectFile *, pdb::PDBFile *>;
 
@@ -45,7 +46,6 @@ class LVReaderHandler {
   LVReaders TheReaders;
 
   Error createReaders();
-  void destroyReaders();
   Error printReaders();
   Error compareReaders();
 
@@ -74,20 +74,19 @@ public:
   }
   LVReaderHandler(const LVReaderHandler &) = delete;
   LVReaderHandler &operator=(const LVReaderHandler &) = delete;
-  ~LVReaderHandler() { destroyReaders(); }
+  ~LVReaderHandler() = default;
 
   Error createReader(StringRef Filename, LVReaders &Readers) {
     return handleFile(Readers, Filename);
   }
   Error process();
 
-  Expected<LVReader *> createReader(StringRef Pathname) {
+  Expected<LVReaderObj> createReader(StringRef Pathname) {
     LVReaders Readers;
     if (Error Err = createReader(Pathname, Readers))
       return std::move(Err);
-    return Readers[0];
+    return std::move(Readers[0]);
   }
-  void deleteReader(LVReader *Reader) { delete Reader; }
 
   void print(raw_ostream &OS) const;
 

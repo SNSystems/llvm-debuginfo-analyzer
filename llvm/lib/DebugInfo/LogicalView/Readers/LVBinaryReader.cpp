@@ -356,10 +356,11 @@ LVRange *LVBinaryReader::getSectionRanges(LVSectionIndex SectionIndex) {
   // Check if we already have a mapping for this section index.
   LVSectionRanges::iterator IterSection = SectionRanges.find(SectionIndex);
   if (IterSection == SectionRanges.end()) {
-    Range = new LVRange();
-    SectionRanges.emplace(SectionIndex, Range);
+    LVRangePtr RangePtr = std::make_unique<LVRange>();
+    Range = RangePtr.get();
+    SectionRanges.emplace(SectionIndex, std::move(RangePtr));
   } else {
-    Range = IterSection->second;
+    Range = (IterSection->second).get();
   }
   assert(Range && "Range is null.");
   return Range;
@@ -370,9 +371,6 @@ LVBinaryReader::~LVBinaryReader() {
   std::vector<LVLines *> AllInstructionLines = ScopeInstructions.find();
   for (LVLines *Entry : AllInstructionLines)
     delete Entry;
-  // Delete the ranges created by 'getSectionRanges'.
-  for (LVSectionRanges::reference Entry : SectionRanges)
-    delete Entry.second;
 }
 
 Error LVBinaryReader::createInstructions(LVScope *Scope,
@@ -476,7 +474,7 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
       // the 'processLines()' function will move each created logical line
       // to its enclosing logical scope, using the debug ranges information
       // and they will be released when its scope parent is deleted.
-      LVLineAssembler *Line = new LVLineAssembler();
+      LVLineAssembler *Line = createObject<LVLineAssembler>();
       Line->setAddress(Address);
       Line->setName(StringRef(Stream.str()).trim());
       Instructions->push_back(Line);
@@ -891,7 +889,7 @@ void LVBinaryReader::includeInlineeLines(LVSectionIndex SectionIndex,
     LVScope *Scope = InlineeIter->first;
     addToSymbolTable(Scope->getLinkageName(), Scope, SectionIndex);
 
-    LVLines *InlineeLines = InlineeIter->second;
+    LVLines *InlineeLines = (InlineeIter->second).get();
     LLVM_DEBUG({
       dbgs() << "Inlined lines for: " << Scope->getName() << "\n";
       for (const LVLine *Line : *InlineeLines)
@@ -931,7 +929,6 @@ void LVBinaryReader::includeInlineeLines(LVSectionIndex SectionIndex,
     // creates an unique set of lines. Remove only the created container.
     CUInlineeLines.erase(InlineeIter);
     InlineeLines->clear();
-    delete InlineeLines;
   }
   LLVM_DEBUG({
     dbgs() << "Merged Inlined lines for: " << Function->getName() << "\n";

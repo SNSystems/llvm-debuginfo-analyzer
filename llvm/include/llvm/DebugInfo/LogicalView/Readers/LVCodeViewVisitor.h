@@ -239,7 +239,7 @@ class LVLogicalVisitor final {
   std::shared_ptr<llvm::pdb::InputFile> TypeServer = nullptr;
   std::shared_ptr<LazyRandomTypeCollection> PrecompHeader = nullptr;
 
-  LVShared *Shared;
+  std::shared_ptr<LVShared> Shared;
 
   // Object files have only one type stream that contains both types and ids.
   // Precompiled header objects don't contain an IPI stream. Use the TPI.
@@ -283,7 +283,7 @@ class LVLogicalVisitor final {
 public:
   LVLogicalVisitor(LVCodeViewReader *Reader, ScopedPrinter &W,
                    llvm::pdb::InputFile &Input);
-  ~LVLogicalVisitor();
+  ~LVLogicalVisitor() = default;
 
   // Current elements during the processing of a RecordType or RecordSymbol.
   // They are shared with the SymbolVisitor.
@@ -348,7 +348,7 @@ public:
 
   LVElement *getElement(uint32_t StreamIdx, TypeIndex TI,
                         LVScope *Parent = nullptr);
-  LVShared *getShared() { return Shared; }
+  LVShared *getShared() { return Shared.get(); }
 
   LVScope *getReaderScope() const { return ReaderScope; }
 

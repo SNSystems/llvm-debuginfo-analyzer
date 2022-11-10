@@ -90,7 +90,7 @@ class ReaderTestWarningInternal : public LVReader {
 protected:
   void add(LVScope *Parent, LVElement *Element);
   template <typename T> T *create() {
-    T *Element = new (std::nothrow) T();
+    T *Element = createObject<T>();
     EXPECT_NE(Element, nullptr);
     return Element;
   }

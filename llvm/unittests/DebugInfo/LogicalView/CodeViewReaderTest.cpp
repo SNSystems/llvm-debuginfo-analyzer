@@ -47,15 +47,15 @@ LVScope *getFirstScopeChild(LVScope *Parent) {
 }
 
 // Helper function to create a reader.
-LVReader *createReader(LVReaderHandler &ReaderHandler,
-                       SmallString<128> &InputsDir, StringRef Filename) {
+LVReaderObj createReader(LVReaderHandler &ReaderHandler,
+                         SmallString<128> &InputsDir, StringRef Filename) {
   SmallString<128> ObjectName(InputsDir);
   llvm::sys::path::append(ObjectName, Filename);
 
-  Expected<LVReader *> ReaderOrErr =
+  Expected<LVReaderObj> ReaderOrErr =
       ReaderHandler.createReader(std::string(ObjectName));
   EXPECT_THAT_EXPECTED(ReaderOrErr, Succeeded());
-  LVReader *Reader = *ReaderOrErr;
+  LVReaderObj Reader = std::move(*ReaderOrErr);
   EXPECT_NE(Reader, nullptr);
   return Reader;
 }
@@ -359,17 +359,19 @@ void elementProperties(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical elements properties.
-  LVReader *Reader = createReader(ReaderHandler, InputsDir, CodeViewClang);
-  checkElementPropertiesClangCodeview(Reader);
-  ReaderHandler.deleteReader(Reader);
-
-  Reader = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
-  checkElementPropertiesMsvcCodeview(Reader);
-  ReaderHandler.deleteReader(Reader);
-
-  Reader = createReader(ReaderHandler, InputsDir, CodeViewPdbMsvc);
-  checkElementPropertiesMsvcCodeviewPdb(Reader);
-  ReaderHandler.deleteReader(Reader);
+  {
+    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewClang);
+    checkElementPropertiesClangCodeview(Reader.get());
+  }
+  {
+    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
+    checkElementPropertiesMsvcCodeview(Reader.get());
+  }
+  {
+    LVReaderObj Reader =
+        createReader(ReaderHandler, InputsDir, CodeViewPdbMsvc);
+    checkElementPropertiesMsvcCodeviewPdb(Reader.get());
+  }
 }
 
 // Logical elements selection.
@@ -398,35 +400,37 @@ void elementSelection(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical elements selection.
-  std::vector<SelectionInfo> DataClang = {
-      {"* const int", &LVElement::getIsType},
-      {"CONSTANT", &LVElement::getIsSymbol},
-      {"INTEGER", &LVElement::getIsType},
-      {"INTPTR", &LVElement::getIsType},
-      {"ParamPtr", &LVElement::getIsSymbol},
-      {"const int", &LVElement::getIsType},
-      {"foo", &LVElement::getIsScope},
-      {"foo::?", &LVElement::getIsScope},
-      {"int", &LVElement::getIsType},
-      {"movl", &LVElement::getIsLine},
-      {"movl", &LVElement::getIsLine}};
-  LVReader *Reader = createReader(ReaderHandler, InputsDir, CodeViewClang);
-  checkElementSelection(Reader, DataClang, DataClang.size());
-  ReaderHandler.deleteReader(Reader);
-
-  std::vector<SelectionInfo> DataMsvc = {{"* const int", &LVElement::getIsType},
-                                         {"CONSTANT", &LVElement::getIsSymbol},
-                                         {"INTEGER", &LVElement::getIsType},
-                                         {"INTPTR", &LVElement::getIsType},
-                                         {"ParamPtr", &LVElement::getIsSymbol},
-                                         {"const int", &LVElement::getIsType},
-                                         {"foo", &LVElement::getIsScope},
-                                         {"foo::?", &LVElement::getIsScope},
-                                         {"int", &LVElement::getIsType},
-                                         {"movl", &LVElement::getIsLine}};
-  Reader = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
-  checkElementSelection(Reader, DataMsvc, DataMsvc.size());
-  ReaderHandler.deleteReader(Reader);
+  {
+    std::vector<SelectionInfo> DataClang = {
+        {"* const int", &LVElement::getIsType},
+        {"CONSTANT", &LVElement::getIsSymbol},
+        {"INTEGER", &LVElement::getIsType},
+        {"INTPTR", &LVElement::getIsType},
+        {"ParamPtr", &LVElement::getIsSymbol},
+        {"const int", &LVElement::getIsType},
+        {"foo", &LVElement::getIsScope},
+        {"foo::?", &LVElement::getIsScope},
+        {"int", &LVElement::getIsType},
+        {"movl", &LVElement::getIsLine},
+        {"movl", &LVElement::getIsLine}};
+    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewClang);
+    checkElementSelection(Reader.get(), DataClang, DataClang.size());
+  }
+  {
+    std::vector<SelectionInfo> DataMsvc = {
+        {"* const int", &LVElement::getIsType},
+        {"CONSTANT", &LVElement::getIsSymbol},
+        {"INTEGER", &LVElement::getIsType},
+        {"INTPTR", &LVElement::getIsType},
+        {"ParamPtr", &LVElement::getIsSymbol},
+        {"const int", &LVElement::getIsType},
+        {"foo", &LVElement::getIsScope},
+        {"foo::?", &LVElement::getIsScope},
+        {"int", &LVElement::getIsType},
+        {"movl", &LVElement::getIsLine}};
+    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
+    checkElementSelection(Reader.get(), DataMsvc, DataMsvc.size());
+  }
 }
 
 // Compare logical elements.
@@ -448,11 +452,9 @@ void compareElements(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical comparison.
-  LVReader *Reference = createReader(ReaderHandler, InputsDir, CodeViewClang);
-  LVReader *Target = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
-  checkElementComparison(Reference, Target);
-  ReaderHandler.deleteReader(Reference);
-  ReaderHandler.deleteReader(Target);
+  LVReaderObj Reference = createReader(ReaderHandler, InputsDir, CodeViewClang);
+  LVReaderObj Target = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
+  checkElementComparison(Reference.get(), Target.get());
 }
 
 TEST(LogicalViewTest, CodeViewReader) {

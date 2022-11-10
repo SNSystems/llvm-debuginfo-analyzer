@@ -579,8 +579,9 @@ void LVLocationSymbol::addObject(LVAddress LowPC, LVAddress HighPC,
 void LVLocationSymbol::addObject(LVSmall Opcode, LVUnsigned Operand1,
                                  LVUnsigned Operand2) {
   if (!Entries)
-    Entries = new LVAutoOperations();
-  Entries->emplace_back(new LVOperation(Opcode, Operand1, Operand2));
+    Entries = std::make_unique<LVOperationSet>();
+  Entries->emplace_back(
+      std::make_unique<LVOperation>(Opcode, Operand1, Operand2));
 }
 
 // Based on the DWARF attribute, define the location kind.
@@ -606,7 +607,7 @@ void LVLocation::setKind() {
 void LVLocationSymbol::updateKind() {
   // Update the location type for simple ones.
   if (Entries && Entries->size() == 1) {
-    LVOperation *Operation = Entries->front();
+    LVOperation *Operation = (Entries->front()).get();
     if (dwarf::DW_OP_fbreg == Operation->getOpcode())
       setIsStackOffset();
   }
@@ -614,7 +615,7 @@ void LVLocationSymbol::updateKind() {
 
 void LVLocationSymbol::printRawExtra(raw_ostream &OS, bool Full) const {
   if (Entries)
-    for (const LVOperation *Operation : *Entries)
+    for (const LVOperationPtr &Operation : *Entries)
       Operation->print(OS, Full);
 }
 
@@ -661,7 +662,7 @@ void LVLocationSymbol::printExtra(raw_ostream &OS, bool Full) const {
     bool CodeViewLocation = getParentSymbol()->getHasCodeViewLocation();
     std::stringstream Stream;
     std::string Leading = "";
-    for (LVOperation *Operation : *Entries) {
+    for (LVOperationPtr &Operation : *Entries) {
       Stream << Leading
              << (CodeViewLocation ? Operation->getOperandsCodeViewInfo()
                                   : Operation->getOperandsDWARFInfo());
