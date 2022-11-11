@@ -1350,8 +1350,7 @@ void LVScopeCompileUnit::addedElement(LVType *Type) {
 
 // Record unsuported DWARF tags.
 void LVScopeCompileUnit::addDebugTag(dwarf::Tag Target, LVOffset Offset) {
-  addItem<LVTagOffsetsMap, LVOffsetList, dwarf::Tag, LVOffset>(&DebugTags,
-                                                               Target, Offset);
+  addItem<LVTagOffsetsMap, dwarf::Tag, LVOffset>(&DebugTags, Target, Offset);
 }
 
 // Record elements with invalid offsets.
@@ -1384,8 +1383,7 @@ void LVScopeCompileUnit::addLineZero(LVLine *Line) {
   LVScope *Scope = Line->getParentScope();
   LVOffset Offset = Scope->getOffset();
   addInvalidOffset(Offset, Scope);
-  addItem<LVOffsetLinesMap, LVLines, LVOffset, LVLine *>(&LinesZero, Offset,
-                                                         Line);
+  addItem<LVOffsetLinesMap, LVOffset, LVLine *>(&LinesZero, Offset, Line);
 }
 
 void LVScopeCompileUnit::printLocalNames(raw_ostream &OS, bool Full) const {
@@ -1475,7 +1473,7 @@ void LVScopeCompileUnit::printWarnings(raw_ostream &OS, bool Full) const {
     PrintHeader(Header);
     for (LVOffsetLocationsMap::const_reference Entry : Map) {
       PrintElement(WarningOffsets, Entry.first);
-      for (const LVLocation *Location : *Entry.second)
+      for (const LVLocation *Location : Entry.second)
         OS << hexSquareString(Location->getOffset()) << " "
            << Location->getIntervalInfo() << "\n";
     }
@@ -1488,7 +1486,7 @@ void LVScopeCompileUnit::printWarnings(raw_ostream &OS, bool Full) const {
       OS << format("\n0x%02x", (unsigned)Entry.first) << ", "
          << dwarf::TagString(Entry.first) << "\n";
       unsigned Count = 0;
-      for (const LVOffset &Offset : *Entry.second)
+      for (const LVOffset &Offset : Entry.second)
         PrintOffset(Count, Offset);
       OS << "\n";
     }
@@ -1513,7 +1511,7 @@ void LVScopeCompileUnit::printWarnings(raw_ostream &OS, bool Full) const {
     for (LVOffsetLinesMap::const_reference Entry : LinesZero) {
       PrintElement(WarningOffsets, Entry.first);
       unsigned Count = 0;
-      for (const LVLine *Line : *Entry.second)
+      for (const LVLine *Line : Entry.second)
         PrintOffset(Count, Line->getOffset());
       OS << "\n";
     }

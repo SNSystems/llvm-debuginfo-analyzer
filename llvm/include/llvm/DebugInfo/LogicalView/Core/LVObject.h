@@ -84,13 +84,20 @@ using LVScopes = SmallVector<LVScope *, 8>;
 using LVSymbols = SmallVector<LVSymbol *, 8>;
 using LVTypes = SmallVector<LVType *, 8>;
 
+using LVElementPtr = std::unique_ptr<LVElement>;
+using LVLinePtr = std::unique_ptr<LVLine>;
+using LVLocationPtr = std::unique_ptr<LVLocation>;
+using LVScopePtr = std::unique_ptr<LVScope>;
+using LVSymbolPtr = std::unique_ptr<LVSymbol>;
+using LVTypePtr = std::unique_ptr<LVType>;
+
 // These definitions are intended to be used when the vector will be used
 // with automatic destruction.
 using LVElementsPtr = std::unique_ptr<LVElements>;
 using LVLinesPtr = std::unique_ptr<LVLines>;
 using LVLocationsPtr = std::unique_ptr<LVLocations>;
-using LVSymbolsPtr = std::unique_ptr<LVSymbols>;
 using LVScopesPtr = std::unique_ptr<LVScopes>;
+using LVSymbolsPtr = std::unique_ptr<LVSymbols>;
 using LVTypesPtr = std::unique_ptr<LVTypes>;
 
 using LVOffsets = SmallVector<LVOffset, 8>;

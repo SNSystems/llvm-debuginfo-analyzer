@@ -63,12 +63,11 @@ using LVScopeKindSet = std::set<LVScopeKind>;
 using LVScopeDispatch = std::map<LVScopeKind, LVScopeGetFunction>;
 using LVScopeRequest = std::vector<LVScopeGetFunction>;
 
-using LVOffsetList = std::list<LVOffset>;
 using LVOffsetElementMap = std::map<LVOffset, LVElement *>;
-using LVOffsetLinesMap = std::map<LVOffset, LVLines *>;
-using LVOffsetLocationsMap = std::map<LVOffset, LVLocations *>;
+using LVOffsetLinesMap = std::map<LVOffset, LVLines>;
+using LVOffsetLocationsMap = std::map<LVOffset, LVLocations>;
 using LVOffsetSymbolMap = std::map<LVOffset, LVSymbol *>;
-using LVTagOffsetsMap = std::map<dwarf::Tag, LVOffsetList *>;
+using LVTagOffsetsMap = std::map<dwarf::Tag, LVOffsets>;
 
 // Class to represent a DWARF Scope.
 class LVScope : public LVElement {
@@ -460,8 +459,8 @@ class LVScopeCompileUnit final : public LVScope {
                                  LVOffsetLocationsMap *Map) {
     LVOffset Offset = Element->getOffset();
     addInvalidOffset(Offset, Element);
-    addItem<LVOffsetLocationsMap, LVLocations, LVOffset, LVLocation *>(
-        Map, Offset, Location);
+    addItem<LVOffsetLocationsMap, LVOffset, LVLocation *>(Map, Offset,
+                                                          Location);
   }
 
   // Record scope sizes indexed by lexical level.
@@ -493,12 +492,7 @@ public:
   }
   LVScopeCompileUnit(const LVScopeCompileUnit &) = delete;
   LVScopeCompileUnit &operator=(const LVScopeCompileUnit &) = delete;
-  ~LVScopeCompileUnit() {
-    deleteList<LVTagOffsetsMap>(DebugTags);
-    deleteList<LVOffsetLocationsMap>(InvalidLocations);
-    deleteList<LVOffsetLocationsMap>(InvalidRanges);
-    deleteList<LVOffsetLinesMap>(LinesZero);
-  }
+  ~LVScopeCompileUnit() {}
 
   LVScope *getCompileUnitParent() const override {
     return static_cast<LVScope *>(const_cast<LVScopeCompileUnit *>(this));
@@ -562,16 +556,16 @@ public:
   // Record line zero.
   void addLineZero(LVLine *Line);
 
-  const LVTagOffsetsMap getDebugTags() const { return DebugTags; }
-  const LVOffsetElementMap getWarningOffsets() const { return WarningOffsets; }
-  const LVOffsetLocationsMap getInvalidLocations() const {
+  const LVTagOffsetsMap &getDebugTags() const { return DebugTags; }
+  const LVOffsetElementMap &getWarningOffsets() const { return WarningOffsets; }
+  const LVOffsetLocationsMap &getInvalidLocations() const {
     return InvalidLocations;
   }
-  const LVOffsetSymbolMap getInvalidCoverages() const {
+  const LVOffsetSymbolMap &getInvalidCoverages() const {
     return InvalidCoverages;
   }
-  const LVOffsetLocationsMap getInvalidRanges() const { return InvalidRanges; }
-  const LVOffsetLinesMap getLinesZero() const { return LinesZero; }
+  const LVOffsetLocationsMap &getInvalidRanges() const { return InvalidRanges; }
+  const LVOffsetLinesMap &getLinesZero() const { return LinesZero; }
 
   // Process ranges, locations and calculate coverage.
   void processRangeLocationCoverage(

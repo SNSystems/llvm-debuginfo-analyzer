@@ -450,7 +450,7 @@ void ReaderTestWarningInternal::checkWarnings() {
 
   LVOffsetLinesMap::iterator IterZero = LinesZero.begin();
   EXPECT_EQ(IterZero->first, Function->getOffset());
-  LVLines *Lines = IterZero->second;
+  LVLines *Lines = &IterZero->second;
   EXPECT_NE(Lines, nullptr);
   ASSERT_EQ(Lines->size(), 1u);
   LVLine *Line = *(Lines->begin());
@@ -459,7 +459,7 @@ void ReaderTestWarningInternal::checkWarnings() {
 
   ++IterZero;
   EXPECT_EQ(IterZero->first, NestedScope->getOffset());
-  Lines = IterZero->second;
+  Lines = &IterZero->second;
   EXPECT_NE(Lines, nullptr);
   ASSERT_EQ(Lines->size(), 1u);
   Line = *(Lines->begin());
@@ -487,7 +487,7 @@ void ReaderTestWarningInternal::checkWarnings() {
 
   LVOffsetLocationsMap::iterator IterRange = InvalidRanges.begin();
   EXPECT_EQ(IterRange->first, Function->getOffset());
-  LVLocations *Locations = IterRange->second;
+  LVLocations *Locations = &IterRange->second;
   EXPECT_NE(Locations, nullptr);
   ASSERT_EQ(Locations->size(), 1u);
   LVLocation *Location = *(Locations->begin());
@@ -501,7 +501,7 @@ void ReaderTestWarningInternal::checkWarnings() {
 
   LVOffsetLocationsMap::iterator IterLocations = InvalidLocations.begin();
   EXPECT_EQ(IterLocations->first, NestedVariable->getOffset());
-  Locations = IterLocations->second;
+  Locations = &IterLocations->second;
   EXPECT_NE(Locations, nullptr);
   ASSERT_EQ(Locations->size(), 1u);
   Location = *(Locations->begin());
