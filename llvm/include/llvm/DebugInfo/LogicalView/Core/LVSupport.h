@@ -133,11 +133,10 @@ std::string formatAttributes(const StringRef First, Args... Others) {
 template <typename MapType, typename KeyType, typename ValueType>
 void addItem(MapType *Map, KeyType Key, ValueType Value) {
   typename MapType::iterator Iter = Map->find(Key);
-  if (Iter != Map->end()) {
-    (*Iter).second.push_back(Value);
-  } else {
+  if (Iter == Map->end())
     Map->emplace(Key, std::initializer_list<ValueType>{Value});
-  }
+  else
+    (*Iter).second.push_back(Value);
 }
 
 // Double map data structure.
@@ -146,7 +145,8 @@ class LVDoubleMap {
   static_assert(std::is_pointer<ValueType>::value,
                 "ValueType must be a pointer.");
   using LVSecondMapType = std::map<SecondKeyType, ValueType>;
-  using LVFirstMapType = std::map<FirstKeyType, LVSecondMapType *>;
+  using LVSecondMapTypePtr = std::unique_ptr<LVSecondMapType>;
+  using LVFirstMapType = std::map<FirstKeyType, LVSecondMapTypePtr>;
   using LVAuxMapType = std::map<SecondKeyType, FirstKeyType>;
   using LVValueTypes = std::vector<ValueType>;
   LVFirstMapType FirstMap;
@@ -154,24 +154,21 @@ class LVDoubleMap {
 
 public:
   LVDoubleMap() = default;
-  ~LVDoubleMap() {
-    for (auto &Entry : FirstMap)
-      delete Entry.second;
-  }
+  ~LVDoubleMap() {}
 
   void add(FirstKeyType FirstKey, SecondKeyType SecondKey, ValueType Value) {
     LVSecondMapType *SecondMap = nullptr;
     typename LVFirstMapType::iterator FirstIter = FirstMap.find(FirstKey);
     if (FirstIter == FirstMap.end()) {
-      SecondMap = new LVSecondMapType();
-      FirstMap.emplace(FirstKey, SecondMap);
-    } else {
-      SecondMap = FirstIter->second;
-    }
-
-    assert(SecondMap && "SecondMap is null.");
-    if (SecondMap && SecondMap->find(SecondKey) == SecondMap->end())
+      LVSecondMapTypePtr SecondMapPtr = std::make_unique<LVSecondMapType>();
+      SecondMap = SecondMapPtr.get();
       SecondMap->emplace(SecondKey, Value);
+      FirstMap.emplace(FirstKey, std::move(SecondMapPtr));
+    } else {
+      SecondMap = (FirstIter->second).get();
+      if (SecondMap->find(SecondKey) == SecondMap->end())
+        SecondMap->emplace(SecondKey, Value);
+    }
 
     typename LVAuxMapType::iterator AuxIter = AuxMap.find(SecondKey);
     if (AuxIter == AuxMap.end()) {
@@ -184,7 +181,7 @@ public:
     if (FirstIter == FirstMap.end())
       return nullptr;
 
-    LVSecondMapType *SecondMap = FirstIter->second;
+    LVSecondMapType *SecondMap = (FirstIter->second).get();
     return SecondMap;
   }
 
@@ -211,7 +208,7 @@ public:
     if (FirstMap.empty())
       return Values;
     for (typename LVFirstMapType::const_reference FirstEntry : FirstMap) {
-      LVSecondMapType *SecondMap = FirstEntry.second;
+      LVSecondMapType *SecondMap = (FirstEntry.second).get();
       for (typename LVSecondMapType::const_reference SecondEntry : *SecondMap)
         Values.push_back(SecondEntry.second);
     }
