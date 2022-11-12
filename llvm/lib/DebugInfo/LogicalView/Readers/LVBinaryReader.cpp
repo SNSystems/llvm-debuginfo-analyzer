@@ -366,13 +366,6 @@ LVRange *LVBinaryReader::getSectionRanges(LVSectionIndex SectionIndex) {
   return Range;
 }
 
-LVBinaryReader::~LVBinaryReader() {
-  // Delete the lines created by 'createInstructions'.
-  std::vector<LVLines *> AllInstructionLines = ScopeInstructions.find();
-  for (LVLines *Entry : AllInstructionLines)
-    delete Entry;
-}
-
 Error LVBinaryReader::createInstructions(LVScope *Scope,
                                          LVSectionIndex SectionIndex,
                                          const LVNameInfo &NameInfo) {
@@ -433,7 +426,9 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
 
   // Address for first instruction line.
   LVAddress FirstAddress = Address;
-  LVLines *Instructions = new LVLines();
+  LVLinesPtr InstructionsPtr = std::make_unique<LVLines>();
+  LVLines *Instructions = InstructionsPtr.get();
+  DiscoveredLines.emplace_back(std::move(InstructionsPtr));
 
   while (Begin < End) {
     MCInst Instruction;

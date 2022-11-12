@@ -108,6 +108,8 @@ class LVBinaryReader : public LVReader {
   using LVSections = std::map<LVSectionIndex, object::SectionRef>;
   LVSections Sections;
 
+  std::vector<LVLinesPtr> DiscoveredLines;
+
 protected:
   // It contains the LVLineDebug elements representing the logical lines for
   // the current compile unit, created by parsing the debug line section.
@@ -159,7 +161,7 @@ public:
       : LVReader(Filename, FileFormatName, W, BinaryType) {}
   LVBinaryReader(const LVBinaryReader &) = delete;
   LVBinaryReader &operator=(const LVBinaryReader &) = delete;
-  virtual ~LVBinaryReader();
+  virtual ~LVBinaryReader() = default;
 
   void addInlineeLines(LVScope *Scope, LVLines &Lines) {
     LVLinesPtr InlineeLinesPtr = std::make_unique<LVLines>();

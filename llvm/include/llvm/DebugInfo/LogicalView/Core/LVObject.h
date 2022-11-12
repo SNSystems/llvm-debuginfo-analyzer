@@ -74,8 +74,6 @@ using LVSymbolGetFunction = bool (LVSymbol::*)() const;
 using LVTypeSetFunction = void (LVType::*)();
 using LVTypeGetFunction = bool (LVType::*)() const;
 
-// These definitions are intended to be used when the vector will be used
-// just a container, with no automatic destruction.
 using LVElements = SmallVector<LVElement *, 8>;
 using LVLines = SmallVector<LVLine *, 8>;
 using LVLocations = SmallVector<LVLocation *, 8>;
@@ -91,8 +89,6 @@ using LVScopePtr = std::unique_ptr<LVScope>;
 using LVSymbolPtr = std::unique_ptr<LVSymbol>;
 using LVTypePtr = std::unique_ptr<LVType>;
 
-// These definitions are intended to be used when the vector will be used
-// with automatic destruction.
 using LVElementsPtr = std::unique_ptr<LVElements>;
 using LVLinesPtr = std::unique_ptr<LVLines>;
 using LVLocationsPtr = std::unique_ptr<LVLocations>;
