@@ -46,7 +46,7 @@ class LVSymbol final : public LVElement {
 
   // Reference to DW_AT_specification, DW_AT_abstract_origin attribute.
   LVSymbol *Reference = nullptr;
-  LVLocationsPtr Locations = nullptr;
+  std::unique_ptr<LVLocations> Locations = nullptr;
   LVLocation *CurrentLocation = nullptr;
 
   // Bitfields length.

@@ -40,7 +40,7 @@ Error LVReaderHandler::process() {
 Error LVReaderHandler::createReader(StringRef Filename, LVReaders &Readers,
                                     PdbOrObj &Input, StringRef FileFormatName,
                                     StringRef ExePath) {
-  auto CreateOneReader = [&]() -> LVReaderObj {
+  auto CreateOneReader = [&]() -> std::unique_ptr<LVReader> {
     if (Input.is<ObjectFile *>()) {
       ObjectFile &Obj = *Input.get<ObjectFile *>();
       if (Obj.isCOFF()) {
@@ -59,7 +59,7 @@ Error LVReaderHandler::createReader(StringRef Filename, LVReaders &Readers,
     return nullptr;
   };
 
-  LVReaderObj ReaderObj = CreateOneReader();
+  std::unique_ptr<LVReader> ReaderObj = CreateOneReader();
   if (!ReaderObj)
     return createStringError(errc::invalid_argument,
                              "unable to create reader for: '%s'",
@@ -290,7 +290,7 @@ Error LVReaderHandler::createReaders() {
 Error LVReaderHandler::printReaders() {
   LLVM_DEBUG(dbgs() << "printReaders\n");
   if (options().getPrintExecute())
-    for (const LVReaderObj &Reader : TheReaders)
+    for (const std::unique_ptr<LVReader> &Reader : TheReaders)
       if (Error Err = Reader->doPrint())
         return Err;
 

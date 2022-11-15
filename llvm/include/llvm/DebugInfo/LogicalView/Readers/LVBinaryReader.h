@@ -73,7 +73,7 @@ class LVBinaryReader : public LVReader {
   // It contains the LVLineDebug elements representing the inlined logical
   // lines for the current compile unit, created by parsing the CodeView
   // S_INLINESITE symbol annotation data.
-  using LVInlineeLine = std::map<LVScope *, LVLinesPtr>;
+  using LVInlineeLine = std::map<LVScope *, std::unique_ptr<LVLines>>;
   LVInlineeLine CUInlineeLines;
 
   // Instruction lines for a logical scope. These instructions are fetched
@@ -96,8 +96,7 @@ class LVBinaryReader : public LVReader {
   // Scopes with ranges for current compile unit. It is used to find a line
   // giving its exact or closest address. To support comdat functions, all
   // addresses for the same section are recorded in the same map.
-  using LVRangePtr = std::unique_ptr<LVRange>;
-  using LVSectionRanges = std::map<LVSectionIndex, LVRangePtr>;
+  using LVSectionRanges = std::map<LVSectionIndex, std::unique_ptr<LVRange>>;
   LVSectionRanges SectionRanges;
 
   // Image base and virtual address for Executable file.
@@ -108,7 +107,7 @@ class LVBinaryReader : public LVReader {
   using LVSections = std::map<LVSectionIndex, object::SectionRef>;
   LVSections Sections;
 
-  std::vector<LVLinesPtr> DiscoveredLines;
+  std::vector<std::unique_ptr<LVLines>> DiscoveredLines;
 
 protected:
   // It contains the LVLineDebug elements representing the logical lines for
@@ -164,10 +163,7 @@ public:
   virtual ~LVBinaryReader() = default;
 
   void addInlineeLines(LVScope *Scope, LVLines &Lines) {
-    LVLinesPtr InlineeLinesPtr = std::make_unique<LVLines>();
-    LVLines *InlineeLines = InlineeLinesPtr.get();
-    *InlineeLines = std::move(Lines);
-    CUInlineeLines.emplace(Scope, std::move(InlineeLinesPtr));
+    CUInlineeLines.emplace(Scope, std::make_unique<LVLines>(std::move(Lines)));
   }
 
   // Convert Segment::Offset pair to absolute address.

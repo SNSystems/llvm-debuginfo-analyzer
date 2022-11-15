@@ -47,15 +47,16 @@ LVScope *getFirstScopeChild(LVScope *Parent) {
 }
 
 // Helper function to create a reader.
-LVReaderObj createReader(LVReaderHandler &ReaderHandler,
-                         SmallString<128> &InputsDir, StringRef Filename) {
+std::unique_ptr<LVReader> createReader(LVReaderHandler &ReaderHandler,
+                                       SmallString<128> &InputsDir,
+                                       StringRef Filename) {
   SmallString<128> ObjectName(InputsDir);
   llvm::sys::path::append(ObjectName, Filename);
 
-  Expected<LVReaderObj> ReaderOrErr =
+  Expected<std::unique_ptr<LVReader>> ReaderOrErr =
       ReaderHandler.createReader(std::string(ObjectName));
   EXPECT_THAT_EXPECTED(ReaderOrErr, Succeeded());
-  LVReaderObj Reader = std::move(*ReaderOrErr);
+  std::unique_ptr<LVReader> Reader = std::move(*ReaderOrErr);
   EXPECT_NE(Reader, nullptr);
   return Reader;
 }
@@ -360,15 +361,17 @@ void elementProperties(SmallString<128> &InputsDir) {
 
   // Check logical elements properties.
   {
-    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewClang);
+    std::unique_ptr<LVReader> Reader =
+        createReader(ReaderHandler, InputsDir, CodeViewClang);
     checkElementPropertiesClangCodeview(Reader.get());
   }
   {
-    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
+    std::unique_ptr<LVReader> Reader =
+        createReader(ReaderHandler, InputsDir, CodeViewMsvc);
     checkElementPropertiesMsvcCodeview(Reader.get());
   }
   {
-    LVReaderObj Reader =
+    std::unique_ptr<LVReader> Reader =
         createReader(ReaderHandler, InputsDir, CodeViewPdbMsvc);
     checkElementPropertiesMsvcCodeviewPdb(Reader.get());
   }
@@ -413,7 +416,8 @@ void elementSelection(SmallString<128> &InputsDir) {
         {"int", &LVElement::getIsType},
         {"movl", &LVElement::getIsLine},
         {"movl", &LVElement::getIsLine}};
-    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewClang);
+    std::unique_ptr<LVReader> Reader =
+        createReader(ReaderHandler, InputsDir, CodeViewClang);
     checkElementSelection(Reader.get(), DataClang, DataClang.size());
   }
   {
@@ -428,7 +432,8 @@ void elementSelection(SmallString<128> &InputsDir) {
         {"foo::?", &LVElement::getIsScope},
         {"int", &LVElement::getIsType},
         {"movl", &LVElement::getIsLine}};
-    LVReaderObj Reader = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
+    std::unique_ptr<LVReader> Reader =
+        createReader(ReaderHandler, InputsDir, CodeViewMsvc);
     checkElementSelection(Reader.get(), DataMsvc, DataMsvc.size());
   }
 }
@@ -452,8 +457,10 @@ void compareElements(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical comparison.
-  LVReaderObj Reference = createReader(ReaderHandler, InputsDir, CodeViewClang);
-  LVReaderObj Target = createReader(ReaderHandler, InputsDir, CodeViewMsvc);
+  std::unique_ptr<LVReader> Reference =
+      createReader(ReaderHandler, InputsDir, CodeViewClang);
+  std::unique_ptr<LVReader> Target =
+      createReader(ReaderHandler, InputsDir, CodeViewMsvc);
   checkElementComparison(Reference.get(), Target.get());
 }
 

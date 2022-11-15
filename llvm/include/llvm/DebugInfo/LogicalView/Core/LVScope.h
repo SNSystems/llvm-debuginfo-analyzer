@@ -117,11 +117,11 @@ class LVScope : public LVElement {
 
 protected:
   // Types, Symbols, Scopes, Lines, Locations in this scope.
-  LVTypesPtr Types = nullptr;
-  LVSymbolsPtr Symbols = nullptr;
-  LVScopesPtr Scopes = nullptr;
-  LVLinesPtr Lines = nullptr;
-  LVLocationsPtr Ranges = nullptr;
+  std::unique_ptr<LVTypes> Types;
+  std::unique_ptr<LVSymbols> Symbols;
+  std::unique_ptr<LVScopes> Scopes;
+  std::unique_ptr<LVLines> Lines;
+  std::unique_ptr<LVLocations> Ranges;
 
   // Vector of elements (types, scopes and symbols).
   // It is the union of (*Types, *Symbols and *Scopes) to be used for
@@ -129,7 +129,7 @@ protected:
   // - Preserve the order the logical elements are read in.
   // - To have a single container with all the logical elements, when
   //   the traversal does not require any specific element kind.
-  LVElementsPtr Children = nullptr;
+  std::unique_ptr<LVElements> Children;
 
   // Resolve the template parameters/arguments relationship.
   void resolveTemplate();
@@ -492,7 +492,7 @@ public:
   }
   LVScopeCompileUnit(const LVScopeCompileUnit &) = delete;
   LVScopeCompileUnit &operator=(const LVScopeCompileUnit &) = delete;
-  ~LVScopeCompileUnit() {}
+  ~LVScopeCompileUnit() = default;
 
   LVScope *getCompileUnitParent() const override {
     return static_cast<LVScope *>(const_cast<LVScopeCompileUnit *>(this));

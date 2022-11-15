@@ -352,16 +352,22 @@ void LVBinaryReader::addSectionRange(LVSectionIndex SectionIndex,
 }
 
 LVRange *LVBinaryReader::getSectionRanges(LVSectionIndex SectionIndex) {
-  LVRange *Range = nullptr;
+  //LVRange *Range = nullptr;
   // Check if we already have a mapping for this section index.
   LVSectionRanges::iterator IterSection = SectionRanges.find(SectionIndex);
-  if (IterSection == SectionRanges.end()) {
-    LVRangePtr RangePtr = std::make_unique<LVRange>();
-    Range = RangePtr.get();
-    SectionRanges.emplace(SectionIndex, std::move(RangePtr));
-  } else {
-    Range = (IterSection->second).get();
-  }
+  // if (IterSection == SectionRanges.end()) {
+  //  std::unique_ptr<LVRange> RangeSP = std::make_unique<LVRange>();
+  //  Range = RangeSP.get();
+  //  SectionRanges.emplace(SectionIndex, std::move(RangeSP));
+  //} else {
+  //  Range = IterSection->second.get();
+  //}
+  // assert(Range && "Range is null.");
+  // return Range;
+  if (IterSection == SectionRanges.end())
+    IterSection =
+        SectionRanges.emplace(SectionIndex, std::make_unique<LVRange>()).first;
+  LVRange *Range = IterSection->second.get();
   assert(Range && "Range is null.");
   return Range;
 }
@@ -426,9 +432,9 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
 
   // Address for first instruction line.
   LVAddress FirstAddress = Address;
-  LVLinesPtr InstructionsPtr = std::make_unique<LVLines>();
-  LVLines *Instructions = InstructionsPtr.get();
-  DiscoveredLines.emplace_back(std::move(InstructionsPtr));
+  std::unique_ptr<LVLines> InstructionsSP = std::make_unique<LVLines>();
+  LVLines *Instructions = InstructionsSP.get();
+  DiscoveredLines.emplace_back(std::move(InstructionsSP));
 
   while (Begin < End) {
     MCInst Instruction;
@@ -885,7 +891,8 @@ void LVBinaryReader::includeInlineeLines(LVSectionIndex SectionIndex,
     LVScope *Scope = InlineeIter->first;
     addToSymbolTable(Scope->getLinkageName(), Scope, SectionIndex);
 
-    LVLines *InlineeLines = (InlineeIter->second).get();
+    // TODO: Convert this into a reference.
+    LVLines *InlineeLines = InlineeIter->second.get();
     LLVM_DEBUG({
       dbgs() << "Inlined lines for: " << Scope->getName() << "\n";
       for (const LVLine *Line : *InlineeLines)

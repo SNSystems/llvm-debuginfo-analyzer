@@ -75,8 +75,7 @@ class LVReader {
   bool OutputSplit = false;
 
   // Allocated logical elements.
-  using LVObjectPtr = std::unique_ptr<LVObject>;
-  SmallVector<LVObjectPtr> AllocatedObjects;
+  SmallVector<std::unique_ptr<LVObject>> AllocatedObjects;
 
 protected:
   LVScopeRoot *Root = nullptr;
@@ -137,9 +136,9 @@ public:
 
   // Creates a logical object and records it in the Reader.
   template <typename ObjectType> ObjectType *createObject() {
-    LVObjectPtr ObjectPtr = std::make_unique<ObjectType>();
-    LVObject *Object = ObjectPtr.get();
-    AllocatedObjects.emplace_back(std::move(ObjectPtr));
+    std::unique_ptr<LVObject> ObjectSP = std::make_unique<ObjectType>();
+    LVObject *Object = ObjectSP.get();
+    AllocatedObjects.emplace_back(std::move(ObjectSP));
     return (ObjectType *)Object;
   }
 

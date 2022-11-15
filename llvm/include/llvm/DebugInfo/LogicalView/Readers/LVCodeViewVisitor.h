@@ -282,7 +282,6 @@ class LVLogicalVisitor final {
 public:
   LVLogicalVisitor(LVCodeViewReader *Reader, ScopedPrinter &W,
                    llvm::pdb::InputFile &Input);
-  ~LVLogicalVisitor() = default;
 
   // Current elements during the processing of a RecordType or RecordSymbol.
   // They are shared with the SymbolVisitor.

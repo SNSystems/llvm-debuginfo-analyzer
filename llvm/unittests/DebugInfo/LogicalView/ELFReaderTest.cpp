@@ -47,15 +47,16 @@ LVScopeCompileUnit *getFirstCompileUnit(LVScopeRoot *Root) {
 }
 
 // Helper function to create a reader.
-LVReaderObj createReader(LVReaderHandler &ReaderHandler,
-                         SmallString<128> &InputsDir, StringRef Filename) {
+std::unique_ptr<LVReader> createReader(LVReaderHandler &ReaderHandler,
+                                       SmallString<128> &InputsDir,
+                                       StringRef Filename) {
   SmallString<128> ObjectName(InputsDir);
   llvm::sys::path::append(ObjectName, Filename);
 
-  Expected<LVReaderObj> ReaderOrErr =
+  Expected<std::unique_ptr<LVReader>> ReaderOrErr =
       ReaderHandler.createReader(std::string(ObjectName));
   EXPECT_THAT_EXPECTED(ReaderOrErr, Succeeded());
-  LVReaderObj Reader = std::move(*ReaderOrErr);
+  std::unique_ptr<LVReader> Reader = std::move(*ReaderOrErr);
   EXPECT_NE(Reader, nullptr);
   return Reader;
 }
@@ -260,7 +261,8 @@ void elementProperties(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical elements properties.
-  LVReaderObj Reader = createReader(ReaderHandler, InputsDir, DwarfClang);
+  std::unique_ptr<LVReader> Reader =
+      createReader(ReaderHandler, InputsDir, DwarfClang);
   checkElementProperties(Reader.get());
 }
 
@@ -290,7 +292,8 @@ void elementSelection(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical elements selection.
-  LVReaderObj Reader = createReader(ReaderHandler, InputsDir, DwarfGcc);
+  std::unique_ptr<LVReader> Reader =
+      createReader(ReaderHandler, InputsDir, DwarfGcc);
   checkElementSelection(Reader.get());
 }
 
@@ -313,8 +316,10 @@ void compareElements(SmallString<128> &InputsDir) {
   LVReaderHandler ReaderHandler(Objects, W, ReaderOptions);
 
   // Check logical comparison.
-  LVReaderObj Reference = createReader(ReaderHandler, InputsDir, DwarfClang);
-  LVReaderObj Target = createReader(ReaderHandler, InputsDir, DwarfGcc);
+  std::unique_ptr<LVReader> Reference =
+      createReader(ReaderHandler, InputsDir, DwarfClang);
+  std::unique_ptr<LVReader> Target =
+      createReader(ReaderHandler, InputsDir, DwarfGcc);
   checkElementComparison(Reference.get(), Target.get());
 }
 
