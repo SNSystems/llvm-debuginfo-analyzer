@@ -352,18 +352,8 @@ void LVBinaryReader::addSectionRange(LVSectionIndex SectionIndex,
 }
 
 LVRange *LVBinaryReader::getSectionRanges(LVSectionIndex SectionIndex) {
-  //LVRange *Range = nullptr;
   // Check if we already have a mapping for this section index.
   LVSectionRanges::iterator IterSection = SectionRanges.find(SectionIndex);
-  // if (IterSection == SectionRanges.end()) {
-  //  std::unique_ptr<LVRange> RangeSP = std::make_unique<LVRange>();
-  //  Range = RangeSP.get();
-  //  SectionRanges.emplace(SectionIndex, std::move(RangeSP));
-  //} else {
-  //  Range = IterSection->second.get();
-  //}
-  // assert(Range && "Range is null.");
-  // return Range;
   if (IterSection == SectionRanges.end())
     IterSection =
         SectionRanges.emplace(SectionIndex, std::make_unique<LVRange>()).first;
