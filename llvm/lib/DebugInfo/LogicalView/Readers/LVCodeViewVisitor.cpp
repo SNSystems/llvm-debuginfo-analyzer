@@ -1572,7 +1572,7 @@ Error LVSymbolVisitor::visitKnownRecord(CVSymbol &Record, ProcSym &Proc) {
       std::tie(OuterComponent, std::ignore) = getInnerComponent(Proc.Name);
       TypeIndex TI = Shared->ForwardReferences.find(OuterComponent);
 
-      llvm::Optional<CVType> CVFunctionType;
+      std::optional<CVType> CVFunctionType;
       auto GetRecordType = [&]() -> bool {
         CVFunctionType = Ids.tryGetType(TIFunctionType);
         if (!CVFunctionType)
