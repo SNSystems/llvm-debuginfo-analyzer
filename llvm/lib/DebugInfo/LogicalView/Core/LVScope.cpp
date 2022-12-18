@@ -494,7 +494,7 @@ void LVScope::resolveTemplate() {
       // Encode the arguments as part of the template name and update the
       // template name, to reflect the encoded parameters.
       encodeTemplateArguments(EncodedArgs, &Params);
-      setEncodedArgs(EncodedArgs.c_str());
+      setEncodedArgs(EncodedArgs);
     }
   }
 }
@@ -1965,7 +1965,7 @@ void LVScopeFunctionType::resolveExtra() {
   Name.append(")");
 
   // Update the scope name, to reflect the encoded parameters.
-  setName(Name.c_str());
+  setName(Name);
 }
 
 //===----------------------------------------------------------------------===//
