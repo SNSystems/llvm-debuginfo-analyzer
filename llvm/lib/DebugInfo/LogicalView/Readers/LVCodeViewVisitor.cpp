@@ -1715,8 +1715,7 @@ void LVLogicalVisitor::printTypeBegin(CVType &Record, TypeIndex TI,
   W.getOStream() << " (" << HexNumber(TI.getIndex()) << ")";
   W.getOStream() << " {\n";
   W.indent();
-  W.printEnum("TypeLeafKind", unsigned(Record.kind()),
-              makeArrayRef(LeafTypeNames));
+  W.printEnum("TypeLeafKind", unsigned(Record.kind()), ArrayRef(LeafTypeNames));
   printTypeIndex("TI", TI, StreamIdx);
   W.startLine() << "Element: " << HexNumber(Element->getOffset()) << " "
                 << Element->getName() << "\n";
@@ -1735,8 +1734,7 @@ void LVLogicalVisitor::printMemberBegin(CVMemberRecord &Record, TypeIndex TI,
   W.getOStream() << " (" << HexNumber(TI.getIndex()) << ")";
   W.getOStream() << " {\n";
   W.indent();
-  W.printEnum("TypeLeafKind", unsigned(Record.Kind),
-              makeArrayRef(LeafTypeNames));
+  W.printEnum("TypeLeafKind", unsigned(Record.Kind), ArrayRef(LeafTypeNames));
   printTypeIndex("TI", TI, StreamIdx);
   W.startLine() << "Element: " << HexNumber(Element->getOffset()) << " "
                 << Element->getName() << "\n";
