@@ -534,7 +534,7 @@ int main(int argc, char **argv) {
   std::unique_ptr<ToolOutputFile> RemarksFile = std::move(*RemarksFileOrErr);
 
   // Load the input module...
-  auto SetDataLayout = [](StringRef) -> std::optional<std::string> {
+  auto SetDataLayout = [](StringRef, StringRef) -> std::optional<std::string> {
     if (ClDataLayout.empty())
       return std::nullopt;
     return ClDataLayout;
@@ -545,7 +545,8 @@ int main(int argc, char **argv) {
             InputFilename, Err, Context, nullptr, SetDataLayout)
             .Mod;
   else
-    M = parseIRFile(InputFilename, Err, Context, SetDataLayout);
+    M = parseIRFile(InputFilename, Err, Context,
+                    ParserCallbacks(SetDataLayout));
 
   if (!M) {
     Err.print(argv[0], errs());
