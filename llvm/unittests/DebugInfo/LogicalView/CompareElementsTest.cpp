@@ -62,14 +62,6 @@ public:
 
 protected:
   void add(LVScope *Parent, LVElement *Element);
-  template <typename T, typename F> T *create(F Function) {
-    // 'Function' will update a specific kind of the logical element to
-    // have the ability of kind selection.
-    T *Element = createObject<T>();
-    EXPECT_NE(Element, nullptr);
-    (Element->*Function)();
-    return Element;
-  }
   void set(LVElement *Element, StringRef Name, LVOffset Offset,
            uint32_t LineNumber = 0, LVElement *Type = nullptr);
 
@@ -112,54 +104,112 @@ void ReaderTestCompare::createElements() {
   ASSERT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = create<LVType, LVTypeSetFunction>(&LVType::setIsBase);
-  UnsignedType = create<LVType, LVTypeSetFunction>(&LVType::setIsBase);
-  GlobalType = create<LVType, LVTypeSetFunction>(&LVType::setIsBase);
-  LocalType = create<LVType, LVTypeSetFunction>(&LVType::setIsBase);
-  NestedType = create<LVType, LVTypeSetFunction>(&LVType::setIsBase);
-  EnumeratorOne =
-      create<LVTypeEnumerator, LVTypeSetFunction>(&LVType::setIsEnumerator);
-  EnumeratorTwo =
-      create<LVTypeEnumerator, LVTypeSetFunction>(&LVType::setIsEnumerator);
-  TypeDefinitionOne =
-      create<LVTypeDefinition, LVTypeSetFunction>(&LVType::setIsTypedef);
-  TypeDefinitionTwo =
-      create<LVTypeDefinition, LVTypeSetFunction>(&LVType::setIsTypedef);
+  IntegerType = createType();
+  EXPECT_NE(IntegerType, nullptr);
+  IntegerType->setIsBase();
+
+  UnsignedType = createType();
+  EXPECT_NE(UnsignedType, nullptr);
+  UnsignedType->setIsBase();
+
+  GlobalType = createType();
+  EXPECT_NE(GlobalType, nullptr);
+  GlobalType->setIsBase();
+
+  LocalType = createType();
+  EXPECT_NE(LocalType, nullptr);
+  LocalType->setIsBase();
+
+  NestedType = createType();
+  EXPECT_NE(NestedType, nullptr);
+  NestedType->setIsBase();
+
+  EnumeratorOne = createTypeEnumerator();
+  EXPECT_NE(EnumeratorOne, nullptr);
+  EnumeratorOne->setIsEnumerator();
+
+  EnumeratorTwo = createTypeEnumerator();
+  EXPECT_NE(EnumeratorTwo, nullptr);
+  EnumeratorTwo->setIsEnumerator();
+
+  TypeDefinitionOne = createTypeDefinition();
+  EXPECT_NE(TypeDefinitionOne, nullptr);
+  TypeDefinitionOne->setIsTypedef();
+
+  TypeDefinitionTwo = createTypeDefinition();
+  EXPECT_NE(TypeDefinitionTwo, nullptr);
+  TypeDefinitionTwo->setIsTypedef();
 
   // Create the logical scopes.
-  NestedScope =
-      create<LVScope, LVScopeSetFunction>(&LVScope::setIsLexicalBlock);
-  InnerScope = create<LVScope, LVScopeSetFunction>(&LVScope::setIsLexicalBlock);
-  Aggregate =
-      create<LVScopeAggregate, LVScopeSetFunction>(&LVScope::setIsAggregate);
-  CompileUnit = create<LVScopeCompileUnit, LVScopeSetFunction>(
-      &LVScope::setIsCompileUnit);
-  Enumeration = create<LVScopeEnumeration, LVScopeSetFunction>(
-      &LVScope::setIsEnumeration);
-  FunctionOne =
-      create<LVScopeFunction, LVScopeSetFunction>(&LVScope::setIsFunction);
-  FunctionTwo =
-      create<LVScopeFunction, LVScopeSetFunction>(&LVScope::setIsFunction);
-  Namespace =
-      create<LVScopeNamespace, LVScopeSetFunction>(&LVScope::setIsNamespace);
+  NestedScope = createScope();
+  EXPECT_NE(NestedScope, nullptr);
+  NestedScope->setIsLexicalBlock();
+
+  InnerScope = createScope();
+  EXPECT_NE(InnerScope, nullptr);
+  InnerScope->setIsLexicalBlock();
+
+  Aggregate = createScopeAggregate();
+  EXPECT_NE(Aggregate, nullptr);
+  Aggregate->setIsAggregate();
+
+  CompileUnit = createScopeCompileUnit();
+  EXPECT_NE(CompileUnit, nullptr);
+  CompileUnit->setIsCompileUnit();
+
+  Enumeration = createScopeEnumeration();
+  EXPECT_NE(Enumeration, nullptr);
+  Enumeration->setIsEnumeration();
+
+  FunctionOne = createScopeFunction();
+  EXPECT_NE(FunctionOne, nullptr);
+  FunctionOne->setIsFunction();
+
+  FunctionTwo = createScopeFunction();
+  EXPECT_NE(FunctionTwo, nullptr);
+  FunctionTwo->setIsFunction();
+
+  Namespace = createScopeNamespace();
+  EXPECT_NE(Namespace, nullptr);
+  Namespace->setIsNamespace();
 
   // Create the logical symbols.
-  GlobalVariable =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsVariable);
-  LocalVariable =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsVariable);
-  ClassMember = create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsMember);
-  NestedVariable =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsVariable);
-  ParameterOne =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsParameter);
-  ParameterTwo =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsParameter);
+  GlobalVariable = createSymbol();
+  EXPECT_NE(GlobalVariable, nullptr);
+  GlobalVariable->setIsVariable();
+
+  LocalVariable = createSymbol();
+  EXPECT_NE(LocalVariable, nullptr);
+  LocalVariable->setIsVariable();
+
+  ClassMember = createSymbol();
+  EXPECT_NE(ClassMember, nullptr);
+  ClassMember->setIsMember();
+
+  NestedVariable = createSymbol();
+  EXPECT_NE(NestedVariable, nullptr);
+  NestedVariable->setIsVariable();
+
+  ParameterOne = createSymbol();
+  EXPECT_NE(ParameterOne, nullptr);
+  ParameterOne->setIsParameter();
+
+  ParameterTwo = createSymbol();
+  EXPECT_NE(ParameterTwo, nullptr);
+  ParameterTwo->setIsParameter();
 
   // Create the logical lines.
-  LineOne = create<LVLine, LVLineSetFunction>(&LVLine::setIsLineDebug);
-  LineTwo = create<LVLine, LVLineSetFunction>(&LVLine::setIsLineDebug);
-  LineThree = create<LVLine, LVLineSetFunction>(&LVLine::setIsLineDebug);
+  LineOne = createLine();
+  EXPECT_NE(LineOne, nullptr);
+  LineOne->setIsLineDebug();
+
+  LineTwo = createLine();
+  EXPECT_NE(LineTwo, nullptr);
+  LineTwo->setIsLineDebug();
+
+  LineThree = createLine();
+  EXPECT_NE(LineThree, nullptr);
+  LineThree->setIsLineDebug();
 }
 
 // Reference Reader:              Target Reader:

@@ -466,7 +466,7 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
       // the 'processLines()' function will move each created logical line
       // to its enclosing logical scope, using the debug ranges information
       // and they will be released when its scope parent is deleted.
-      LVLineAssembler *Line = createObject<LVLineAssembler>();
+      LVLineAssembler *Line = createLineAssembler();
       Line->setAddress(Address);
       Line->setName(StringRef(Stream.str()).trim());
       Instructions->push_back(Line);

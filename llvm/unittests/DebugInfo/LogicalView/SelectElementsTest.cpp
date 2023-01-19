@@ -47,14 +47,6 @@ class ReaderTestSelection : public LVReader {
 
 protected:
   void add(LVScope *Parent, LVElement *Element);
-  template <typename T, typename F> T *create(F Function) {
-    // 'Function' will update a specific kind of the logical element to
-    // have the ability of kind selection.
-    T *Element = createObject<T>();
-    EXPECT_NE(Element, nullptr);
-    (Element->*Function)();
-    return Element;
-  }
   void set(LVElement *Element, StringRef Name, LVOffset Offset,
            uint32_t LineNumber = 0, LVElement *Type = nullptr);
 
@@ -104,34 +96,68 @@ void ReaderTestSelection::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = create<LVType, LVTypeSetFunction>(&LVType::setIsBase);
+  IntegerType = createType();
+  EXPECT_NE(IntegerType, nullptr);
+  IntegerType->setIsBase();
 
   // Create the logical scopes.
-  CompileUnit = create<LVScopeCompileUnit, LVScopeSetFunction>(
-      &LVScope::setIsCompileUnit);
-  Function =
-      create<LVScopeFunction, LVScopeSetFunction>(&LVScope::setIsFunction);
-  NestedScope =
-      create<LVScope, LVScopeSetFunction>(&LVScope::setIsLexicalBlock);
-  Namespace =
-      create<LVScopeNamespace, LVScopeSetFunction>(&LVScope::setIsNamespace);
-  Aggregate =
-      create<LVScopeAggregate, LVScopeSetFunction>(&LVScope::setIsAggregate);
+  CompileUnit = createScopeCompileUnit();
+  EXPECT_NE(CompileUnit, nullptr);
+  CompileUnit->setIsCompileUnit();
+
+  Function = createScopeFunction();
+  EXPECT_NE(Function, nullptr);
+  Function->setIsFunction();
+
+  NestedScope = createScope();
+  EXPECT_NE(NestedScope, nullptr);
+  NestedScope->setIsLexicalBlock();
+
+  Namespace = createScopeNamespace();
+  EXPECT_NE(Namespace, nullptr);
+  Namespace->setIsNamespace();
+
+  Aggregate = createScopeAggregate();
+  EXPECT_NE(Aggregate, nullptr);
+  Aggregate->setIsAggregate();
 
   // Create the logical symbols.
-  ClassMember = create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsMember);
-  LocalVariable =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsVariable);
-  NestedVariable =
-      create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsVariable);
-  Parameter = create<LVSymbol, LVSymbolSetFunction>(&LVSymbol::setIsParameter);
+  ClassMember = createSymbol();
+  EXPECT_NE(ClassMember, nullptr);
+  ClassMember->setIsMember();
+
+  LocalVariable = createSymbol();
+  EXPECT_NE(LocalVariable, nullptr);
+  LocalVariable->setIsVariable();
+
+  NestedVariable = createSymbol();
+  EXPECT_NE(NestedVariable, nullptr);
+  NestedVariable->setIsVariable();
+
+  Parameter = createSymbol();
+  EXPECT_NE(Parameter, nullptr);
+  Parameter->setIsParameter();
 
   // Create the logical lines.
-  LineOne = create<LVLine, LVLineSetFunction>(&LVLine::setIsLineDebug);
-  LineTwo = create<LVLine, LVLineSetFunction>(&LVLine::setIsBasicBlock);
-  LineThree = create<LVLine, LVLineSetFunction>(&LVLine::setIsNewStatement);
-  LineFour = create<LVLine, LVLineSetFunction>(&LVLine::setIsPrologueEnd);
-  LineFive = create<LVLine, LVLineSetFunction>(&LVLine::setIsLineAssembler);
+  LineOne = createLine();
+  EXPECT_NE(LineOne, nullptr);
+  LineOne->setIsLineDebug();
+
+  LineTwo = createLine();
+  EXPECT_NE(LineTwo, nullptr);
+  LineTwo->setIsBasicBlock();
+
+  LineThree = createLine();
+  EXPECT_NE(LineThree, nullptr);
+  LineThree->setIsNewStatement();
+
+  LineFour = createLine();
+  EXPECT_NE(LineFour, nullptr);
+  LineFour->setIsPrologueEnd();
+
+  LineFive = createLine();
+  EXPECT_NE(LineFive, nullptr);
+  LineFive->setIsLineAssembler();
 }
 
 // Create the logical view adding the created logical elements.

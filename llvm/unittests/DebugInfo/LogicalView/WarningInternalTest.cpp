@@ -22,7 +22,10 @@ using namespace llvm::logicalview;
 
 namespace {
 
-class MyLocation;
+class MyLocation : public LVLocation {
+public:
+  bool validateRanges();
+};
 
 // This code emulates the work done by the Readers when processing the
 // binary files and the creation of the AddressToLine mapping is done
@@ -87,18 +90,24 @@ class ReaderTestWarningInternal : public LVReader {
   MyLocation *LocationFive = nullptr;
   MyLocation *LocationSix = nullptr;
 
+#define CUSTOM_ALLOCATOR(KIND)                                                 \
+  llvm::SpecificBumpPtrAllocator<My##KIND> Allocated##KIND;
+
+  CUSTOM_ALLOCATOR(Location)
+
 protected:
-  void add(LVScope *Parent, LVElement *Element);
-  template <typename T> T *create() {
-    T *Element = createObject<T>();
-    EXPECT_NE(Element, nullptr);
-    return Element;
+#define CREATE_CUSTOM(KIND)                                                    \
+  My##KIND *createCustom##KIND() {                                             \
+    return new (Allocated##KIND.Allocate()) My##KIND();                        \
   }
+  CREATE_CUSTOM(Location)
+
+  void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
+  void add(LVScope *Parent, LVElement *Element);
   void set(LVElement *Element, StringRef Name, LVOffset Offset,
            uint32_t LineNumber = 0, LVElement *Type = nullptr);
   void set(MyLocation *Location, LVLine *LowerLine, LVLine *UpperLine,
            LVAddress LowerAddress, LVAddress UpperAddress);
-  void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
 
 public:
   ReaderTestWarningInternal(ScopedPrinter &W) : LVReader("", "", W) {
@@ -113,11 +122,6 @@ public:
   void initElements();
   void resolveElements();
   void checkWarnings();
-};
-
-class MyLocation : public LVLocation {
-public:
-  bool validateRanges();
 };
 
 bool MyLocation::validateRanges() {
@@ -213,33 +217,52 @@ void ReaderTestWarningInternal::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = create<LVType>();
+  IntegerType = createType();
+  EXPECT_NE(IntegerType, nullptr);
 
   // Create the logical scopes.
-  NestedScope = create<LVScope>();
-  CompileUnit = create<LVScopeCompileUnit>();
-  Function = create<LVScopeFunction>();
+  NestedScope = createScope();
+  EXPECT_NE(NestedScope, nullptr);
+  CompileUnit = createScopeCompileUnit();
+  EXPECT_NE(CompileUnit, nullptr);
+  Function = createScopeFunction();
+  EXPECT_NE(Function, nullptr);
 
   // Create the logical symbols.
-  LocalVariable = create<LVSymbol>();
-  NestedVariable = create<LVSymbol>();
-  Parameter = create<LVSymbol>();
+  LocalVariable = createSymbol();
+  EXPECT_NE(LocalVariable, nullptr);
+  NestedVariable = createSymbol();
+  EXPECT_NE(NestedVariable, nullptr);
+  Parameter = createSymbol();
+  EXPECT_NE(Parameter, nullptr);
 
   // Create the logical lines.
-  LineOne = create<LVLine>();
-  LineTwo = create<LVLine>();
-  LineThree = create<LVLine>();
-  LineFour = create<LVLine>();
-  LineFive = create<LVLine>();
-  LineSix = create<LVLine>();
+  LineOne = createLine();
+  EXPECT_NE(LineOne, nullptr);
+  LineTwo = createLine();
+  EXPECT_NE(LineTwo, nullptr);
+  LineThree = createLine();
+  EXPECT_NE(LineThree, nullptr);
+  LineFour = createLine();
+  EXPECT_NE(LineFour, nullptr);
+  LineFive = createLine();
+  EXPECT_NE(LineFive, nullptr);
+  LineSix = createLine();
+  EXPECT_NE(LineSix, nullptr);
 
   // Create the logical locations.
-  LocationOne = create<MyLocation>();
-  LocationTwo = create<MyLocation>();
-  LocationThree = create<MyLocation>();
-  LocationFour = create<MyLocation>();
-  LocationFive = create<MyLocation>();
-  LocationSix = create<MyLocation>();
+  LocationOne = createCustomLocation();
+  EXPECT_NE(LocationOne, nullptr);
+  LocationTwo = createCustomLocation();
+  EXPECT_NE(LocationTwo, nullptr);
+  LocationThree = createCustomLocation();
+  EXPECT_NE(LocationThree, nullptr);
+  LocationFour = createCustomLocation();
+  EXPECT_NE(LocationFour, nullptr);
+  LocationFive = createCustomLocation();
+  EXPECT_NE(LocationFive, nullptr);
+  LocationSix = createCustomLocation();
+  EXPECT_NE(LocationSix, nullptr);
 }
 
 // Create the logical view adding the created logical elements.

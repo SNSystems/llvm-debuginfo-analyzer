@@ -308,7 +308,7 @@ Error LVCodeViewReader::createLines(
     // The 'processLines()' function will move each created logical line
     // to its enclosing logical scope, using the debug ranges information
     // and they will be released when its scope parent is deleted.
-    LVLineDebug *LineDebug = createObject<LVLineDebug>();
+    LVLineDebug *LineDebug = createLineDebug();
     CULines.push_back(LineDebug);
     LVAddress Address = linearAddress(Segment, Begin + Line.Offset);
     LineDebug->setAddress(Address + Addendum);

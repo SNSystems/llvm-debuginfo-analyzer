@@ -246,7 +246,7 @@ void LVScope::addElement(LVType *Type) {
 // Add a pair of ranges.
 void LVScope::addObject(LVAddress LowerAddress, LVAddress UpperAddress) {
   // Pack the ranges into a Location object.
-  LVLocation *Location = getReader().createObject<LVLocation>();
+  LVLocation *Location = getReader().createLocation();
   Location->setLowerAddress(LowerAddress);
   Location->setUpperAddress(UpperAddress);
   Location->setIsAddressRange();
@@ -332,7 +332,7 @@ void LVScope::addMissingElements(LVScope *Reference) {
       // information that is incorrect for the element to be inserted.
       // As the symbol being added does not exist in the debug section,
       // use its parent scope offset, to indicate its DIE location.
-      LVSymbol *Symbol = getReader().createObject<LVSymbol>();
+      LVSymbol *Symbol = getReader().createSymbol();
       addElement(Symbol);
       Symbol->setOffset(getOffset());
       Symbol->setIsOptimized();

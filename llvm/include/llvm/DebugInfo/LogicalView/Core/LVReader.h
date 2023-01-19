@@ -74,8 +74,47 @@ class LVReader {
   Error createSplitFolder();
   bool OutputSplit = false;
 
-  // Allocated logical elements.
-  SmallVector<std::unique_ptr<LVObject>> AllocatedObjects;
+// The logical reader owns of all the logical elements created during
+// the debug information parsing. For its creation it uses a specific
+//  bump allocator for each type of logical element.
+// Define a specific bump allocator for the given KIND.
+#define OBJECT_ALLOCATOR(KIND)                                                 \
+  llvm::SpecificBumpPtrAllocator<LV##KIND> Allocated##KIND;
+
+  // Lines allocator.
+  OBJECT_ALLOCATOR(Line)
+  OBJECT_ALLOCATOR(LineDebug)
+  OBJECT_ALLOCATOR(LineAssembler)
+
+  // Locations allocator.
+  OBJECT_ALLOCATOR(Location)
+  OBJECT_ALLOCATOR(LocationSymbol)
+
+  // Scopes allocator.
+  OBJECT_ALLOCATOR(Scope)
+  OBJECT_ALLOCATOR(ScopeAggregate)
+  OBJECT_ALLOCATOR(ScopeAlias)
+  OBJECT_ALLOCATOR(ScopeArray)
+  OBJECT_ALLOCATOR(ScopeCompileUnit)
+  OBJECT_ALLOCATOR(ScopeEnumeration)
+  OBJECT_ALLOCATOR(ScopeFormalPack)
+  OBJECT_ALLOCATOR(ScopeFunction)
+  OBJECT_ALLOCATOR(ScopeFunctionInlined)
+  OBJECT_ALLOCATOR(ScopeFunctionType)
+  OBJECT_ALLOCATOR(ScopeNamespace)
+  OBJECT_ALLOCATOR(ScopeRoot)
+  OBJECT_ALLOCATOR(ScopeTemplatePack)
+
+  // Symbols allocator.
+  OBJECT_ALLOCATOR(Symbol)
+
+  // Types allocator.
+  OBJECT_ALLOCATOR(Type)
+  OBJECT_ALLOCATOR(TypeDefinition)
+  OBJECT_ALLOCATOR(TypeEnumerator)
+  OBJECT_ALLOCATOR(TypeImport)
+  OBJECT_ALLOCATOR(TypeParam)
+  OBJECT_ALLOCATOR(TypeSubrange)
 
 protected:
   LVScopeRoot *Root = nullptr;
@@ -95,7 +134,7 @@ protected:
 
   // Create the Scope Root.
   virtual Error createScopes() {
-    Root = createObject<LVScopeRoot>();
+    Root = createScopeRoot();
     Root->setName(getFilename());
     if (options().getAttributeFormat())
       Root->setFileFormatName(FileFormatName);
@@ -134,13 +173,52 @@ public:
   LVReader &operator=(const LVReader &) = delete;
   virtual ~LVReader() = default;
 
-  // Creates a logical object and records it in the Reader.
-  template <typename ObjectType> ObjectType *createObject() {
-    std::unique_ptr<LVObject> ObjectSP = std::make_unique<ObjectType>();
-    LVObject *Object = ObjectSP.get();
-    AllocatedObjects.emplace_back(std::move(ObjectSP));
-    return (ObjectType *)Object;
+// Creates a logical object of the given KIND. The signature for the created
+// functions looks like:
+//   ...
+//   LVScope *createScope()
+//   LVScopeRoot *creatScopeRoot()
+//   LVType *createType();
+//   ...
+#define CREATE_OBJECT(KIND)                                                    \
+  LV##KIND *create##KIND() {                                                   \
+    return new (Allocated##KIND.Allocate()) LV##KIND();                        \
   }
+
+  // Lines creation.
+  CREATE_OBJECT(Line)
+  CREATE_OBJECT(LineDebug)
+  CREATE_OBJECT(LineAssembler)
+
+  // Locations creation.
+  CREATE_OBJECT(Location)
+  CREATE_OBJECT(LocationSymbol)
+
+  // Scopes creation.
+  CREATE_OBJECT(Scope)
+  CREATE_OBJECT(ScopeAggregate)
+  CREATE_OBJECT(ScopeAlias)
+  CREATE_OBJECT(ScopeArray)
+  CREATE_OBJECT(ScopeCompileUnit)
+  CREATE_OBJECT(ScopeEnumeration)
+  CREATE_OBJECT(ScopeFormalPack)
+  CREATE_OBJECT(ScopeFunction)
+  CREATE_OBJECT(ScopeFunctionInlined)
+  CREATE_OBJECT(ScopeFunctionType)
+  CREATE_OBJECT(ScopeNamespace)
+  CREATE_OBJECT(ScopeRoot)
+  CREATE_OBJECT(ScopeTemplatePack)
+
+  // Symbols creation.
+  CREATE_OBJECT(Symbol)
+
+  // Types creation.
+  CREATE_OBJECT(Type)
+  CREATE_OBJECT(TypeDefinition)
+  CREATE_OBJECT(TypeEnumerator)
+  CREATE_OBJECT(TypeImport)
+  CREATE_OBJECT(TypeParam)
+  CREATE_OBJECT(TypeSubrange)
 
   StringRef getFilename(LVObject *Object, size_t Index) const;
   StringRef getFilename() const { return InputFilename; }

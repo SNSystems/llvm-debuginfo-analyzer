@@ -24,17 +24,12 @@ namespace {
 
 class ReaderTest : public LVReader {
 protected:
+  void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
   void add(LVScope *Parent, LVElement *Element);
-  template <typename T> T *create() {
-    T *Element = createObject<T>();
-    EXPECT_NE(Element, nullptr);
-    return Element;
-  }
   void set(LVElement *Element, StringRef Name, LVOffset Offset,
            uint32_t LineNumber = 0, LVElement *Type = nullptr);
   void set(LVLocation *Location, LVLine *LowerLine, LVLine *UpperLine,
            LVAddress LowerAddress, LVAddress UpperAddress);
-  void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
 
 public:
   ReaderTest(ScopedPrinter &W) : LVReader("", "", W) { setInstance(this); }
@@ -129,33 +124,52 @@ void ReaderTestLocations::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = create<LVType>();
+  IntegerType = createType();
+  EXPECT_NE(IntegerType, nullptr);
 
   // Create the logical scopes.
-  NestedScope = create<LVScope>();
-  CompileUnit = create<LVScopeCompileUnit>();
-  Function = create<LVScopeFunction>();
+  NestedScope = createScope();
+  EXPECT_NE(NestedScope, nullptr);
+  CompileUnit = createScopeCompileUnit();
+  EXPECT_NE(CompileUnit, nullptr);
+  Function = createScopeFunction();
+  EXPECT_NE(Function, nullptr);
 
   // Create the logical symbols.
-  LocalVariable = create<LVSymbol>();
-  NestedVariable = create<LVSymbol>();
-  Parameter = create<LVSymbol>();
+  LocalVariable = createSymbol();
+  EXPECT_NE(LocalVariable, nullptr);
+  NestedVariable = createSymbol();
+  EXPECT_NE(NestedVariable, nullptr);
+  Parameter = createSymbol();
+  EXPECT_NE(Parameter, nullptr);
 
   // Create the logical lines.
-  LineOne = create<LVLine>();
-  LineTwo = create<LVLine>();
-  LineThree = create<LVLine>();
-  LineFour = create<LVLine>();
-  LineFive = create<LVLine>();
-  LineSix = create<LVLine>();
+  LineOne = createLine();
+  EXPECT_NE(LineOne, nullptr);
+  LineTwo = createLine();
+  EXPECT_NE(LineTwo, nullptr);
+  LineThree = createLine();
+  EXPECT_NE(LineThree, nullptr);
+  LineFour = createLine();
+  EXPECT_NE(LineFour, nullptr);
+  LineFive = createLine();
+  EXPECT_NE(LineFive, nullptr);
+  LineSix = createLine();
+  EXPECT_NE(LineSix, nullptr);
 
   // Create the logical locations.
-  LocationOne = create<LVLocation>();
-  LocationTwo = create<LVLocation>();
-  LocationThree = create<LVLocation>();
-  LocationFour = create<LVLocation>();
-  LocationFive = create<LVLocation>();
-  LocationSix = create<LVLocation>();
+  LocationOne = createLocation();
+  EXPECT_NE(LocationOne, nullptr);
+  LocationTwo = createLocation();
+  EXPECT_NE(LocationTwo, nullptr);
+  LocationThree = createLocation();
+  EXPECT_NE(LocationThree, nullptr);
+  LocationFour = createLocation();
+  EXPECT_NE(LocationFour, nullptr);
+  LocationFive = createLocation();
+  EXPECT_NE(LocationFive, nullptr);
+  LocationSix = createLocation();
+  EXPECT_NE(LocationSix, nullptr);
 }
 
 // Create the logical view adding the created logical elements.
@@ -369,30 +383,46 @@ void ReaderTestCoverage::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = create<LVType>();
+  IntegerType = createType();
+  EXPECT_NE(IntegerType, nullptr);
 
   // Create the logical scopes.
-  CompileUnit = create<LVScopeCompileUnit>();
-  Function = create<LVScopeFunction>();
-  InlinedFunction = create<LVScopeFunctionInlined>();
+  CompileUnit = createScopeCompileUnit();
+  EXPECT_NE(CompileUnit, nullptr);
+  Function = createScopeFunction();
+  EXPECT_NE(Function, nullptr);
+  InlinedFunction = createScopeFunctionInlined();
+  EXPECT_NE(InlinedFunction, nullptr);
 
   // Create the logical symbols.
-  Variable = create<LVSymbol>();
-  Parameter = create<LVSymbol>();
+  Variable = createSymbol();
+  EXPECT_NE(Variable, nullptr);
+  Parameter = createSymbol();
+  EXPECT_NE(Parameter, nullptr);
 
   // Create the logical lines.
-  LineOne = create<LVLine>();
-  LineTwo = create<LVLine>();
-  LineThree = create<LVLine>();
-  LineFour = create<LVLine>();
-  LineFive = create<LVLine>();
-  LineSix = create<LVLine>();
+  LineOne = createLine();
+  EXPECT_NE(LineOne, nullptr);
+  LineTwo = createLine();
+  EXPECT_NE(LineTwo, nullptr);
+  LineThree = createLine();
+  EXPECT_NE(LineThree, nullptr);
+  LineFour = createLine();
+  EXPECT_NE(LineFour, nullptr);
+  LineFive = createLine();
+  EXPECT_NE(LineFive, nullptr);
+  LineSix = createLine();
+  EXPECT_NE(LineSix, nullptr);
 
   // Create the logical locations.
-  LocationOne = create<LVLocation>();
-  LocationTwo = create<LVLocation>();
-  LocationFive = create<LVLocation>();
-  LocationSix = create<LVLocation>();
+  LocationOne = createLocation();
+  EXPECT_NE(LocationOne, nullptr);
+  LocationTwo = createLocation();
+  EXPECT_NE(LocationTwo, nullptr);
+  LocationFive = createLocation();
+  EXPECT_NE(LocationFive, nullptr);
+  LocationSix = createLocation();
+  EXPECT_NE(LocationSix, nullptr);
 }
 
 // Create the logical view adding the created logical elements.

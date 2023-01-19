@@ -69,7 +69,7 @@ void LVSymbol::addLocation(dwarf::Attribute Attr, LVAddress LowPC,
     Locations = std::make_unique<LVLocations>();
 
   // Create the location entry.
-  CurrentLocation = getReader().createObject<LVLocationSymbol>();
+  CurrentLocation = getReader().createLocationSymbol();
   CurrentLocation->setParent(this);
   CurrentLocation->setAttr(Attr);
   if (CallSiteLocation)
@@ -105,7 +105,7 @@ LVLocations::iterator LVSymbol::addLocationGap(LVLocations::iterator Pos,
                                                LVAddress LowPC,
                                                LVAddress HighPC) {
   // Create a location entry for the gap.
-  LVLocation *Gap = getReader().createObject<LVLocationSymbol>();
+  LVLocation *Gap = getReader().createLocationSymbol();
   Gap->setParent(this);
   Gap->setAttr(dwarf::DW_AT_location);
   Gap->addObject(LowPC, HighPC,
