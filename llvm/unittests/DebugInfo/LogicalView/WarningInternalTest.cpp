@@ -62,6 +62,14 @@ LVLine *MyAddressToLine::lineUpperBound(LVAddress Address) {
 MyAddressToLine AddressToLine;
 
 class ReaderTestWarningInternal : public LVReader {
+#define CREATE(VARIABLE, CREATE_FUNCTION)                                      \
+  VARIABLE = CREATE_FUNCTION();                                                \
+  EXPECT_NE(VARIABLE, nullptr);
+
+#define CREATE_CUSTOM(VARIABLE, CREATE_FUNCTION)                               \
+  VARIABLE = CREATE_FUNCTION();                                                \
+  EXPECT_NE(VARIABLE, nullptr);
+
   // Types.
   LVType *IntegerType = nullptr;
 
@@ -90,17 +98,12 @@ class ReaderTestWarningInternal : public LVReader {
   MyLocation *LocationFive = nullptr;
   MyLocation *LocationSix = nullptr;
 
-#define CUSTOM_ALLOCATOR(KIND)                                                 \
-  llvm::SpecificBumpPtrAllocator<My##KIND> Allocated##KIND;
-
-  CUSTOM_ALLOCATOR(Location)
+  llvm::SpecificBumpPtrAllocator<MyLocation> AllocatedLocations;
 
 protected:
-#define CREATE_CUSTOM(KIND)                                                    \
-  My##KIND *createCustom##KIND() {                                             \
-    return new (Allocated##KIND.Allocate()) My##KIND();                        \
+  MyLocation *createCustomLocation() {
+    return new (AllocatedLocations.Allocate()) MyLocation();
   }
-  CREATE_CUSTOM(Location)
 
   void add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine);
   void add(LVScope *Parent, LVElement *Element);
@@ -217,52 +220,33 @@ void ReaderTestWarningInternal::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = createType();
-  EXPECT_NE(IntegerType, nullptr);
+  CREATE(IntegerType, createType);
 
   // Create the logical scopes.
-  NestedScope = createScope();
-  EXPECT_NE(NestedScope, nullptr);
-  CompileUnit = createScopeCompileUnit();
-  EXPECT_NE(CompileUnit, nullptr);
-  Function = createScopeFunction();
-  EXPECT_NE(Function, nullptr);
+  CREATE(NestedScope, createScope);
+  CREATE(CompileUnit, createScopeCompileUnit);
+  CREATE(Function, createScopeFunction);
 
   // Create the logical symbols.
-  LocalVariable = createSymbol();
-  EXPECT_NE(LocalVariable, nullptr);
-  NestedVariable = createSymbol();
-  EXPECT_NE(NestedVariable, nullptr);
-  Parameter = createSymbol();
-  EXPECT_NE(Parameter, nullptr);
+  CREATE(LocalVariable, createSymbol);
+  CREATE(NestedVariable, createSymbol);
+  CREATE(Parameter, createSymbol);
 
   // Create the logical lines.
-  LineOne = createLine();
-  EXPECT_NE(LineOne, nullptr);
-  LineTwo = createLine();
-  EXPECT_NE(LineTwo, nullptr);
-  LineThree = createLine();
-  EXPECT_NE(LineThree, nullptr);
-  LineFour = createLine();
-  EXPECT_NE(LineFour, nullptr);
-  LineFive = createLine();
-  EXPECT_NE(LineFive, nullptr);
-  LineSix = createLine();
-  EXPECT_NE(LineSix, nullptr);
+  CREATE(LineOne, createLine);
+  CREATE(LineTwo, createLine);
+  CREATE(LineThree, createLine);
+  CREATE(LineFour, createLine);
+  CREATE(LineFive, createLine);
+  CREATE(LineSix, createLine);
 
   // Create the logical locations.
-  LocationOne = createCustomLocation();
-  EXPECT_NE(LocationOne, nullptr);
-  LocationTwo = createCustomLocation();
-  EXPECT_NE(LocationTwo, nullptr);
-  LocationThree = createCustomLocation();
-  EXPECT_NE(LocationThree, nullptr);
-  LocationFour = createCustomLocation();
-  EXPECT_NE(LocationFour, nullptr);
-  LocationFive = createCustomLocation();
-  EXPECT_NE(LocationFive, nullptr);
-  LocationSix = createCustomLocation();
-  EXPECT_NE(LocationSix, nullptr);
+  CREATE_CUSTOM(LocationOne, createCustomLocation);
+  CREATE_CUSTOM(LocationTwo, createCustomLocation);
+  CREATE_CUSTOM(LocationThree, createCustomLocation);
+  CREATE_CUSTOM(LocationFour, createCustomLocation);
+  CREATE_CUSTOM(LocationFive, createCustomLocation);
+  CREATE_CUSTOM(LocationSix, createCustomLocation);
 }
 
 // Create the logical view adding the created logical elements.

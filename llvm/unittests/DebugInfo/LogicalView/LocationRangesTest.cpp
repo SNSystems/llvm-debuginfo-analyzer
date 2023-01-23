@@ -79,6 +79,10 @@ void ReaderTest::add(LVSymbol *Symbol, LVLine *LowerLine, LVLine *UpperLine) {
 }
 
 class ReaderTestLocations : public ReaderTest {
+#define CREATE(VARIABLE, CREATE_FUNCTION)                                      \
+  VARIABLE = CREATE_FUNCTION();                                                \
+  EXPECT_NE(VARIABLE, nullptr);
+
   // Types.
   LVType *IntegerType = nullptr;
 
@@ -124,52 +128,33 @@ void ReaderTestLocations::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = createType();
-  EXPECT_NE(IntegerType, nullptr);
+  CREATE(IntegerType, createType);
 
   // Create the logical scopes.
-  NestedScope = createScope();
-  EXPECT_NE(NestedScope, nullptr);
-  CompileUnit = createScopeCompileUnit();
-  EXPECT_NE(CompileUnit, nullptr);
-  Function = createScopeFunction();
-  EXPECT_NE(Function, nullptr);
+  CREATE(NestedScope, createScope);
+  CREATE(CompileUnit, createScopeCompileUnit);
+  CREATE(Function, createScopeFunction);
 
   // Create the logical symbols.
-  LocalVariable = createSymbol();
-  EXPECT_NE(LocalVariable, nullptr);
-  NestedVariable = createSymbol();
-  EXPECT_NE(NestedVariable, nullptr);
-  Parameter = createSymbol();
-  EXPECT_NE(Parameter, nullptr);
+  CREATE(LocalVariable, createSymbol);
+  CREATE(NestedVariable, createSymbol);
+  CREATE(Parameter, createSymbol);
 
   // Create the logical lines.
-  LineOne = createLine();
-  EXPECT_NE(LineOne, nullptr);
-  LineTwo = createLine();
-  EXPECT_NE(LineTwo, nullptr);
-  LineThree = createLine();
-  EXPECT_NE(LineThree, nullptr);
-  LineFour = createLine();
-  EXPECT_NE(LineFour, nullptr);
-  LineFive = createLine();
-  EXPECT_NE(LineFive, nullptr);
-  LineSix = createLine();
-  EXPECT_NE(LineSix, nullptr);
+  CREATE(LineOne, createLine);
+  CREATE(LineTwo, createLine);
+  CREATE(LineThree, createLine);
+  CREATE(LineFour, createLine);
+  CREATE(LineFive, createLine);
+  CREATE(LineSix, createLine);
 
   // Create the logical locations.
-  LocationOne = createLocation();
-  EXPECT_NE(LocationOne, nullptr);
-  LocationTwo = createLocation();
-  EXPECT_NE(LocationTwo, nullptr);
-  LocationThree = createLocation();
-  EXPECT_NE(LocationThree, nullptr);
-  LocationFour = createLocation();
-  EXPECT_NE(LocationFour, nullptr);
-  LocationFive = createLocation();
-  EXPECT_NE(LocationFive, nullptr);
-  LocationSix = createLocation();
-  EXPECT_NE(LocationSix, nullptr);
+  CREATE(LocationOne, createLocation);
+  CREATE(LocationTwo, createLocation);
+  CREATE(LocationThree, createLocation);
+  CREATE(LocationFour, createLocation);
+  CREATE(LocationFive, createLocation);
+  CREATE(LocationSix, createLocation);
 }
 
 // Create the logical view adding the created logical elements.

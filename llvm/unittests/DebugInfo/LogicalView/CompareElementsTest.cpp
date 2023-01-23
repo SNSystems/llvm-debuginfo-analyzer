@@ -26,6 +26,11 @@ namespace {
 //===----------------------------------------------------------------------===//
 // Basic Reader functionality.
 class ReaderTestCompare : public LVReader {
+#define CREATE(VARIABLE, CREATE_FUNCTION, SET_FUNCTION)                        \
+  VARIABLE = CREATE_FUNCTION();                                                \
+  EXPECT_NE(VARIABLE, nullptr);                                                \
+  VARIABLE->SET_FUNCTION();
+
 public:
   // Types.
   LVType *IntegerType = nullptr;
@@ -104,112 +109,38 @@ void ReaderTestCompare::createElements() {
   ASSERT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = createType();
-  EXPECT_NE(IntegerType, nullptr);
-  IntegerType->setIsBase();
-
-  UnsignedType = createType();
-  EXPECT_NE(UnsignedType, nullptr);
-  UnsignedType->setIsBase();
-
-  GlobalType = createType();
-  EXPECT_NE(GlobalType, nullptr);
-  GlobalType->setIsBase();
-
-  LocalType = createType();
-  EXPECT_NE(LocalType, nullptr);
-  LocalType->setIsBase();
-
-  NestedType = createType();
-  EXPECT_NE(NestedType, nullptr);
-  NestedType->setIsBase();
-
-  EnumeratorOne = createTypeEnumerator();
-  EXPECT_NE(EnumeratorOne, nullptr);
-  EnumeratorOne->setIsEnumerator();
-
-  EnumeratorTwo = createTypeEnumerator();
-  EXPECT_NE(EnumeratorTwo, nullptr);
-  EnumeratorTwo->setIsEnumerator();
-
-  TypeDefinitionOne = createTypeDefinition();
-  EXPECT_NE(TypeDefinitionOne, nullptr);
-  TypeDefinitionOne->setIsTypedef();
-
-  TypeDefinitionTwo = createTypeDefinition();
-  EXPECT_NE(TypeDefinitionTwo, nullptr);
-  TypeDefinitionTwo->setIsTypedef();
+  CREATE(IntegerType, createType, setIsBase);
+  CREATE(UnsignedType, createType, setIsBase);
+  CREATE(GlobalType, createType, setIsBase);
+  CREATE(LocalType, createType, setIsBase);
+  CREATE(NestedType, createType, setIsBase);
+  CREATE(EnumeratorOne, createTypeEnumerator, setIsEnumerator);
+  CREATE(EnumeratorTwo, createTypeEnumerator, setIsEnumerator);
+  CREATE(TypeDefinitionOne, createTypeDefinition, setIsTypedef);
+  CREATE(TypeDefinitionTwo, createTypeDefinition, setIsTypedef);
 
   // Create the logical scopes.
-  NestedScope = createScope();
-  EXPECT_NE(NestedScope, nullptr);
-  NestedScope->setIsLexicalBlock();
-
-  InnerScope = createScope();
-  EXPECT_NE(InnerScope, nullptr);
-  InnerScope->setIsLexicalBlock();
-
-  Aggregate = createScopeAggregate();
-  EXPECT_NE(Aggregate, nullptr);
-  Aggregate->setIsAggregate();
-
-  CompileUnit = createScopeCompileUnit();
-  EXPECT_NE(CompileUnit, nullptr);
-  CompileUnit->setIsCompileUnit();
-
-  Enumeration = createScopeEnumeration();
-  EXPECT_NE(Enumeration, nullptr);
-  Enumeration->setIsEnumeration();
-
-  FunctionOne = createScopeFunction();
-  EXPECT_NE(FunctionOne, nullptr);
-  FunctionOne->setIsFunction();
-
-  FunctionTwo = createScopeFunction();
-  EXPECT_NE(FunctionTwo, nullptr);
-  FunctionTwo->setIsFunction();
-
-  Namespace = createScopeNamespace();
-  EXPECT_NE(Namespace, nullptr);
-  Namespace->setIsNamespace();
+  CREATE(NestedScope, createScope, setIsLexicalBlock);
+  CREATE(InnerScope, createScope, setIsLexicalBlock);
+  CREATE(Aggregate, createScopeAggregate, setIsAggregate);
+  CREATE(CompileUnit, createScopeCompileUnit, setIsCompileUnit);
+  CREATE(Enumeration, createScopeEnumeration, setIsEnumeration);
+  CREATE(FunctionOne, createScopeFunction, setIsFunction);
+  CREATE(FunctionTwo, createScopeFunction, setIsFunction);
+  CREATE(Namespace, createScopeNamespace, setIsNamespace);
 
   // Create the logical symbols.
-  GlobalVariable = createSymbol();
-  EXPECT_NE(GlobalVariable, nullptr);
-  GlobalVariable->setIsVariable();
-
-  LocalVariable = createSymbol();
-  EXPECT_NE(LocalVariable, nullptr);
-  LocalVariable->setIsVariable();
-
-  ClassMember = createSymbol();
-  EXPECT_NE(ClassMember, nullptr);
-  ClassMember->setIsMember();
-
-  NestedVariable = createSymbol();
-  EXPECT_NE(NestedVariable, nullptr);
-  NestedVariable->setIsVariable();
-
-  ParameterOne = createSymbol();
-  EXPECT_NE(ParameterOne, nullptr);
-  ParameterOne->setIsParameter();
-
-  ParameterTwo = createSymbol();
-  EXPECT_NE(ParameterTwo, nullptr);
-  ParameterTwo->setIsParameter();
+  CREATE(GlobalVariable, createSymbol, setIsVariable);
+  CREATE(LocalVariable, createSymbol, setIsVariable);
+  CREATE(ClassMember, createSymbol, setIsMember);
+  CREATE(NestedVariable, createSymbol, setIsVariable);
+  CREATE(ParameterOne, createSymbol, setIsParameter);
+  CREATE(ParameterTwo, createSymbol, setIsParameter);
 
   // Create the logical lines.
-  LineOne = createLine();
-  EXPECT_NE(LineOne, nullptr);
-  LineOne->setIsLineDebug();
-
-  LineTwo = createLine();
-  EXPECT_NE(LineTwo, nullptr);
-  LineTwo->setIsLineDebug();
-
-  LineThree = createLine();
-  EXPECT_NE(LineThree, nullptr);
-  LineThree->setIsLineDebug();
+  CREATE(LineOne, createLine, setIsLineDebug);
+  CREATE(LineTwo, createLine, setIsLineDebug);
+  CREATE(LineThree, createLine, setIsLineDebug);
 }
 
 // Reference Reader:              Target Reader:

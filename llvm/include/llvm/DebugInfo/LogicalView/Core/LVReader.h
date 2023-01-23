@@ -54,6 +54,9 @@ public:
   raw_fd_ostream &os() { return OutputFile->os(); }
 };
 
+/// The logical reader owns of all the logical elements created during
+/// the debug information parsing. For its creation it uses a specific
+///  bump allocator for each type of logical element.
 class LVReader {
   LVBinaryType BinaryType;
 
@@ -74,9 +77,6 @@ class LVReader {
   Error createSplitFolder();
   bool OutputSplit = false;
 
-// The logical reader owns of all the logical elements created during
-// the debug information parsing. For its creation it uses a specific
-//  bump allocator for each type of logical element.
 // Define a specific bump allocator for the given KIND.
 #define OBJECT_ALLOCATOR(KIND)                                                 \
   llvm::SpecificBumpPtrAllocator<LV##KIND> Allocated##KIND;
@@ -89,6 +89,9 @@ class LVReader {
   // Locations allocator.
   OBJECT_ALLOCATOR(Location)
   OBJECT_ALLOCATOR(LocationSymbol)
+
+  // Operations allocator.
+  OBJECT_ALLOCATOR(Operation)
 
   // Scopes allocator.
   OBJECT_ALLOCATOR(Scope)
@@ -219,6 +222,22 @@ public:
   CREATE_OBJECT(TypeImport)
   CREATE_OBJECT(TypeParam)
   CREATE_OBJECT(TypeSubrange)
+
+// Creates a logical operation of the given KIND. The signature for the created
+// function looks like:
+//   ...
+//   LVOperation *createOperation(LVSmall OPCODE, LVUnsigned OPERAND1,
+//                                LVUnsigned OPERAND2)
+//   ...
+#define CREATE_OPERATION(KIND, OPCODE, OPERAND1, OPERAND2)                     \
+  LV##KIND *create##KIND(LVSmall OPCODE, LVUnsigned OPERAND1,                  \
+                         LVUnsigned OPERAND2) {                                \
+    return new (Allocated##KIND.Allocate())                                    \
+        LV##KIND(OPCODE, OPERAND1, OPERAND2);                                  \
+  }
+
+  // operations creation.
+  CREATE_OPERATION(Operation, Opcode, Operand1, Operand2)
 
   StringRef getFilename(LVObject *Object, size_t Index) const;
   StringRef getFilename() const { return InputFilename; }

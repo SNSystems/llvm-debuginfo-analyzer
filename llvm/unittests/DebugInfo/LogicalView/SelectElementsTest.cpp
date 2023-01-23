@@ -23,6 +23,11 @@ using namespace llvm::logicalview;
 namespace {
 
 class ReaderTestSelection : public LVReader {
+#define CREATE(VARIABLE, CREATE_FUNCTION, SET_FUNCTION)                        \
+  VARIABLE = CREATE_FUNCTION();                                                \
+  EXPECT_NE(VARIABLE, nullptr);                                                \
+  VARIABLE->SET_FUNCTION();
+
   // Types.
   LVType *IntegerType = nullptr;
 
@@ -96,68 +101,27 @@ void ReaderTestSelection::createElements() {
   EXPECT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = createType();
-  EXPECT_NE(IntegerType, nullptr);
-  IntegerType->setIsBase();
+  CREATE(IntegerType, createType, setIsBase);
 
   // Create the logical scopes.
-  CompileUnit = createScopeCompileUnit();
-  EXPECT_NE(CompileUnit, nullptr);
-  CompileUnit->setIsCompileUnit();
-
-  Function = createScopeFunction();
-  EXPECT_NE(Function, nullptr);
-  Function->setIsFunction();
-
-  NestedScope = createScope();
-  EXPECT_NE(NestedScope, nullptr);
-  NestedScope->setIsLexicalBlock();
-
-  Namespace = createScopeNamespace();
-  EXPECT_NE(Namespace, nullptr);
-  Namespace->setIsNamespace();
-
-  Aggregate = createScopeAggregate();
-  EXPECT_NE(Aggregate, nullptr);
-  Aggregate->setIsAggregate();
+  CREATE(CompileUnit, createScopeCompileUnit, setIsCompileUnit);
+  CREATE(Function, createScopeFunction, setIsFunction);
+  CREATE(NestedScope, createScope, setIsLexicalBlock);
+  CREATE(Namespace, createScopeNamespace, setIsNamespace);
+  CREATE(Aggregate, createScopeAggregate, setIsAggregate);
 
   // Create the logical symbols.
-  ClassMember = createSymbol();
-  EXPECT_NE(ClassMember, nullptr);
-  ClassMember->setIsMember();
-
-  LocalVariable = createSymbol();
-  EXPECT_NE(LocalVariable, nullptr);
-  LocalVariable->setIsVariable();
-
-  NestedVariable = createSymbol();
-  EXPECT_NE(NestedVariable, nullptr);
-  NestedVariable->setIsVariable();
-
-  Parameter = createSymbol();
-  EXPECT_NE(Parameter, nullptr);
-  Parameter->setIsParameter();
+  CREATE(ClassMember, createSymbol, setIsMember);
+  CREATE(LocalVariable, createSymbol, setIsVariable);
+  CREATE(NestedVariable, createSymbol, setIsVariable);
+  CREATE(Parameter, createSymbol, setIsParameter);
 
   // Create the logical lines.
-  LineOne = createLine();
-  EXPECT_NE(LineOne, nullptr);
-  LineOne->setIsLineDebug();
-
-  LineTwo = createLine();
-  EXPECT_NE(LineTwo, nullptr);
-  LineTwo->setIsBasicBlock();
-
-  LineThree = createLine();
-  EXPECT_NE(LineThree, nullptr);
-  LineThree->setIsNewStatement();
-
-  LineFour = createLine();
-  EXPECT_NE(LineFour, nullptr);
-  LineFour->setIsPrologueEnd();
-
-  LineFive = createLine();
-  EXPECT_NE(LineFive, nullptr);
-  LineFive->setIsLineAssembler();
+  CREATE(LineOne, createLine, setIsLineDebug);
+  CREATE(LineTwo, createLine, setIsBasicBlock);
+  CREATE(LineThree, createLine, setIsNewStatement);
+  CREATE(LineFour, createLine, setIsPrologueEnd);
+  CREATE(LineFive, createLine, setIsLineAssembler);
 }
 
 // Create the logical view adding the created logical elements.

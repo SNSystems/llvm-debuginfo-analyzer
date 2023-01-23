@@ -579,8 +579,8 @@ void LVLocationSymbol::addObject(LVAddress LowPC, LVAddress HighPC,
 void LVLocationSymbol::addObject(LVSmall Opcode, LVUnsigned Operand1,
                                  LVUnsigned Operand2) {
   if (!Entries)
-    Entries = std::make_unique<LVOperationSet>();
-  Entries->push_back(std::make_unique<LVOperation>(Opcode, Operand1, Operand2));
+    Entries = std::make_unique<LVOperations>();
+  Entries->push_back(getReader().createOperation(Opcode, Operand1, Operand2));
 }
 
 // Based on the DWARF attribute, define the location kind.
@@ -613,7 +613,7 @@ void LVLocationSymbol::updateKind() {
 
 void LVLocationSymbol::printRawExtra(raw_ostream &OS, bool Full) const {
   if (Entries)
-    for (const std::unique_ptr<LVOperation> &Operation : *Entries)
+    for (const LVOperation *Operation : *Entries)
       Operation->print(OS, Full);
 }
 
@@ -660,7 +660,7 @@ void LVLocationSymbol::printExtra(raw_ostream &OS, bool Full) const {
     bool CodeViewLocation = getParentSymbol()->getHasCodeViewLocation();
     std::stringstream Stream;
     std::string Leading = "";
-    for (std::unique_ptr<LVOperation> &Operation : *Entries) {
+    for (LVOperation *Operation : *Entries) {
       Stream << Leading
              << (CodeViewLocation ? Operation->getOperandsCodeViewInfo()
                                   : Operation->getOperandsDWARFInfo());

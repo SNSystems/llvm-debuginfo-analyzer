@@ -172,8 +172,7 @@ public:
 
 class LVLocationSymbol final : public LVLocation {
   // Location descriptors for the active range.
-  using LVOperationSet = SmallVector<std::unique_ptr<LVOperation>, 8>;
-  std::unique_ptr<LVOperationSet> Entries;
+  std::unique_ptr<LVOperations> Entries;
 
   void updateKind() override;
 

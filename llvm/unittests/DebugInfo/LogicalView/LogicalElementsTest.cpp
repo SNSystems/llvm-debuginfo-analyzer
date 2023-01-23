@@ -23,6 +23,10 @@ using namespace llvm::logicalview;
 namespace {
 
 class ReaderTestElements : public LVReader {
+#define CREATE(VARIABLE, CREATE_FUNCTION)                                      \
+  VARIABLE = CREATE_FUNCTION();                                                \
+  EXPECT_NE(VARIABLE, nullptr);
+
   // Types.
   LVType *IntegerType = nullptr;
   LVType *UnsignedType = nullptr;
@@ -106,68 +110,40 @@ void ReaderTestElements::createElements() {
   ASSERT_NE(Root, nullptr);
 
   // Create the logical types.
-  IntegerType = createType();
-  EXPECT_NE(IntegerType, nullptr);
-  UnsignedType = createType();
-  EXPECT_NE(UnsignedType, nullptr);
-  GlobalType = createType();
-  EXPECT_NE(GlobalType, nullptr);
-  LocalType = createType();
-  EXPECT_NE(LocalType, nullptr);
-  NestedType = createType();
-  EXPECT_NE(NestedType, nullptr);
-  EnumeratorOne = createTypeEnumerator();
-  EXPECT_NE(EnumeratorOne, nullptr);
-  EnumeratorTwo = createTypeEnumerator();
-  EXPECT_NE(EnumeratorTwo, nullptr);
-  TypeDefinitionOne = createTypeDefinition();
-  EXPECT_NE(TypeDefinitionOne, nullptr);
-  TypeDefinitionTwo = createTypeDefinition();
-  EXPECT_NE(TypeDefinitionTwo, nullptr);
-  TypeSubrange = createTypeSubrange();
-  EXPECT_NE(TypeSubrange, nullptr);
-  TypeParam = createTypeParam();
-  EXPECT_NE(TypeParam, nullptr);
-  TypeImport = createTypeImport();
-  EXPECT_NE(TypeImport, nullptr);
+  CREATE(IntegerType, createType);
+  CREATE(UnsignedType, createType);
+  CREATE(GlobalType, createType);
+  CREATE(LocalType, createType);
+  CREATE(NestedType, createType);
+  CREATE(EnumeratorOne, createTypeEnumerator);
+  CREATE(EnumeratorTwo, createTypeEnumerator);
+  CREATE(TypeDefinitionOne, createTypeDefinition);
+  CREATE(TypeDefinitionTwo, createTypeDefinition);
+  CREATE(TypeSubrange, createTypeSubrange);
+  CREATE(TypeParam, createTypeParam);
+  CREATE(TypeImport, createTypeImport);
 
   // Create the logical scopes.
-  NestedScope = createScope();
-  EXPECT_NE(NestedScope, nullptr);
-  Aggregate = createScopeAggregate();
-  EXPECT_NE(Aggregate, nullptr);
-  Array = createScopeArray();
-  EXPECT_NE(Array, nullptr);
-  CompileUnit = createScopeCompileUnit();
-  EXPECT_NE(CompileUnit, nullptr);
-  Enumeration = createScopeEnumeration();
-  EXPECT_NE(Enumeration, nullptr);
-  Function = createScopeFunction();
-  EXPECT_NE(Function, nullptr);
-  ClassFunction = createScopeFunction();
-  EXPECT_NE(ClassFunction, nullptr);
-  InlinedFunction = createScopeFunctionInlined();
-  EXPECT_NE(InlinedFunction, nullptr);
-  Namespace = createScopeNamespace();
-  EXPECT_NE(Namespace, nullptr);
+  CREATE(NestedScope, createScope);
+  CREATE(Aggregate, createScopeAggregate);
+  CREATE(Array, createScopeArray);
+  CREATE(CompileUnit, createScopeCompileUnit);
+  CREATE(Enumeration, createScopeEnumeration);
+  CREATE(Function, createScopeFunction);
+  CREATE(ClassFunction, createScopeFunction);
+  CREATE(InlinedFunction, createScopeFunctionInlined);
+  CREATE(Namespace, createScopeNamespace);
 
   // Create the logical symbols.
-  GlobalVariable = createSymbol();
-  EXPECT_NE(GlobalVariable, nullptr);
-  LocalVariable = createSymbol();
-  EXPECT_NE(LocalVariable, nullptr);
-  ClassMember = createSymbol();
-  EXPECT_NE(ClassMember, nullptr);
-  NestedVariable = createSymbol();
-  EXPECT_NE(NestedVariable, nullptr);
-  Parameter = createSymbol();
-  EXPECT_NE(Parameter, nullptr);
+  CREATE(GlobalVariable, createSymbol);
+  CREATE(LocalVariable, createSymbol);
+  CREATE(ClassMember, createSymbol);
+  CREATE(NestedVariable, createSymbol);
+  CREATE(Parameter, createSymbol);
 
   // Create the logical lines.
-  LocalLine = createLine();
-  EXPECT_NE(LocalLine, nullptr);
-  NestedLine = createLine();
-  EXPECT_NE(NestedLine, nullptr);
+  CREATE(LocalLine, createLine);
+  CREATE(NestedLine, createLine);
 }
 
 // Create the logical view adding the created logical elements.
