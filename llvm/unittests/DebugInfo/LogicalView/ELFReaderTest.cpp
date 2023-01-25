@@ -339,7 +339,7 @@ TEST(LogicalViewTest, ELFReader) {
 
   std::string TargetLookupError;
   if (!TargetRegistry::lookupTarget(std::string(TT.str()), TargetLookupError))
-    return;
+    GTEST_SKIP();
 
   SmallString<128> InputsDir = unittest::getInputFileDirectory(TestMainArgv0);
 
