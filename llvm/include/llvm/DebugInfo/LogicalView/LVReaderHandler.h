@@ -82,7 +82,7 @@ public:
   Expected<std::unique_ptr<LVReader>> createReader(StringRef Pathname) {
     LVReaders Readers;
     if (Error Err = createReader(Pathname, Readers))
-      return Err;
+      return std::move(Err);
     return std::move(Readers[0]);
   }
 
