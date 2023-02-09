@@ -257,7 +257,7 @@ public:
   virtual void setDiscriminator(uint32_t Value) {}
 
   // Process the values for a DW_TAG_enumerator.
-  virtual std::string getValue() const { return {}; }
+  virtual StringRef getValue() const { return {}; }
   virtual void setValue(StringRef Value) {}
   virtual size_t getValueIndex() const { return 0; }
 
