@@ -16,6 +16,7 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/DebugInfo/LogicalView/Core/LVStringPool.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/Path.h"
@@ -26,6 +27,9 @@
 
 namespace llvm {
 namespace logicalview {
+
+// Returns the unique string pool instance.
+LVStringPool &getStringPool();
 
 using LVStringRefs = std::vector<StringRef>;
 using LVLexicalComponent = std::tuple<StringRef, StringRef>;
