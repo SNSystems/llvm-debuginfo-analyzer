@@ -78,46 +78,48 @@ class LVReader {
   bool OutputSplit = false;
 
 // Define a specific bump allocator for the given KIND.
-#define OBJECT_ALLOCATOR(KIND)                                                 \
+#define LV_OBJECT_ALLOCATOR(KIND)                                              \
   llvm::SpecificBumpPtrAllocator<LV##KIND> Allocated##KIND;
 
   // Lines allocator.
-  OBJECT_ALLOCATOR(Line)
-  OBJECT_ALLOCATOR(LineDebug)
-  OBJECT_ALLOCATOR(LineAssembler)
+  LV_OBJECT_ALLOCATOR(Line)
+  LV_OBJECT_ALLOCATOR(LineDebug)
+  LV_OBJECT_ALLOCATOR(LineAssembler)
 
   // Locations allocator.
-  OBJECT_ALLOCATOR(Location)
-  OBJECT_ALLOCATOR(LocationSymbol)
+  LV_OBJECT_ALLOCATOR(Location)
+  LV_OBJECT_ALLOCATOR(LocationSymbol)
 
   // Operations allocator.
-  OBJECT_ALLOCATOR(Operation)
+  LV_OBJECT_ALLOCATOR(Operation)
 
   // Scopes allocator.
-  OBJECT_ALLOCATOR(Scope)
-  OBJECT_ALLOCATOR(ScopeAggregate)
-  OBJECT_ALLOCATOR(ScopeAlias)
-  OBJECT_ALLOCATOR(ScopeArray)
-  OBJECT_ALLOCATOR(ScopeCompileUnit)
-  OBJECT_ALLOCATOR(ScopeEnumeration)
-  OBJECT_ALLOCATOR(ScopeFormalPack)
-  OBJECT_ALLOCATOR(ScopeFunction)
-  OBJECT_ALLOCATOR(ScopeFunctionInlined)
-  OBJECT_ALLOCATOR(ScopeFunctionType)
-  OBJECT_ALLOCATOR(ScopeNamespace)
-  OBJECT_ALLOCATOR(ScopeRoot)
-  OBJECT_ALLOCATOR(ScopeTemplatePack)
+  LV_OBJECT_ALLOCATOR(Scope)
+  LV_OBJECT_ALLOCATOR(ScopeAggregate)
+  LV_OBJECT_ALLOCATOR(ScopeAlias)
+  LV_OBJECT_ALLOCATOR(ScopeArray)
+  LV_OBJECT_ALLOCATOR(ScopeCompileUnit)
+  LV_OBJECT_ALLOCATOR(ScopeEnumeration)
+  LV_OBJECT_ALLOCATOR(ScopeFormalPack)
+  LV_OBJECT_ALLOCATOR(ScopeFunction)
+  LV_OBJECT_ALLOCATOR(ScopeFunctionInlined)
+  LV_OBJECT_ALLOCATOR(ScopeFunctionType)
+  LV_OBJECT_ALLOCATOR(ScopeNamespace)
+  LV_OBJECT_ALLOCATOR(ScopeRoot)
+  LV_OBJECT_ALLOCATOR(ScopeTemplatePack)
 
   // Symbols allocator.
-  OBJECT_ALLOCATOR(Symbol)
+  LV_OBJECT_ALLOCATOR(Symbol)
 
   // Types allocator.
-  OBJECT_ALLOCATOR(Type)
-  OBJECT_ALLOCATOR(TypeDefinition)
-  OBJECT_ALLOCATOR(TypeEnumerator)
-  OBJECT_ALLOCATOR(TypeImport)
-  OBJECT_ALLOCATOR(TypeParam)
-  OBJECT_ALLOCATOR(TypeSubrange)
+  LV_OBJECT_ALLOCATOR(Type)
+  LV_OBJECT_ALLOCATOR(TypeDefinition)
+  LV_OBJECT_ALLOCATOR(TypeEnumerator)
+  LV_OBJECT_ALLOCATOR(TypeImport)
+  LV_OBJECT_ALLOCATOR(TypeParam)
+  LV_OBJECT_ALLOCATOR(TypeSubrange)
+
+#undef LV_OBJECT_ALLOCATOR
 
 protected:
   LVScopeRoot *Root = nullptr;
@@ -183,61 +185,54 @@ public:
 //   LVScopeRoot *creatScopeRoot()
 //   LVType *createType();
 //   ...
-#define CREATE_OBJECT(KIND)                                                    \
+#define LV_CREATE_OBJECT(KIND)                                                 \
   LV##KIND *create##KIND() {                                                   \
     return new (Allocated##KIND.Allocate()) LV##KIND();                        \
   }
 
   // Lines creation.
-  CREATE_OBJECT(Line)
-  CREATE_OBJECT(LineDebug)
-  CREATE_OBJECT(LineAssembler)
+  LV_CREATE_OBJECT(Line)
+  LV_CREATE_OBJECT(LineDebug)
+  LV_CREATE_OBJECT(LineAssembler)
 
   // Locations creation.
-  CREATE_OBJECT(Location)
-  CREATE_OBJECT(LocationSymbol)
+  LV_CREATE_OBJECT(Location)
+  LV_CREATE_OBJECT(LocationSymbol)
 
   // Scopes creation.
-  CREATE_OBJECT(Scope)
-  CREATE_OBJECT(ScopeAggregate)
-  CREATE_OBJECT(ScopeAlias)
-  CREATE_OBJECT(ScopeArray)
-  CREATE_OBJECT(ScopeCompileUnit)
-  CREATE_OBJECT(ScopeEnumeration)
-  CREATE_OBJECT(ScopeFormalPack)
-  CREATE_OBJECT(ScopeFunction)
-  CREATE_OBJECT(ScopeFunctionInlined)
-  CREATE_OBJECT(ScopeFunctionType)
-  CREATE_OBJECT(ScopeNamespace)
-  CREATE_OBJECT(ScopeRoot)
-  CREATE_OBJECT(ScopeTemplatePack)
+  LV_CREATE_OBJECT(Scope)
+  LV_CREATE_OBJECT(ScopeAggregate)
+  LV_CREATE_OBJECT(ScopeAlias)
+  LV_CREATE_OBJECT(ScopeArray)
+  LV_CREATE_OBJECT(ScopeCompileUnit)
+  LV_CREATE_OBJECT(ScopeEnumeration)
+  LV_CREATE_OBJECT(ScopeFormalPack)
+  LV_CREATE_OBJECT(ScopeFunction)
+  LV_CREATE_OBJECT(ScopeFunctionInlined)
+  LV_CREATE_OBJECT(ScopeFunctionType)
+  LV_CREATE_OBJECT(ScopeNamespace)
+  LV_CREATE_OBJECT(ScopeRoot)
+  LV_CREATE_OBJECT(ScopeTemplatePack)
 
   // Symbols creation.
-  CREATE_OBJECT(Symbol)
+  LV_CREATE_OBJECT(Symbol)
 
   // Types creation.
-  CREATE_OBJECT(Type)
-  CREATE_OBJECT(TypeDefinition)
-  CREATE_OBJECT(TypeEnumerator)
-  CREATE_OBJECT(TypeImport)
-  CREATE_OBJECT(TypeParam)
-  CREATE_OBJECT(TypeSubrange)
+  LV_CREATE_OBJECT(Type)
+  LV_CREATE_OBJECT(TypeDefinition)
+  LV_CREATE_OBJECT(TypeEnumerator)
+  LV_CREATE_OBJECT(TypeImport)
+  LV_CREATE_OBJECT(TypeParam)
+  LV_CREATE_OBJECT(TypeSubrange)
 
-// Creates a logical operation of the given KIND. The signature for the created
-// function looks like:
-//   ...
-//   LVOperation *createOperation(LVSmall OPCODE, LVUnsigned OPERAND1,
-//                                LVUnsigned OPERAND2)
-//   ...
-#define CREATE_OPERATION(KIND, OPCODE, OPERAND1, OPERAND2)                     \
-  LV##KIND *create##KIND(LVSmall OPCODE, LVUnsigned OPERAND1,                  \
-                         LVUnsigned OPERAND2) {                                \
-    return new (Allocated##KIND.Allocate())                                    \
-        LV##KIND(OPCODE, OPERAND1, OPERAND2);                                  \
+#undef LV_CREATE_OBJECT
+
+  // Operations creation.
+  LVOperation *createOperation(LVSmall OpCode, LVUnsigned Operand1,
+                               LVUnsigned Operand2) {
+    return new (AllocatedOperation.Allocate())
+        LVOperation(OpCode, Operand1, Operand2);
   }
-
-  // operations creation.
-  CREATE_OPERATION(Operation, Opcode, Operand1, Operand2)
 
   StringRef getFilename(LVObject *Object, size_t Index) const;
   StringRef getFilename() const { return InputFilename; }

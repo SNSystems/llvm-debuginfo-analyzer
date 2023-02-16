@@ -154,16 +154,13 @@ class LVDoubleMap {
 
 public:
   void add(FirstKeyType FirstKey, SecondKeyType SecondKey, ValueType Value) {
-    LVSecondMapType *SecondMap = nullptr;
     typename LVFirstMapType::iterator FirstIter = FirstMap.find(FirstKey);
     if (FirstIter == FirstMap.end()) {
-      std::unique_ptr<LVSecondMapType> SecondMapSP =
-          std::make_unique<LVSecondMapType>();
-      SecondMap = SecondMapSP.get();
-      SecondMap->emplace(SecondKey, Value);
+      auto SecondMapSP = std::make_unique<LVSecondMapType>();
+      SecondMapSP->emplace(SecondKey, Value);
       FirstMap.emplace(FirstKey, std::move(SecondMapSP));
     } else {
-      SecondMap = FirstIter->second.get();
+      LVSecondMapType *SecondMap = FirstIter->second.get();
       if (SecondMap->find(SecondKey) == SecondMap->end())
         SecondMap->emplace(SecondKey, Value);
     }

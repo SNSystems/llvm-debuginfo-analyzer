@@ -685,15 +685,15 @@ void LVScope::sort() {
   if (SortFunction) {
     std::function<void(LVScope * Parent, LVSortFunction SortFunction)> Sort =
         [&](LVScope *Parent, LVSortFunction SortFunction) {
-          auto Traverse = [&](auto *Set, LVSortFunction SortFunction) {
+          auto Traverse = [&](auto &Set, LVSortFunction SortFunction) {
             if (Set)
               std::stable_sort(Set->begin(), Set->end(), SortFunction);
           };
-          Traverse(Parent->Types.get(), SortFunction);
-          Traverse(Parent->Symbols.get(), SortFunction);
-          Traverse(Parent->Scopes.get(), SortFunction);
-          Traverse(Parent->Ranges.get(), compareRange);
-          Traverse(Parent->Children.get(), SortFunction);
+          Traverse(Parent->Types, SortFunction);
+          Traverse(Parent->Symbols, SortFunction);
+          Traverse(Parent->Scopes, SortFunction);
+          Traverse(Parent->Ranges, compareRange);
+          Traverse(Parent->Children, SortFunction);
 
           if (Parent->Scopes)
             for (LVScope *Scope : *Parent->Scopes)
@@ -872,15 +872,15 @@ bool LVScope::equalNumberOfChildren(const LVScope *Scope) const {
 }
 
 void LVScope::markMissingParents(const LVScope *Target, bool TraverseChildren) {
-  auto SetCompareState = [&](auto *Container) {
+  auto SetCompareState = [&](auto &Container) {
     if (Container)
       for (auto *Entry : *Container)
         Entry->setIsInCompare();
   };
-  SetCompareState(Types.get());
-  SetCompareState(Symbols.get());
-  SetCompareState(Lines.get());
-  SetCompareState(Scopes.get());
+  SetCompareState(Types);
+  SetCompareState(Symbols);
+  SetCompareState(Lines);
+  SetCompareState(Scopes);
 
   // At this point, we are ready to start comparing the current scope, once
   // the compare bits have been set.

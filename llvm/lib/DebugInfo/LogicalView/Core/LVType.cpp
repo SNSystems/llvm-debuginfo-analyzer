@@ -253,16 +253,12 @@ void LVType::getParameters(const LVTypes *Types, LVTypes *TypesParam,
     if (!Type->getIsTemplateParam())
       continue;
     if (options().getAttributeArgument()) {
-      if (Type->getIsKindType()) {
+      if (Type->getIsKindType())
         TypesParam->push_back(Type->getTypeAsType());
-      } else {
-        if (Type->getIsKindScope()) {
-          ScopesParam->push_back(Type->getTypeAsScope());
-        }
-      }
-    } else {
+      else if (Type->getIsKindScope())
+        ScopesParam->push_back(Type->getTypeAsScope());
+    } else
       TypesParam->push_back(Type);
-    }
   }
 }
 

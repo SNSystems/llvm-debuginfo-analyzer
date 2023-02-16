@@ -422,8 +422,8 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
 
   // Address for first instruction line.
   LVAddress FirstAddress = Address;
-  std::unique_ptr<LVLines> InstructionsSP = std::make_unique<LVLines>();
-  LVLines *Instructions = InstructionsSP.get();
+  auto InstructionsSP = std::make_unique<LVLines>();
+  LVLines &Instructions = *InstructionsSP;
   DiscoveredLines.emplace_back(std::move(InstructionsSP));
 
   while (Begin < End) {
@@ -469,7 +469,7 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
       LVLineAssembler *Line = createLineAssembler();
       Line->setAddress(Address);
       Line->setName(StringRef(Stream.str()).trim());
-      Instructions->push_back(Line);
+      Instructions.push_back(Line);
       break;
     }
     }
@@ -483,15 +483,15 @@ Error LVBinaryReader::createInstructions(LVScope *Scope,
            << " Scope DIE: " << hexValue(Scope->getOffset()) << "\n"
            << "Address: " << hexValue(FirstAddress)
            << format(" - Collected instructions lines: %d\n",
-                     Instructions->size());
-    for (const LVLine *Line : *Instructions)
+                     Instructions.size());
+    for (const LVLine *Line : Instructions)
       dbgs() << format_decimal(++Index, 5) << ": "
              << hexValue(Line->getOffset()) << ", (" << Line->getName()
              << ")\n";
   });
 
   // The scope in the assembler names is linked to its own instructions.
-  ScopeInstructions.add(SectionIndex, Scope, Instructions);
+  ScopeInstructions.add(SectionIndex, Scope, &Instructions);
   AssemblerMappings.add(SectionIndex, FirstAddress, Scope);
 
   return Error::success();
