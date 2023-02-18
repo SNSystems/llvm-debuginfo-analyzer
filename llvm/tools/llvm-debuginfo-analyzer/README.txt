@@ -1,4 +1,4 @@
-//===- llvm/tools/llvm-debuginfo-analyzer/README.txt ---------------------===//
+//===- llvm/tools/llvm-debuginfo-analyzer/README.txt ----------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -11,72 +11,166 @@
 //
 //===----------------------------------------------------------------------===//
 
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Remove the use of macros in 'LVReader.h' that describe the bumpallocators.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D137933#inline-1389904
 
-- Change command line options to use tablegen.
+Use some sort of type map for the allocators and then the creation
+functions could be a function template.
+
+//===----------------------------------------------------------------------===//
+// Fix mismatch between %d/%x format strings and uint64_t type.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D137400
+https://github.com/llvm/llvm-project/issues/58758
+
+Incorrect printing of uint64_t on 32-bit platforms.
+Add the PRIx64 specifier to the printing code (format()).
+
+//===----------------------------------------------------------------------===//
+// Refactor 'LVBinaryReader::processLines'.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1246155
+https://reviews.llvm.org/D137156
+
+During the traversal of the debug information sections, we created the
+logical lines representing the disassembled instructions from the text
+section and the logical lines representing the line records from the
+debug line section. Using the ranges associated with the logical scopes,
+we will allocate those logical lines to their logical scopes.
+
+Consider the case when any of those lines become orphans, causing
+incorrect scope parent for disassembly or line records.
+
+//===----------------------------------------------------------------------===//
+// Use TableGen for command line options.
+//===----------------------------------------------------------------------===//
 https://reviews.llvm.org/D125777#inline-1291801
 
-//===---------------------------------------------------------------------===//
+The current trend is to use TableGen for command-line options in tools.
+Change command line options to use tablegen as many other LLVM tools.
 
-- Use smart pointers.
-https://reviews.llvm.org/D125778#inline-1210290
-https://reviews.llvm.org/D125778#inline-1210381
-https://reviews.llvm.org/D125778#inline-1291984
+//===----------------------------------------------------------------------===//
+// Pass references instead of pointers (Comparison functions).
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125782#inline-1293920
 
-//===---------------------------------------------------------------------===//
+In the comparison functions, pass references instead of pointers (when
+pointers cannot be null).
 
-# Future work
---------------------------------------------------------------------------------
-- Pass references instead of pointers (Comparison functions).
+//===----------------------------------------------------------------------===//
+// Use StringMap where possible.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1294211
 
-- Use StringMap for LVSymbolNames.
+LLVM has a StringMap class that is advertised as more efficient than
+std::map<std::string, ValueType>. Mainly it does fewer allocations
+because the key is not a std::string.
 
-- Support for '-ffunction-sections'.
+Replace the use of std::map<std::string, ValueType> with String Map.
+One specific case is the LVSymbolNames definitions.
 
-- Add support for DWARF v5 .debug_names section.
+//===----------------------------------------------------------------------===//
+// Support for '-ffunction-sections'.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1295012
 
-- Add support for CodeView public symbols stream.
-  Currently similar data is collected during debug info parsing.
+The tool can handle only linked executables. It does not support
+relocatable files compiled with -ffunction-sections.
 
-- LVDoubleMap to return optional<ValueType> instead of null pointer.
+//===----------------------------------------------------------------------===//
+// Calculate unique offset for CodeView elements.
+//===----------------------------------------------------------------------===//
+In order to have the same logical functionality as the ELF Reader, such
+as:
 
-- Refactor 'processLines'.
+- find scopes contribution to debug info
+- sort by its physical location
 
-- Calculate unique offset for CodeView elements.
-  To have the same functionality as the DWARF offset.
-  // TODO: Use the 'PointerToRawData' as base for the unique offset for the
-  // Symbol records. Using 'RecordOffset' does not give unique values
-  // as that offset is relative to each subsection.
-  //uint32_t PointerToRawData = 0;
-  //#define ABSOLUTE_OFFSET(offset) (PointerToRawData + offset)
-  //PointerToRawData = getObj().getCOFFSection(Section)->PointerToRawData;
+The logical elements must have an unique offset (similar like the DWARF
+DIE offset).
 
-- Move initializeFileAndStringTables to the COFF Library.
+//===----------------------------------------------------------------------===//
+// Move 'initializeFileAndStringTables' to the COFF Library.
+//===----------------------------------------------------------------------===//
+There is some code in the CodeView reader that was extracted/adapted
+from 'tools/llvm-readobj/COFFDumper.cpp' that can be moved to the COFF
+library.
 
-- Easy access to 'getSymbolKindName' and 'formatRegisterId' (SymbolDumper.cpp)
-  At the moment we have to duplicate it.
+We had a similar case with code shared with llvm-pdbutil that was moved
+to the PDB library: https://reviews.llvm.org/D122226
 
-- class LVDoubleMap
-  Is the correct data structure?
+//===----------------------------------------------------------------------===//
+// Move 'getSymbolKindName'/'formatRegisterId' to the CodeView Library.
+//===----------------------------------------------------------------------===//
+There is some code in the CodeView reader that was extracted/adapted
+from 'lib/DebugInfo/CodeView/SymbolDumper.cpp' that can be used.
 
-- Rewrite ELFReaderTest and CodeViewReaderTest to eliminate the call:
+//===----------------------------------------------------------------------===//
+// Use of std::unordered_set instead of std::set
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125784#inline-1221421
+
+Replace the std::set usage for DeducedScopes, UnresolvedScopes and
+IdentifiedNamespaces with std::unordered_set and get the benefit
+of the O(1) while inserting/searching, as the order is not important.
+
+//===----------------------------------------------------------------------===//
+// Add support for DWARF v5 .debug_names section.
+// Add support for CodeView public symbols stream.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1294142
+
+The ELF and CodeView readers use the public names information to create
+the instructions (LVLineAssembler). Instead of relying on DWARF section
+names (.debug_pubnames, .debug_names) and CodeView public symbol stream
+(S_PUB32), the readers collects the needed information while processing
+the debug information.
+
+If the object file supports the above section names and stream, use them
+to create the public names.
+
+//===----------------------------------------------------------------------===//
+// LVDoubleMap to return optional<ValueType> instead of null pointer.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1294164
+
+The more idiomatic LLVM way to handle this would be to have 'find '
+return Optional<ValueType>.
+
+//===----------------------------------------------------------------------===//
+// Add support for some extra DWARF locations.
+//===----------------------------------------------------------------------===//
+The following DWARF debug location operands are not supported:
+
+- DW_OP_const_type
+- DW_OP_entry_value
+- DW_OP_implicit_value
+
+//===----------------------------------------------------------------------===//
+// Eliminate calls to 'getInputFileDirectory()' in the unit tests.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1324359
+
+Rewrite the unittests 'LFReaderTest' and 'CodeViewReaderTest'to eliminate
+the call:
+
   getInputFileDirectory()
+  
+as use of that call is discouraged.
 
-- Use of std::unordered_set instead of std::set
-  There is no based on comparison operations with DeducedScopes,
-  UnresolvedScopes and IdentifiedNamespaces, the sets are used for
-  searching only. It looks like the std::unordered_set with O(1)
-  inserting/searching is enough (hm, maybe except the UnresolvedScopes
-  variable because there is an iteration over the set and the order
-  might be important).
+//===----------------------------------------------------------------------===//
+// Optimize 'LVNamespaceDeduction::find'
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125784#inline-1296195
 
--I think this loop could be replaced with something along the lines of
-LVStringRefs::iterator Iter = std::find_if(Components.begin(), Components.end(), 
+Optimize the 'findd' method to use the proposed code:
+
+  LVStringRefs::iterator Iter = std::find_if(Components.begin(), Components.end(), 
     [](StringRef Name) {
         return IdentifiedNamespaces.find(Name) == IdentifiedNamespaces.end();
     });
-LVStringRefs::size_type FirstNonNamespace = std::distance(Components.begin(), Iter);
+  LVStringRefs::size_type FirstNonNamespace = std::distance(Components.begin(), Iter);
 
-find_if returns an iterator into Components for the first non-namespace, and then std::distance gets the index.
-
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
