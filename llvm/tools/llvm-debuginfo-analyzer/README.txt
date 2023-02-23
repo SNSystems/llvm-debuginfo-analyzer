@@ -16,8 +16,40 @@
 //===----------------------------------------------------------------------===//
 https://reviews.llvm.org/D137933#inline-1389904
 
-Use some sort of type map for the allocators and then the creation
+Use a standard (or LLVM) map with typeinfo (would need a specialization
+to expose equality and hasher) for the allocators and the creation
 functions could be a function template.
+
+//===----------------------------------------------------------------------===//
+// Use a lit test instead of a unit test for the logical readers.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1324376
+
+As the DebugInfoLogicalView library is sufficiently exposed via the
+llvm-debuginfo-analyzer tool, follow the LLVM general approach and
+use LIT tests to validate the logical readers.
+
+Convert the unitests:
+  llvm-project/llvm/unittests/DebugInfo/LogicalView/CodeViewReaderTest.cpp
+  llvm-project/llvm/unittests/DebugInfo/LogicalView/ELFReaderTest.cpp
+
+into LIT tests:
+  llvm-project/llvm/test/DebugInfo/LogicalView/CodeViewReader.test
+  llvm-project/llvm/test/DebugInfo/LogicalView/ELFReader.test
+
+//===----------------------------------------------------------------------===//
+// Eliminate calls to 'getInputFileDirectory()' in the unit tests.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1324359
+
+Rewrite the unittests 'LFReaderTest' and 'CodeViewReaderTest'to eliminate
+the call:
+
+  getInputFileDirectory()
+
+as use of that call is discouraged.
+
+See: Use a lit test instead of a unit test for the logical readers.
 
 //===----------------------------------------------------------------------===//
 // Fix mismatch between %d/%x format strings and uint64_t type.
@@ -29,19 +61,12 @@ Incorrect printing of uint64_t on 32-bit platforms.
 Add the PRIx64 specifier to the printing code (format()).
 
 //===----------------------------------------------------------------------===//
-// Refactor 'LVBinaryReader::processLines'.
+// Remove 'LVScope::Children' container.
 //===----------------------------------------------------------------------===//
-https://reviews.llvm.org/D125783#inline-1246155
-https://reviews.llvm.org/D137156
+https://reviews.llvm.org/D137933#inline-1373902
 
-During the traversal of the debug information sections, we created the
-logical lines representing the disassembled instructions from the text
-section and the logical lines representing the line records from the
-debug line section. Using the ranges associated with the logical scopes,
-we will allocate those logical lines to their logical scopes.
-
-Consider the case when any of those lines become orphans, causing
-incorrect scope parent for disassembly or line records.
+Use a chaining iterator over the other containers rather than keep a
+separate container 'Children' that mirrors their contents.
 
 //===----------------------------------------------------------------------===//
 // Use TableGen for command line options.
@@ -50,6 +75,14 @@ https://reviews.llvm.org/D125777#inline-1291801
 
 The current trend is to use TableGen for command-line options in tools.
 Change command line options to use tablegen as many other LLVM tools.
+
+//===----------------------------------------------------------------------===//
+// LVDoubleMap to return optional<ValueType> instead of null pointer.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1294164
+
+The more idiomatic LLVM way to handle this would be to have 'find '
+return Optional<ValueType>.
 
 //===----------------------------------------------------------------------===//
 // Pass references instead of pointers (Comparison functions).
@@ -70,14 +103,6 @@ because the key is not a std::string.
 
 Replace the use of std::map<std::string, ValueType> with String Map.
 One specific case is the LVSymbolNames definitions.
-
-//===----------------------------------------------------------------------===//
-// Support for '-ffunction-sections'.
-//===----------------------------------------------------------------------===//
-https://reviews.llvm.org/D125783#inline-1295012
-
-The tool can handle only linked executables. It does not support
-relocatable files compiled with -ffunction-sections.
 
 //===----------------------------------------------------------------------===//
 // Calculate unique offset for CodeView elements.
@@ -108,13 +133,55 @@ There is some code in the CodeView reader that was extracted/adapted
 from 'lib/DebugInfo/CodeView/SymbolDumper.cpp' that can be used.
 
 //===----------------------------------------------------------------------===//
-// Use of std::unordered_set instead of std::set
+// Use of std::unordered_set instead of std::set.
 //===----------------------------------------------------------------------===//
 https://reviews.llvm.org/D125784#inline-1221421
 
 Replace the std::set usage for DeducedScopes, UnresolvedScopes and
 IdentifiedNamespaces with std::unordered_set and get the benefit
 of the O(1) while inserting/searching, as the order is not important.
+
+//===----------------------------------------------------------------------===//
+// Optimize 'LVNamespaceDeduction::find' funtion.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125784#inline-1296195
+
+Optimize the 'findd' method to use the proposed code:
+
+  LVStringRefs::iterator Iter = std::find_if(Components.begin(), Components.end(),
+    [](StringRef Name) {
+        return IdentifiedNamespaces.find(Name) == IdentifiedNamespaces.end();
+    });
+  LVStringRefs::size_type FirstNonNamespace = std::distance(Components.begin(), Iter);
+
+//===----------------------------------------------------------------------===//
+// Move all the printing support to a common module.
+//===----------------------------------------------------------------------===//
+Factor out printing functionality from the logical elements into a
+common module.
+
+//===----------------------------------------------------------------------===//
+// Refactor 'LVBinaryReader::processLines'.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1246155
+https://reviews.llvm.org/D137156
+
+During the traversal of the debug information sections, we created the
+logical lines representing the disassembled instructions from the text
+section and the logical lines representing the line records from the
+debug line section. Using the ranges associated with the logical scopes,
+we will allocate those logical lines to their logical scopes.
+
+Consider the case when any of those lines become orphans, causing
+incorrect scope parent for disassembly or line records.
+
+//===----------------------------------------------------------------------===//
+// Add support for '-ffunction-sections'.
+//===----------------------------------------------------------------------===//
+https://reviews.llvm.org/D125783#inline-1295012
+
+The tool can handle only linked executables. It does not support
+relocatable files compiled with -ffunction-sections.
 
 //===----------------------------------------------------------------------===//
 // Add support for DWARF v5 .debug_names section.
@@ -132,14 +199,6 @@ If the object file supports the above section names and stream, use them
 to create the public names.
 
 //===----------------------------------------------------------------------===//
-// LVDoubleMap to return optional<ValueType> instead of null pointer.
-//===----------------------------------------------------------------------===//
-https://reviews.llvm.org/D125783#inline-1294164
-
-The more idiomatic LLVM way to handle this would be to have 'find '
-return Optional<ValueType>.
-
-//===----------------------------------------------------------------------===//
 // Add support for some extra DWARF locations.
 //===----------------------------------------------------------------------===//
 The following DWARF debug location operands are not supported:
@@ -149,28 +208,11 @@ The following DWARF debug location operands are not supported:
 - DW_OP_implicit_value
 
 //===----------------------------------------------------------------------===//
-// Eliminate calls to 'getInputFileDirectory()' in the unit tests.
+// Add support for additional binary formats.
 //===----------------------------------------------------------------------===//
-https://reviews.llvm.org/D125783#inline-1324359
+- WebAssembly (Wasm).
+  https://github.com/llvm/llvm-project/issues/57040#issuecomment-1211336680
 
-Rewrite the unittests 'LFReaderTest' and 'CodeViewReaderTest'to eliminate
-the call:
-
-  getInputFileDirectory()
-  
-as use of that call is discouraged.
-
-//===----------------------------------------------------------------------===//
-// Optimize 'LVNamespaceDeduction::find'
-//===----------------------------------------------------------------------===//
-https://reviews.llvm.org/D125784#inline-1296195
-
-Optimize the 'findd' method to use the proposed code:
-
-  LVStringRefs::iterator Iter = std::find_if(Components.begin(), Components.end(), 
-    [](StringRef Name) {
-        return IdentifiedNamespaces.find(Name) == IdentifiedNamespaces.end();
-    });
-  LVStringRefs::size_type FirstNonNamespace = std::distance(Components.begin(), Iter);
+- Extended COFF (XCOFF)
 
 //===----------------------------------------------------------------------===//
