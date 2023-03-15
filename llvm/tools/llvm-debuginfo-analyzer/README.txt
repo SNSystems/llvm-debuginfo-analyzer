@@ -146,7 +146,7 @@ of the O(1) while inserting/searching, as the order is not important.
 //===----------------------------------------------------------------------===//
 https://reviews.llvm.org/D125784#inline-1296195
 
-Optimize the 'findd' method to use the proposed code:
+Optimize the 'find' method to use the proposed code:
 
   LVStringRefs::iterator Iter = std::find_if(Components.begin(), Components.end(),
     [](StringRef Name) {
@@ -180,8 +180,8 @@ incorrect scope parent for disassembly or line records.
 //===----------------------------------------------------------------------===//
 https://reviews.llvm.org/D125783#inline-1295012
 
-The tool can handle only linked executables. It does not support
-relocatable files compiled with -ffunction-sections.
+Only linked executables are handled. It does not support relocatable
+files compiled with -ffunction-sections.
 
 //===----------------------------------------------------------------------===//
 // Add support for DWARF v5 .debug_names section.
@@ -214,5 +214,11 @@ The following DWARF debug location operands are not supported:
   https://github.com/llvm/llvm-project/issues/57040#issuecomment-1211336680
 
 - Extended COFF (XCOFF)
+
+//===----------------------------------------------------------------------===//
+// Add support for JSON or YAML.
+//===----------------------------------------------------------------------===//
+The logical view uses its own and non-standard free form text when
+displaying information on logical elements.
 
 //===----------------------------------------------------------------------===//
